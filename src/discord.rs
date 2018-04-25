@@ -1,7 +1,7 @@
-use serenity::CACHE;
-use serenity::prelude::*;
-use serenity::model::prelude::*;
 use serenity::framework::standard::StandardFramework;
+use serenity::model::prelude::*;
+use serenity::prelude::*;
+use serenity::CACHE;
 use std::env;
 
 use super::commands;
@@ -9,7 +9,7 @@ use super::commands;
 struct Handler;
 impl EventHandler for Handler {}
 
-pub fn run() {
+pub fn run_forever() {
     let mut client = Client::new(
         &env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN missing from env"),
         Handler,

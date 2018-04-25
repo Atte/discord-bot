@@ -9,6 +9,10 @@ publish = false
 [dependencies]
 env_logger = "0.5"
 serenity = "0.5"
+reqwest = "0.8"
+serde = "0.9"
+serde_derive = "0.9"
+serde_json = "0.9"
 
 [dependencies.log]
 version = "0.4"
