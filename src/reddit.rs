@@ -3,22 +3,35 @@ use reqwest::{self, header};
 use std::time::{Duration, Instant};
 use std::{io, thread};
 
+error_chain! {
+    foreign_links {
+        Io(::std::io::Error);
+        Discord(::serenity::Error);
+        Reddit(::reqwest::Error);
+    }
+}
+
+static API_BASE: &str = "https://oauth.reddit.com/api/v1";
+
 #[derive(Debug, Serialize, Deserialize)]
 struct AccessTokenResponse {
     access_token: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct ModqueueResponse {}
+
 #[derive(Debug)]
-enum RedditType {
+enum NotificationClass {
     Modqueue,
     Modmail,
 }
 
-impl RedditType {
+impl NotificationClass {
     fn title(&self) -> &'static str {
         match *self {
-            RedditType::Modqueue => "New stuff in the modqueue",
-            RedditType::Modmail => "New modmail",
+            NotificationClass::Modqueue => "New stuff in the modqueue",
+            NotificationClass::Modmail => "New modmail",
         }
     }
 
@@ -27,15 +40,15 @@ impl RedditType {
         S: AsRef<str>,
     {
         match *self {
-            RedditType::Modqueue => {
+            NotificationClass::Modqueue => {
                 format!("https://old.reddit.com/r/{}/about/modqueue/", sub.as_ref())
             }
-            RedditType::Modmail => "https://old.reddit.com/message/moderator/".to_owned(),
+            NotificationClass::Modmail => "https://old.reddit.com/message/moderator/".to_owned(),
         }
     }
 }
 
-fn make_client<H>(auth: H) -> reqwest::Client
+fn make_client<H>(auth: H) -> Result<reqwest::Client>
 where
     H: header::Header,
 {
@@ -49,13 +62,10 @@ where
     )));
     headers.set(auth);
 
-    reqwest::Client::builder()
-        .default_headers(headers)
-        .build()
-        .expect("Error making Reddit client")
+    Ok(reqwest::Client::builder().default_headers(headers).build()?)
 }
 
-fn make_login_client() -> reqwest::Client {
+fn make_login_client() -> Result<reqwest::Client> {
     make_client(header::Authorization(header::Basic {
         username: CONFIG.reddit.client_id.to_string(),
         password: Some(CONFIG.reddit.client_secret.to_string()),
@@ -63,50 +73,45 @@ fn make_login_client() -> reqwest::Client {
 }
 
 // TODO: cache results
-fn make_user_client() -> Option<reqwest::Client> {
-    if let Ok(resp) = make_login_client()
+fn make_user_client() -> Result<reqwest::Client> {
+    let data: AccessTokenResponse = make_login_client()?
         .get("https://www.reddit.com/api/v1/access_token")
         .query(&[
             ("grant_type", "password".to_owned()),
             ("username", CONFIG.reddit.username.to_string()),
             ("password", CONFIG.reddit.password.to_string()),
         ])
-        .send()
-        .and_then(|mut resp| resp.json::<AccessTokenResponse>())
-    {
-        Some(make_client(header::Authorization(header::Bearer {
-            token: resp.access_token,
-        })))
-    } else {
-        error!("Error getting Reddit access_token");
-        None
-    }
+        .send()?
+        .json()?;
+    let auth = header::Authorization(header::Bearer {
+        token: data.access_token,
+    });
+    Ok(make_client(auth)?)
 }
 
-fn check_sub<S>(client: &reqwest::Client, sub: S) -> Option<RedditType>
+fn check_sub<S>(client: &reqwest::Client, sub: S) -> Result<Option<NotificationClass>>
 where
     S: AsRef<str>,
 {
-    None
+    let data: ModqueueResponse = client
+        .get(&format!("{}/r/{}/about/modqueue", API_BASE, sub.as_ref()))
+        .send()?
+        .json()?;
+    Ok(None)
 }
 
-fn main() {
-    if let Some(client) = make_user_client() {
-        for (sub, sub_config) in &CONFIG.subreddits {
-            let sub = sub.to_string();
-            if let Some(reddit_type) = check_sub(&client, &sub) {
-                for channel_id in &sub_config.notify_channels {
-                    if let Err(err) = channel_id.send_message(|msg| {
-                        msg.embed(|e| e.title(reddit_type.title()).url(reddit_type.url(&sub)))
-                    }) {
-                        error!("Error sending Reddit notification: {}", err);
-                    }
-                }
+fn main() -> Result<()> {
+    let client = make_user_client()?;
+    for (sub, sub_config) in &CONFIG.subreddits {
+        if let Some(reddit_type) = check_sub(&client, sub)? {
+            for channel_id in &sub_config.notify_channels {
+                channel_id.send_message(|msg| {
+                    msg.embed(|e| e.title(reddit_type.title()).url(reddit_type.url(sub)))
+                })?;
             }
         }
-    } else {
-        error!("Error creating Reddit client");
     }
+    Ok(())
 }
 
 pub fn spawn() -> io::Result<thread::JoinHandle<()>> {
@@ -126,7 +131,9 @@ pub fn spawn() -> io::Result<thread::JoinHandle<()>> {
                 thread::sleep(Duration::from_secs(1));
                 if start.elapsed() >= check_interval {
                     start = Instant::now();
-                    main();
+                    if let Err(err) = main() {
+                        error!("{}", err);
+                    }
                 }
             }
         })

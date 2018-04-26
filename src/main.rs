@@ -16,8 +16,10 @@ extern crate toml;
 extern crate error_chain;
 #[macro_use]
 extern crate lazy_static;
+extern crate regex;
 
 mod config;
+mod substituting_string;
 
 lazy_static! {
     pub static ref CONFIG: config::Config = config::Config::from_file(

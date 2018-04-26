@@ -1,4 +1,4 @@
-cache_path = "/opt/flutterbitch/"
+cache = "cache.toml"
 
 [discord]
 token = "$DISCORD_TOKEN"

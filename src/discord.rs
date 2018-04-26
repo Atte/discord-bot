@@ -10,8 +10,8 @@ struct Handler;
 impl EventHandler for Handler {}
 
 pub fn run_forever() {
-    let mut client = Client::new(&CONFIG.discord.token.to_string(), Handler)
-        .expect("Error making Discord client");
+    let mut client =
+        Client::new(CONFIG.discord.token.as_ref(), Handler).expect("Error making Discord client");
 
     let framework = StandardFramework::new()
         .configure(|conf| {
