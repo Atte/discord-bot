@@ -1,10 +1,9 @@
-use super::reqwest;
-use reqwest::header;
-use serenity::model::prelude::*;
+use super::CONFIG;
+use reqwest::{self, header};
 use std::time::{Duration, Instant};
-use std::{env, thread};
+use std::{io, thread};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct AccessTokenResponse {
     access_token: String,
 }
@@ -57,27 +56,23 @@ where
 }
 
 fn make_login_client() -> reqwest::Client {
-    let reddit_id: String = env::var("REDDIT_ID").expect("REDDIT_ID missing from env");
-    let reddit_secret: String = env::var("REDDIT_SECRET").expect("REDDIT_SECRET missing from env");
     make_client(header::Authorization(header::Basic {
-        username: reddit_id,
-        password: Some(reddit_secret),
+        username: CONFIG.reddit.client_id.to_string(),
+        password: Some(CONFIG.reddit.client_secret.to_string()),
     }))
 }
 
 // TODO: cache results
 fn make_user_client() -> Option<reqwest::Client> {
-    let username: String = env::var("REDDIT_USERNAME").expect("REDDIT_USERNAME missing from env");
-    let password: String = env::var("REDDIT_PASSWORD").expect("REDDIT_PASSWORD missing from env");
     if let Ok(resp) = make_login_client()
         .get("https://www.reddit.com/api/v1/access_token")
         .query(&[
             ("grant_type", "password".to_owned()),
-            ("username", username),
-            ("password", password),
+            ("username", CONFIG.reddit.username.to_string()),
+            ("password", CONFIG.reddit.password.to_string()),
         ])
         .send()
-        .and_then(|resp| resp.json::<AccessTokenResponse>())
+        .and_then(|mut resp| resp.json::<AccessTokenResponse>())
     {
         Some(make_client(header::Authorization(header::Bearer {
             token: resp.access_token,
@@ -88,22 +83,40 @@ fn make_user_client() -> Option<reqwest::Client> {
     }
 }
 
-fn check<S>(sub: S) -> Option<RedditType>
+fn check_sub<S>(client: &reqwest::Client, sub: S) -> Option<RedditType>
 where
     S: AsRef<str>,
 {
     None
 }
 
-pub fn spawn() -> thread::JoinHandle<()> {
-    let check_interval = Duration::from_secs(5);
+fn main() {
+    if let Some(client) = make_user_client() {
+        for (sub, sub_config) in &CONFIG.subreddits {
+            let sub = sub.to_string();
+            if let Some(reddit_type) = check_sub(&client, &sub) {
+                for channel_id in &sub_config.notify_channels {
+                    if let Err(err) = channel_id.send_message(|msg| {
+                        msg.embed(|e| e.title(reddit_type.title()).url(reddit_type.url(&sub)))
+                    }) {
+                        error!("Error sending Reddit notification: {}", err);
+                    }
+                }
+            }
+        }
+    } else {
+        error!("Error creating Reddit client");
+    }
+}
 
-    let notify_channel: u64 = env::var("NOTIFY_CHANNEL")
-        .expect("NOTIFY_CHANNEL missing from env")
-        .parse()
-        .expect("NOTIFY_CHANNEL is not a number");
-
-    let sub: String = env::var("REDDIT_SUB").expect("REDDIT_SUB missing from env");
+pub fn spawn() -> io::Result<thread::JoinHandle<()>> {
+    let check_interval = Duration::from_secs(60 * CONFIG.reddit.check_interval);
+    if check_interval.as_secs() < 60 {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Reddit check interval is less than a minute; refusing",
+        ));
+    }
 
     thread::Builder::new()
         .name("reddit".to_owned())
@@ -111,19 +124,10 @@ pub fn spawn() -> thread::JoinHandle<()> {
             let mut start = Instant::now();
             loop {
                 thread::sleep(Duration::from_secs(1));
-                if start.elapsed() < check_interval {
-                    continue;
-                }
-                start = Instant::now();
-
-                if let Some(reddit_type) = check(&sub) {
-                    if let Err(err) = ChannelId(notify_channel).send_message(|msg| {
-                        msg.embed(|e| e.title(reddit_type.title()).url(reddit_type.url(&sub)))
-                    }) {
-                        error!("Error sending Reddit notification: {}", err);
-                    }
+                if start.elapsed() >= check_interval {
+                    start = Instant::now();
+                    main();
                 }
             }
         })
-        .expect("Error spawning Reddit thread")
 }

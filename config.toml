@@ -1,0 +1,16 @@
+cache_path = "/opt/flutterbitch/"
+
+[discord]
+token = "$DISCORD_TOKEN"
+owners = [119122043923988483]
+log_channels = [439066300518760448]
+
+[reddit]
+client_id = "8dPf_HbyOJaJJw"
+client_secret = "$REDDIT_SECRET"
+username = "FlutterBitchBot"
+password = "$REDDIT_PASSWORD"
+check_interval = 5 # minutes
+
+[subreddits.BerryTubeLounge]
+notify_channels = [324598323489013770]

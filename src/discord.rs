@@ -1,30 +1,36 @@
-use serenity::framework::standard::StandardFramework;
+use serenity::framework::standard::{help_commands, StandardFramework};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::CACHE;
-use std::env;
 
 use super::commands;
+use super::CONFIG;
 
 struct Handler;
 impl EventHandler for Handler {}
 
 pub fn run_forever() {
-    let mut client = Client::new(
-        &env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN missing from env"),
-        Handler,
-    ).expect("Error creating client");
+    let mut client = Client::new(&CONFIG.discord.token.to_string(), Handler)
+        .expect("Error making Discord client");
 
     let framework = StandardFramework::new()
         .configure(|conf| {
-            conf.allow_dm(false)
+            conf.allow_dm(true)
                 .allow_whitespace(false)
                 .depth(1)
                 .ignore_bots(true)
                 .ignore_webhooks(true)
                 .on_mention(false)
+                .owners(CONFIG.discord.owners.clone())
                 .prefix("!")
                 .case_insensitivity(true)
+        })
+        .customised_help(help_commands::with_embeds, |help| {
+            help.striked_commands_tip(Some("Some commands are only available to mods.".to_owned()))
+                .dm_only_text("Only in DM")
+                .guild_only_text("Only on channels")
+                .dm_and_guilds_text("In DM and on channels")
+                .ungrouped_label("Commands")
         })
         .before(|_context, msg, cmd| {
             if let Some(channel) = msg.channel().and_then(|ch| ch.guild()) {
@@ -47,10 +53,10 @@ pub fn run_forever() {
                     channel.read().name(),
                     msg.channel_id
                 );
+                false
             } else {
-                warn!("Ignored command on non-guild channel ({}).", msg.channel_id);
+                true
             }
-            false
         });
 
     client.with_framework(commands::register(framework));
