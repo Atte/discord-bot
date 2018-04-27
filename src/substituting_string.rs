@@ -37,11 +37,6 @@ impl cmp::PartialEq for SubstitutingString {
     fn eq(&self, other: &Self) -> bool {
         self.resolved.eq(&other.resolved)
     }
-
-    #[inline]
-    fn ne(&self, other: &Self) -> bool {
-        self.resolved.ne(&other.resolved)
-    }
 }
 
 impl Eq for SubstitutingString {}

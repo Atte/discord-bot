@@ -17,7 +17,5 @@ toml = "0.4"
 error-chain = "0.11"
 lazy_static = "1.0"
 regex = "0.2"
-
-[dependencies.log]
-version = "0.4"
-features = ["max_level_trace", "release_max_level_debug"]
+maplit = "1.0"
+log = "0.4"

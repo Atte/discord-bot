@@ -1,4 +1,4 @@
-cache = "cache.toml"
+cache_path = "cache.toml"
 
 [discord]
 token = "$DISCORD_TOKEN"
