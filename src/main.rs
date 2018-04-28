@@ -35,6 +35,7 @@ lazy_static! {
 mod commands;
 mod discord;
 mod reddit;
+mod util;
 
 fn main() {
     env_logger::Builder::from_default_env()

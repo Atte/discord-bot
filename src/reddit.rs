@@ -1,9 +1,9 @@
 use super::{CACHE, CONFIG};
 use reqwest::{self, header};
+use serenity::utils::Colour;
+use std::collections::HashSet;
 use std::time::{Duration, Instant};
 use std::{io, thread};
-use std::collections::HashSet;
-use serenity::utils::Colour;
 
 error_chain! {
     links {
@@ -63,7 +63,10 @@ impl NotificationClass {
             NotificationClass::Modqueue => {
                 format!("https://old.reddit.com/r/{}/about/modqueue/", sub.as_ref())
             }
-            NotificationClass::Modmail => format!("https://old.reddit.com/r/{}/about/message/inbox/", sub.as_ref()),
+            NotificationClass::Modmail => format!(
+                "https://old.reddit.com/r/{}/about/message/inbox/",
+                sub.as_ref()
+            ),
         }
     }
 
@@ -139,8 +142,7 @@ fn contains_unseen(data: RedditObject<RedditListing<RedditMessageish>>) -> Resul
     })?)
 }
 
-fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<NotificationClass>>
-{
+fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<NotificationClass>> {
     trace!("Checking /r/{}", sub);
 
     let mut out = HashSet::new();
@@ -182,7 +184,12 @@ fn main() -> Result<()> {
         for reddit_type in check_sub(&client, sub)? {
             for channel_id in &sub_config.notify_channels {
                 channel_id.send_message(|msg| {
-                    msg.embed(|e| e.title(reddit_type.title()).url(reddit_type.url(sub)).colour(reddit_type.colour()).author(|a| a.name(&format!("/r/{}", sub))))
+                    msg.embed(|e| {
+                        e.colour(reddit_type.colour())
+                            .title(reddit_type.title())
+                            .url(reddit_type.url(sub))
+                            .author(|a| a.name(&format!("/r/{}", sub)))
+                    })
                 })?;
             }
         }
