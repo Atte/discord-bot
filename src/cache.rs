@@ -1,8 +1,8 @@
+use serenity::prelude::RwLock;
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Write};
-use std::path::PathBuf;
-use std::sync::Mutex;
+use std::io::{Read, Seek, SeekFrom, Write};
+use std::path::Path;
 use toml;
 
 error_chain! {
@@ -11,17 +11,11 @@ error_chain! {
         TomlRead(::toml::de::Error);
         TomlWrite(::toml::ser::Error);
     }
-
-    errors {
-        LockPoison {
-            description("cache lock has been poisoned")
-        }
-    }
 }
 
 pub struct Cache {
-    path: PathBuf,
-    content: Mutex<CacheContent>,
+    fh: RwLock<File>,
+    content: RwLock<CacheContent>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -30,51 +24,47 @@ pub struct CacheContent {
 }
 
 impl Cache {
-    fn new(path: PathBuf, content: CacheContent) -> Self {
+    fn new(fh: File, content: CacheContent) -> Self {
         Self {
-            path,
-            content: Mutex::new(content),
+            fh: RwLock::new(fh),
+            content: RwLock::new(content),
         }
     }
 
     pub fn from_file<P>(path: P) -> Result<Self>
     where
-        P: Into<PathBuf>,
+        P: AsRef<Path>,
     {
-        let path: PathBuf = path.into();
+        let mut fh = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)?;
 
-        let mut source: Vec<u8> = Vec::new();
-        match File::open(&path) {
-            Ok(mut fh) => {
-                fh.read_to_end(&mut source)?;
-            }
-            Err(ref err) if err.kind() == io::ErrorKind::NotFound => {
-                return Ok(Self::new(path, CacheContent::default()));
-            }
-            Err(err) => {
-                return Err(err.into());
-            }
+        if fh.metadata()?.len() > 0 {
+            let mut source: Vec<u8> = Vec::new();
+            fh.read_to_end(&mut source)?;
+            Ok(Self::new(fh, toml::from_slice(&source)?))
+        } else {
+            Ok(Self::new(fh, CacheContent::default()))
         }
-        Ok(Self::new(path, toml::from_slice(&source)?))
     }
 
     pub fn with<F, R>(&self, fun: F) -> Result<R>
     where
         F: FnOnce(&mut CacheContent) -> R,
     {
-        if let Ok(mut content) = self.content.lock() {
+        let (result, data) = {
+            let mut content = self.content.write();
             let result = fun(&mut content);
-            let data = toml::to_string_pretty(&*content)?;
-            // TODO: keep file open all the time
-            let mut fh = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(&self.path)?;
-            fh.write_all(data.as_bytes())?;
-            Ok(result)
-        } else {
-            Err(ErrorKind::LockPoison.into())
-        }
+            (result, toml::to_string(&*content)?)
+        };
+
+        let mut fh = self.fh.write();
+        fh.seek(SeekFrom::Start(0))?;
+        fh.set_len(0)?;
+        fh.write_all(data.as_bytes())?;
+        Ok(result)
     }
 }

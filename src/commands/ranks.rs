@@ -5,7 +5,8 @@ use serenity::utils::Colour;
 use serenity::CACHE;
 
 fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError> {
-    let bot = guild.members
+    let bot = guild
+        .members
         .values()
         .find(|member| member.user.read().id == CACHE.read().user.id)
         .ok_or_else(|| SerenityError::Other("Can't find bot as a guild member"))?;
@@ -44,7 +45,8 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
     Ok(ranks
         .into_iter()
         .map(|rank| {
-            let rank_members: Vec<_> = guild.members
+            let rank_members: Vec<_> = guild
+                .members
                 .values()
                 .filter_map(|member| {
                     if member.roles.contains(&rank.id) {

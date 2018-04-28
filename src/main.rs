@@ -29,7 +29,7 @@ lazy_static! {
         ::std::env::var("CONFIG_PATH").unwrap_or_else(|_| "config.toml".to_owned())
     ).expect("Error loading config");
     pub static ref CACHE: cache::Cache =
-        cache::Cache::from_file(CONFIG.cache_path.to_string()).expect("Error loading cache");
+        cache::Cache::from_file(&CONFIG.cache_path).expect("Error loading cache");
 }
 
 mod commands;

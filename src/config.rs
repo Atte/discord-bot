@@ -24,6 +24,7 @@ pub struct Config {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
+    pub deleted_msg_cache: usize,
     pub username: SubstitutingString,
     pub token: SubstitutingString,
     pub owners: HashSet<UserId>,
