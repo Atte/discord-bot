@@ -1,10 +1,10 @@
 use regex::{Captures, Regex};
 use serde::{de, ser};
-use std::{cmp, convert, env, fmt, hash};
+use std::{borrow, cmp, convert, env, fmt, hash};
 
 lazy_static! {
     static ref VARIABLE_RE: Regex =
-        Regex::new("\\$([A-Z0-9_]+)").expect("Invalid regex for VARIABLE_RE");
+        Regex::new(r"\$\{?([A-Z0-9_]+)\}?").expect("Invalid regex for VARIABLE_RE");
 }
 
 #[derive(Debug)]
@@ -32,14 +32,37 @@ impl fmt::Display for SubstitutingString {
     }
 }
 
-impl cmp::PartialEq for SubstitutingString {
+impl PartialEq for SubstitutingString {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.resolved.eq(&other.resolved)
     }
 }
 
+impl<T> PartialEq<T> for SubstitutingString
+where
+    String: PartialEq<T>,
+{
+    #[inline]
+    fn eq(&self, other: &T) -> bool {
+        self.resolved.eq(&other)
+    }
+}
+
 impl Eq for SubstitutingString {}
+
+impl Ord for SubstitutingString {
+    #[inline]
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.resolved.cmp(&other.resolved)
+    }
+}
+
+impl PartialOrd for SubstitutingString {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 impl hash::Hash for SubstitutingString {
     #[inline]
@@ -58,6 +81,20 @@ where
     #[inline]
     fn as_ref(&self) -> &S {
         self.resolved.as_ref()
+    }
+}
+
+impl borrow::Borrow<str> for SubstitutingString {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self.resolved.borrow()
+    }
+}
+
+impl From<SubstitutingString> for String {
+    #[inline]
+    fn from(s: SubstitutingString) -> Self {
+        s.resolved
     }
 }
 

@@ -1,8 +1,9 @@
 use super::{CACHE, CONFIG};
 use reqwest::{self, header};
-use serde_json;
 use std::time::{Duration, Instant};
 use std::{io, thread};
+use std::collections::HashSet;
+use serenity::utils::Colour;
 
 error_chain! {
     links {
@@ -40,7 +41,7 @@ struct RedditMessageish {
     id: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 enum NotificationClass {
     Modqueue,
     Modmail,
@@ -62,7 +63,14 @@ impl NotificationClass {
             NotificationClass::Modqueue => {
                 format!("https://old.reddit.com/r/{}/about/modqueue/", sub.as_ref())
             }
-            NotificationClass::Modmail => "https://old.reddit.com/message/moderator/".to_owned(),
+            NotificationClass::Modmail => format!("https://old.reddit.com/r/{}/about/message/inbox/", sub.as_ref()),
+        }
+    }
+
+    fn colour(&self) -> Colour {
+        match *self {
+            NotificationClass::Modqueue => Colour::blue(),
+            NotificationClass::Modmail => Colour::red(),
         }
     }
 }
@@ -118,41 +126,51 @@ fn make_user_client() -> Result<reqwest::Client> {
     Ok(make_client(auth)?)
 }
 
-fn check_sub<S>(client: &reqwest::Client, sub: S) -> Result<Option<NotificationClass>>
-where
-    S: AsRef<str>,
-{
-    trace!("Checking /r/{}", sub.as_ref());
+fn contains_unseen(data: RedditObject<RedditListing<RedditMessageish>>) -> Result<bool> {
+    Ok(CACHE.with(|cache| {
+        let has_unseen = data.data
+            .children
+            .iter()
+            .any(|obj| !cache.seen.contains(&obj.data.id));
+        cache
+            .seen
+            .extend(data.data.children.into_iter().map(|obj| obj.data.id));
+        has_unseen
+    })?)
+}
 
+fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<NotificationClass>>
+{
+    trace!("Checking /r/{}", sub);
+
+    let mut out = HashSet::new();
     {
-        let mut resp = client
+        let data: RedditObject<RedditListing<RedditMessageish>> = client
             .get(&format!(
                 "https://oauth.reddit.com/r/{}/about/modqueue",
-                sub.as_ref()
+                sub
             ))
             .send()?
-            .error_for_status()?;
-        let data: RedditObject<RedditListing<RedditMessageish>> = resp.json()?;
-        trace!("data: {}", serde_json::to_string(&data)?);
-
-        let all_seen = CACHE.with(|cache| {
-            let all_seen = data.data
-                .children
-                .iter()
-                .all(|obj| cache.seen.contains(&obj.data.id));
-            cache
-                .seen
-                .extend(data.data.children.into_iter().map(|obj| obj.data.id));
-            all_seen
-        })?;
-        if !all_seen {
-            return Ok(Some(NotificationClass::Modqueue));
+            .error_for_status()?
+            .json()?;
+        if contains_unseen(data)? {
+            out.insert(NotificationClass::Modqueue);
         }
     }
-
-    // TODO: check modmail
-
-    Ok(None)
+    {
+        let data: RedditObject<RedditListing<RedditMessageish>> = client
+            .get(&format!(
+                "https://oauth.reddit.com/r/{}/about/message/inbox",
+                sub
+            ))
+            .send()?
+            .error_for_status()?
+            .json()?;
+        if contains_unseen(data)? {
+            out.insert(NotificationClass::Modmail);
+        }
+    }
+    Ok(out)
 }
 
 fn main() -> Result<()> {
@@ -160,10 +178,11 @@ fn main() -> Result<()> {
 
     let client = make_user_client()?;
     for (sub, sub_config) in &CONFIG.subreddits {
-        if let Some(reddit_type) = check_sub(&client, sub)? {
+        let sub = sub.as_ref();
+        for reddit_type in check_sub(&client, sub)? {
             for channel_id in &sub_config.notify_channels {
                 channel_id.send_message(|msg| {
-                    msg.embed(|e| e.title(reddit_type.title()).url(reddit_type.url(sub)))
+                    msg.embed(|e| e.title(reddit_type.title()).url(reddit_type.url(sub)).colour(reddit_type.colour()).author(|a| a.name(&format!("/r/{}", sub))))
                 })?;
             }
         }
@@ -185,6 +204,13 @@ pub fn spawn() -> io::Result<thread::JoinHandle<()>> {
     thread::Builder::new()
         .name("reddit".to_owned())
         .spawn(move || {
+            if cfg!(feature = "reddit-debug") {
+                if let Err(err) = main() {
+                    error!("{}", err);
+                }
+                return;
+            }
+
             let mut start = Instant::now();
             loop {
                 thread::sleep(Duration::from_secs(1));

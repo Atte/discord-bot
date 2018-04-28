@@ -19,3 +19,7 @@ lazy_static = "1.0"
 regex = "0.2"
 maplit = "1.0"
 log = "0.4"
+
+[features]
+default = []
+reddit-debug = []
