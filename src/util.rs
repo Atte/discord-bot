@@ -11,15 +11,21 @@ pub fn guild_from_message(msg: &Message) -> Option<Arc<RwLock<Guild>>> {
     }
 }
 
-pub fn use_emoji(name: &str) -> String {
-    for guild in CACHE.read().guilds.values() {
-        if let Some(emoji) = guild
-            .read()
-            .emojis
-            .values()
-            .find(|emoji| emoji.name == name)
-        {
+pub fn use_emoji(guild: Option<&Guild>, name: &str) -> String {
+    if let Some(guild) = guild {
+        if let Some(emoji) = guild.emojis.values().find(|emoji| emoji.name == name) {
             return emoji.to_string();
+        }
+    } else {
+        for guild in CACHE.read().guilds.values() {
+            if let Some(emoji) = guild
+                .read()
+                .emojis
+                .values()
+                .find(|emoji| emoji.name == name)
+            {
+                return emoji.to_string();
+            }
         }
     }
     String::new()

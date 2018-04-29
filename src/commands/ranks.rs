@@ -69,9 +69,9 @@ command!(list(_context, message) {
             message.reply("There are no ranks on the server!")?;
         } else {
             {
-                let longest_name = ranks.iter().map(|(rank, _members)| rank.name.len()).min().expect("Impossible empty list");
+                let longest_name = ranks.iter().map(|(rank, _members)| rank.name.len()).max().expect("Impossible empty list");
                 let mut desc_lines: Vec<String> = ranks.iter().map(|(rank, members)| {
-                    format!("{:w$}{} member{}", format!("{}:", rank.name), members.len(), if members.len() == 1 { "" } else { "s" }, w = longest_name + 2)
+                    format!("{:w$}{:3} member{}", format!("{}:", rank.name), members.len(), if members.len() == 1 { "" } else { "s" }, w = longest_name + 2)
                 }).collect();
                 desc_lines.sort();
                 message.channel_id.send_message(|msg| {
@@ -100,27 +100,23 @@ command!(joinleave(_context, message, args) {
     let rankname: String = args.single::<String>()?.to_lowercase();
     let response = if let Some(guild) = guild_from_message(&message) {
         let mut guild = guild.write();
-        if let Some(role_id) = guild.role_by_name(&rankname).map(|role| role.id) {
-            let is_rank = get_ranks(&guild)?.into_iter().any(|(rank, _members)| rank.id == role_id);
+        let leave_emoji = use_emoji(Some(&guild), "aj05");
+        let join_emoji = use_emoji(Some(&guild), "twiyay");
+        if let Some(rank_id) = get_ranks(&guild)?.into_iter().find(|(rank, _members)| rank.name.to_lowercase() == rankname).map(|(rank, _members)| rank.id) {
             if let Some(mut user) = guild.members.get_mut(&message.author.id) {
-                let is_current = user.roles.contains(&role_id);
-
-                if is_rank {
-                    if is_current {
-                        user.remove_role(role_id)?;
-                        format!("You have left **{}**! {}", rankname, use_emoji("aj05"))
-                    } else {
-                        user.add_role(role_id)?;
-                        format!("You have joined **{}**! {}", rankname, use_emoji("twiyay"))
-                    }
+                let is_current = user.roles.contains(&rank_id);
+                if is_current {
+                    user.remove_role(rank_id)?;
+                    format!("You have left **{}**! {}", rankname, leave_emoji)
                 } else {
-                    format!("There is no such rank. {}", use_emoji("lyou"))
+                    user.add_role(rank_id)?;
+                    format!("You have joined **{}**! {}", rankname, join_emoji)
                 }
             } else {
                 "You are not on the server? WTF?".to_owned()
             }
         } else {
-            format!("There is no such rank. {}", use_emoji("lyou"))
+            format!("There is no such rank. {}", use_emoji(Some(&guild), "lyou"))
         }
     } else {
         "Rank joining/leaving is only available on a server!".to_owned()
