@@ -24,4 +24,9 @@ pub fn register(framework: StandardFramework) -> StandardFramework {
         .command("roll", |cmd| {
             cmd.desc("Rolls dice.").usage("1d6 + 2d20").cmd(misc::roll)
         })
+        .command("info", |cmd| {
+            cmd.desc("Shows information about the bot.")
+                .num_args(0)
+                .cmd(misc::info)
+        })
 }
