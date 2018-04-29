@@ -19,6 +19,7 @@ pub struct Config {
     pub discord: DiscordConfig,
     pub reddit: RedditConfig,
     pub subreddits: HashMap<SubstitutingString, SubredditConfig>,
+    pub bulk: BulkConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,6 +45,11 @@ pub struct RedditConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SubredditConfig {
     pub notify_channels: HashSet<ChannelId>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkConfig {
+    pub insults: Vec<SubstitutingString>,
 }
 
 impl Config {
