@@ -23,10 +23,11 @@ command!(roll(_context, message, args) {
         results.join(" + ")
     });
     let result = meval::eval_str(&rolled)?;
-    if result.to_string() == rolled {
-        message.reply(&format!("{} \u{2192} **{}**", original, rolled))?;
+    let output = format!("{} \u{2192} {} \u{2192} **{}**", original, rolled, result);
+    if result.to_string() == rolled || output.len() > CONFIG.discord.long_msg_threshold {
+        message.reply(&format!("{} \u{2192} **{}**", original, result))?;
     } else {
-        message.reply(&format!("{} \u{2192} {} \u{2192} **{}**", original, rolled, result))?;
+        message.reply(&output)?;
     }
 });
 
