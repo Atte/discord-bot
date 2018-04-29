@@ -6,7 +6,10 @@ deleted_msg_cache = 2048
 username = "FlutterBitch"
 token = "$DISCORD_TOKEN"
 owners = [119122043923988483]
-log_channels = [409294723572957185]
+log_channels = [
+    439066300518760448, # test
+    409294723572957185 # BT
+]
 
 [reddit]
 client_id = "8dPf_HbyOJaJJw"

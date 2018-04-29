@@ -75,8 +75,12 @@ impl EventHandler for Handler {
                     if let Err(err) = log_channel.send_message(|msg| {
                         msg.embed(|e| {
                             e.colour(Colour::red())
-                                .title(format!("Message deleted in #{}", channel.name()))
-                                .description(message.content_safe())
+                                .description(format!(
+                                    "**Message sent by <@{}> deleted in <#{}>**\n{}",
+                                    message.author.id,
+                                    channel_id,
+                                    message.content_safe()
+                                ))
                                 .author(|a| {
                                     a.name(&message.author.tag())
                                         .icon_url(&message.author.face())
@@ -101,7 +105,7 @@ impl EventHandler for Handler {
                 let user = member.user.read();
                 msg.embed(|e| {
                     e.colour(Colour::fooyoo())
-                        .title("User joined")
+                        .description(format!("**<@{}> joined**", user.id))
                         .author(|a| a.name(&user.tag()).icon_url(&user.face()))
                 })
             }) {
@@ -121,7 +125,7 @@ impl EventHandler for Handler {
             if let Err(err) = log_channel.send_message(|msg| {
                 msg.embed(|e| {
                     e.colour(Colour::red())
-                        .title("User left")
+                        .description(format!("**<@{}> left**", user.id))
                         .author(|a| a.name(&user.tag()).icon_url(&user.face()))
                 })
             }) {
@@ -151,8 +155,10 @@ impl EventHandler for Handler {
                 if let Err(err) = log_channel.send_message(|msg| {
                     msg.embed(|e| {
                         e.colour(Colour::red())
-                            .title("User changed their nick")
-                            .description(format!("{} \u{2192} {}", old_nick, new_nick))
+                            .description(format!(
+                                "**<@{}> changed their nick**\n{} \u{2192} {}",
+                                new_user.id, old_nick, new_nick
+                            ))
                             .author(|a| a.name(&new_user.tag()).icon_url(&new_user.face()))
                     })
                 }) {

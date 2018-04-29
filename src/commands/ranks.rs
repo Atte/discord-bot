@@ -87,7 +87,7 @@ command!(list(_context, message) {
                 let mut rank_names: Vec<String> = ranks.into_iter().filter_map(|(rank, _members)| if user.roles.contains(&rank.id) { Some(format!("**{}**", rank.name)) } else { None }).collect();
                 if !rank_names.is_empty() {
                     rank_names.sort();
-                    message.reply(&format!("Your current ranks: {}", rank_names.join(", ")))?;
+                    message.reply(&format!("Your current ranks are {}", rank_names.join(", ")))?;
                 }
             }
         }
@@ -97,12 +97,12 @@ command!(list(_context, message) {
 });
 
 command!(joinleave(_context, message, args) {
-    let rankname: String = args.single::<String>()?.to_lowercase();
+    let rankname: String = args.single::<String>()?;
     let response = if let Some(guild) = guild_from_message(&message) {
         let mut guild = guild.write();
         let leave_emoji = use_emoji(Some(&guild), "aj05");
         let join_emoji = use_emoji(Some(&guild), "twiyay");
-        if let Some(rank_id) = get_ranks(&guild)?.into_iter().find(|(rank, _members)| rank.name.to_lowercase() == rankname).map(|(rank, _members)| rank.id) {
+        if let Some(rank_id) = get_ranks(&guild)?.into_iter().find(|(rank, _members)| rank.name.to_lowercase() == rankname.to_lowercase()).map(|(rank, _members)| rank.id) {
             if let Some(mut user) = guild.members.get_mut(&message.author.id) {
                 let is_current = user.roles.contains(&rank_id);
                 if is_current {
