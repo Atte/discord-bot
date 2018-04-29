@@ -1,4 +1,4 @@
-use super::super::util::guild_from_message;
+use super::super::util::{guild_from_message, use_emoji};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::Colour;
@@ -68,17 +68,28 @@ command!(list(_context, message) {
         if ranks.is_empty() {
             message.reply("There are no ranks on the server!")?;
         } else {
-            let longest_name = ranks.iter().map(|(rank, _members)| rank.name.len()).min().expect("Impossible empty list");
-            let mut desc_lines: Vec<String> = ranks.into_iter().map(|(rank, members)| format!("{:w$}{}", format!("{}:", rank.name), members.len(), w = longest_name + 2)).collect();
-            desc_lines.sort();
-            message.channel_id.send_message(|msg| {
-                msg.embed(|e|
-                    e.colour(Colour::blue())
-                    .title("Ranks")
-                    .description(format!("```ldif\n{}```", desc_lines.join("\n")))
-                    .footer(|f| f.text("Use the !rank command to join/leave a rank."))
-                )
-            })?;
+            {
+                let longest_name = ranks.iter().map(|(rank, _members)| rank.name.len()).min().expect("Impossible empty list");
+                let mut desc_lines: Vec<String> = ranks.iter().map(|(rank, members)| {
+                    format!("{:w$}{} member{}", format!("{}:", rank.name), members.len(), if members.len() == 1 { "" } else { "s" }, w = longest_name + 2)
+                }).collect();
+                desc_lines.sort();
+                message.channel_id.send_message(|msg| {
+                    msg.embed(|e|
+                        e.colour(Colour::blue())
+                        .title("Available ranks")
+                        .description(format!("```ldif\n{}```", desc_lines.join("\n")))
+                        .footer(|f| f.text("Use the !rank command to join/leave a rank."))
+                    )
+                })?;
+            }
+            if let Some(user) = guild.members.get(&message.author.id) {
+                let mut rank_names: Vec<String> = ranks.into_iter().filter_map(|(rank, _members)| if user.roles.contains(&rank.id) { Some(format!("**{}**", rank.name)) } else { None }).collect();
+                if !rank_names.is_empty() {
+                    rank_names.sort();
+                    message.reply(&format!("Your current ranks: {}", rank_names.join(", ")))?;
+                }
+            }
         }
     } else {
         message.reply("Rank listing is only available on a server!")?;
@@ -97,19 +108,19 @@ command!(joinleave(_context, message, args) {
                 if is_rank {
                     if is_current {
                         user.remove_role(role_id)?;
-                        format!("You have left **{}**!", rankname)
+                        format!("You have left **{}**! {}", rankname, use_emoji("aj05"))
                     } else {
                         user.add_role(role_id)?;
-                        format!("You have joined **{}**!", rankname)
+                        format!("You have joined **{}**! {}", rankname, use_emoji("twiyay"))
                     }
                 } else {
-                    "There is no such rank!".to_owned()
+                    format!("There is no such rank. {}", use_emoji("lyou"))
                 }
             } else {
                 "You are not on the server? WTF?".to_owned()
             }
         } else {
-            "There is no such rank!".to_owned()
+            format!("There is no such rank. {}", use_emoji("lyou"))
         }
     } else {
         "Rank joining/leaving is only available on a server!".to_owned()

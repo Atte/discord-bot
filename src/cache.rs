@@ -1,4 +1,4 @@
-use serenity::prelude::RwLock;
+use serenity::prelude::*;
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -19,7 +19,19 @@ pub struct Cache {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CacheContent {
+    pub discord: DiscordCacheContent,
+    pub reddit: RedditCacheContent,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DiscordCacheContent {}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RedditCacheContent {
     pub seen: HashSet<String>,
 }
 

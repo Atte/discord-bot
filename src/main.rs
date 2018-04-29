@@ -34,6 +34,7 @@ lazy_static! {
 
 mod commands;
 mod discord;
+mod discord_eventhandler;
 mod reddit;
 mod util;
 

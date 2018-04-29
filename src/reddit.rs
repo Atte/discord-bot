@@ -134,8 +134,9 @@ fn contains_unseen(data: RedditObject<RedditListing<RedditMessageish>>) -> Resul
         let has_unseen = data.data
             .children
             .iter()
-            .any(|obj| !cache.seen.contains(&obj.data.id));
+            .any(|obj| !cache.reddit.seen.contains(&obj.data.id));
         cache
+            .reddit
             .seen
             .extend(data.data.children.into_iter().map(|obj| obj.data.id));
         has_unseen
@@ -143,7 +144,7 @@ fn contains_unseen(data: RedditObject<RedditListing<RedditMessageish>>) -> Resul
 }
 
 fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<NotificationClass>> {
-    trace!("Checking /r/{}", sub);
+    debug!("Checking /r/{}", sub);
 
     let mut out = HashSet::new();
     {
