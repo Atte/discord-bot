@@ -31,6 +31,8 @@ pub struct DiscordConfig {
     pub token: SubstitutingString,
     pub owners: HashSet<UserId>,
     pub log_channels: HashSet<ChannelId>,
+    pub channel_blacklist: HashSet<ChannelId>,
+    pub channel_whitelist: HashSet<ChannelId>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

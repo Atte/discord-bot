@@ -33,14 +33,19 @@ pub fn run_forever() {
         })
         .before(|_context, message, cmd_name| {
             if let Some(channel) = message.channel().and_then(|ch| ch.guild()) {
-                if let Ok(perms) = channel.read().permissions_for(CACHE.read().user.id) {
-                    if perms.contains(Permissions::SEND_MESSAGES) {
+                let channel = channel.read();
+                if let Ok(perms) = channel.permissions_for(CACHE.read().user.id) {
+                    if perms.contains(Permissions::SEND_MESSAGES)
+                        && !CONFIG.discord.channel_blacklist.contains(&channel.id)
+                        && (CONFIG.discord.channel_whitelist.is_empty()
+                            || CONFIG.discord.channel_whitelist.contains(&channel.id))
+                    {
                         info!(
                             "Running command {} for @{} ({}) on #{} ({})",
                             cmd_name,
                             message.author.tag(),
                             message.author.id,
-                            channel.read().name(),
+                            channel.name(),
                             message.channel_id
                         );
                         return true;
@@ -48,7 +53,7 @@ pub fn run_forever() {
                 }
                 info!(
                     "Ignored command because couldn't respond on #{} ({}) anyways.",
-                    channel.read().name(),
+                    channel.name(),
                     message.channel_id
                 );
                 false

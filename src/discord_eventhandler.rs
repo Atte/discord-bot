@@ -58,7 +58,7 @@ impl EventHandler for Handler {
         }
 
         if message.content.contains("pizza") {
-            message.react("\u{1f34d}").ok(); // pineapple
+            message.react('\u{1f34d}').ok(); // pineapple
         }
 
         {
