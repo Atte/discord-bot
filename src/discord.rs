@@ -69,6 +69,16 @@ pub fn run_forever() {
                     ))
                     .ok();
             }
+        })
+        .unrecognised_command(|_context, message, _cmd_name| {
+            message
+                .reply(&format!(
+                    "That's not even a command! {}",
+                    rand::thread_rng()
+                        .choose(&CONFIG.bulk.insults)
+                        .map_or("", |insult| insult.as_ref())
+                ))
+                .ok();
         });
 
     client.with_framework(commands::register(framework));
