@@ -62,37 +62,46 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
 }
 
 command!(list(_context, message) {
-    if let Some(guild) = guild_from_message(&message) {
+    let (reply, rank_text) = if let Some(guild) = guild_from_message(&message) {
         let guild = guild.read();
         let ranks = get_ranks(&guild)?;
         if ranks.is_empty() {
-            message.reply("There are no ranks on the server!")?;
+            (Some("There are no ranks on the server!".to_owned()), None)
         } else {
-            {
+            let rank_text = {
                 let longest_name = ranks.iter().map(|(rank, _members)| rank.name.len()).max().expect("Impossible empty list");
                 let mut desc_lines: Vec<String> = ranks.iter().map(|(rank, members)| {
                     format!("{:w$}{:3} member{}", format!("{}:", rank.name), members.len(), if members.len() == 1 { "" } else { "s" }, w = longest_name + 2)
                 }).collect();
                 desc_lines.sort();
-                message.channel_id.send_message(|msg| {
-                    msg.embed(|e|
-                        e.colour(Colour::blue())
-                        .title("Available ranks")
-                        .description(format!("```ldif\n{}```", desc_lines.join("\n")))
-                        .footer(|f| f.text("Use the !rank command to join/leave a rank."))
-                    )
-                })?;
-            }
-            if let Some(user) = guild.members.get(&message.author.id) {
+                Some(format!("```ldif\n{}```", desc_lines.join("\n")))
+            };
+            let reply = guild.members.get(&message.author.id).and_then(|user| {
                 let mut rank_names: Vec<String> = ranks.into_iter().filter_map(|(rank, _members)| if user.roles.contains(&rank.id) { Some(format!("**{}**", rank.name)) } else { None }).collect();
                 if !rank_names.is_empty() {
                     rank_names.sort();
-                    message.reply(&format!("Your current ranks are {}", rank_names.join(", ")))?;
+                    Some(format!("Your current ranks are {}", rank_names.join(", ")))
+                } else {
+                    None
                 }
-            }
+            });
+            (reply, rank_text)
         }
     } else {
-        message.reply("Rank listing is only available on a server!")?;
+        (Some("Rank listing is only available on a server!".to_owned()), None)
+    };
+    if let Some(rank_text) = rank_text {
+        message.channel_id.send_message(|msg| {
+            msg.embed(|e|
+                e.colour(Colour::blue())
+                .title("Available ranks")
+                .description(rank_text)
+                .footer(|f| f.text("Use the !rank command to join/leave a rank."))
+            )
+        })?;
+    }
+    if let Some(reply) = reply {
+        message.reply(&reply)?;
     }
 });
 
