@@ -1,8 +1,8 @@
+use rand::{self, Rng};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::Colour;
 use serenity::CACHE;
-use rand::{self, Rng};
 
 use super::CONFIG;
 
@@ -47,7 +47,11 @@ impl EventHandler for Handler {
     }
 
     fn message(&self, _context: Context, message: Message) {
-        if message.mentions.iter().any(|user| user.id == CACHE.read().user.id) {
+        if message
+            .mentions
+            .iter()
+            .any(|user| user.id == CACHE.read().user.id)
+        {
             if let Some(insult) = rand::thread_rng().choose(&CONFIG.bulk.insults) {
                 message.reply(insult.as_ref()).ok();
             }
@@ -58,7 +62,6 @@ impl EventHandler for Handler {
             cache.insert(0, message);
             cache.truncate(CONFIG.discord.deleted_msg_cache);
         }
-
     }
 
     fn message_update(&self, _context: Context, update: MessageUpdateEvent) {
