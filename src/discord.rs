@@ -79,6 +79,16 @@ pub fn run_forever() {
                         .map_or("", |insult| insult.as_ref())
                 ))
                 .ok();
+        })
+        .on_dispatch_error(|_context, message, _error| {
+            message
+                .reply(&format!(
+                    "That's not a valid command! {}",
+                    rand::thread_rng()
+                        .choose(&CONFIG.bulk.insults)
+                        .map_or("", |insult| insult.as_ref())
+                ))
+                .ok();
         });
 
     client.with_framework(commands::register(framework));

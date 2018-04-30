@@ -78,11 +78,11 @@ command!(list(_context, message) {
             };
             let reply = guild.members.get(&message.author.id).and_then(|user| {
                 let mut rank_names: Vec<String> = ranks.into_iter().filter_map(|(rank, _members)| if user.roles.contains(&rank.id) { Some(format!("**{}**", rank.name)) } else { None }).collect();
-                if !rank_names.is_empty() {
+                if rank_names.is_empty() {
+                    None
+                } else {
                     rank_names.sort();
                     Some(format!("Your current ranks are {}", rank_names.join(", ")))
-                } else {
-                    None
                 }
             });
             (reply, rank_text)
