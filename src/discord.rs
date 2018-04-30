@@ -1,3 +1,4 @@
+use rand::{self, Rng};
 use serenity::framework::standard::{help_commands, StandardFramework};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
@@ -30,17 +31,17 @@ pub fn run_forever() {
                 .dm_and_guilds_text("In DM and on channels")
                 .striked_commands_tip(None)
         })
-        .before(|_context, msg, cmd_name| {
-            if let Some(channel) = msg.channel().and_then(|ch| ch.guild()) {
+        .before(|_context, message, cmd_name| {
+            if let Some(channel) = message.channel().and_then(|ch| ch.guild()) {
                 if let Ok(perms) = channel.read().permissions_for(CACHE.read().user.id) {
                     if perms.contains(Permissions::SEND_MESSAGES) {
                         info!(
                             "Running command {} for @{} ({}) on #{} ({})",
                             cmd_name,
-                            msg.author.tag(),
-                            msg.author.id,
+                            message.author.tag(),
+                            message.author.id,
                             channel.read().name(),
-                            msg.channel_id
+                            message.channel_id
                         );
                         return true;
                     }
@@ -48,17 +49,25 @@ pub fn run_forever() {
                 info!(
                     "Ignored command because couldn't respond on #{} ({}) anyways.",
                     channel.read().name(),
-                    msg.channel_id
+                    message.channel_id
                 );
                 false
             } else {
                 true
             }
         })
-        .after(|_context, _msg, cmd_name, result| {
+        .after(|_context, message, cmd_name, result| {
             trace!("Command {} done", cmd_name);
             if let Err(err) = result {
                 error!("Error during command {}: {:?}", cmd_name, err);
+                message
+                    .reply(&format!(
+                        "That's not a valid command! {}",
+                        rand::thread_rng()
+                            .choose(&CONFIG.bulk.insults)
+                            .map_or("", |insult| insult.as_ref())
+                    ))
+                    .ok();
             }
         });
 
