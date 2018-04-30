@@ -1,5 +1,5 @@
 use rand::{self, Rng};
-use serenity::framework::standard::{help_commands, StandardFramework};
+use serenity::framework::standard::{help_commands, DispatchError, StandardFramework};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::CACHE;
@@ -80,10 +80,22 @@ pub fn run_forever() {
                 ))
                 .ok();
         })
-        .on_dispatch_error(|_context, message, _error| {
+        .on_dispatch_error(|_context, message, error| {
+            let reason = match error {
+                DispatchError::LackOfPermissions(_) => {
+                    "You're not good enough to use that command."
+                }
+                DispatchError::OnlyForGuilds => "That command is only available on a server!",
+                DispatchError::NotEnoughArguments { .. } => "That command needs more arguments!",
+                DispatchError::TooManyArguments { .. } => {
+                    "That command can't take that many arguments!"
+                }
+                _ => "That's not a valid command!",
+            };
             message
                 .reply(&format!(
-                    "That's not a valid command! {}",
+                    "{} {}",
+                    reason,
                     rand::thread_rng()
                         .choose(&CONFIG.bulk.insults)
                         .map_or("", |insult| insult.as_ref())
