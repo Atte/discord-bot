@@ -67,8 +67,15 @@ impl EventHandler for Handler {
             .iter_mut()
             .find(|msg| msg.id == update.id)
         {
+            // TODO: update embeds
             if let Some(content) = update.content {
                 message.content = content;
+            }
+            if let Some(attachments) = update.attachments {
+                message.attachments = attachments;
+            }
+            if let Some(edited_timestamp) = update.edited_timestamp {
+                message.edited_timestamp = Some(edited_timestamp);
             }
         }
     }
@@ -83,7 +90,17 @@ impl EventHandler for Handler {
             if let Some(message) = MESSAGE_CACHE.read().iter().find(|msg| msg.id == message_id) {
                 for log_channel in get_log_channels(channel.guild_id) {
                     if let Err(err) = log_channel.send_message(|msg| {
-                        msg.embed(|e| {
+                        msg.embed(|mut e| {
+                            if let Some(embed) = message.embeds.iter().next() {
+                                if let Some(ref thumb) = embed.thumbnail {
+                                    e = e.thumbnail(&thumb.proxy_url);
+                                }
+                                if let Some(ref image) = embed.image {
+                                    e = e.image(&image.proxy_url);
+                                }
+                            } else if let Some(attach) = message.attachments.iter().next() {
+                                e = e.image(&attach.proxy_url);
+                            }
                             e.colour(Colour::red())
                                 .description(format!(
                                     "**Message sent by <@{}> deleted in <#{}>**\n{}",
