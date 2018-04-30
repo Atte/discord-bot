@@ -19,12 +19,18 @@ command!(roll(_context, message, args) {
     let rolled = DIE_RE.replace_all(original, |caps: &Captures| {
         let rolls: usize = caps.get(1).and_then(|m| m.as_str().parse().ok()).unwrap_or(1);
         let sides: usize = caps.get(2).and_then(|m| m.as_str().parse().ok()).unwrap_or(6);
-        let results: Vec<String> = (0..rolls).map(|_| rand::thread_rng().gen_range(1, sides + 1).to_string()).collect();
-        results.join(" + ")
+        if rolls < 1 {
+            String::new()
+        } else if sides < 1 {
+            "0".to_owned()
+        } else {
+            let results: Vec<String> = (0..rolls).map(|_| rand::thread_rng().gen_range(1, sides + 1).to_string()).collect();
+            results.join(" + ")
+        }
     });
     let result = meval::eval_str(&rolled)?;
     let output = format!("{} \u{2192} {} \u{2192} **{}**", original, rolled, result);
-    if result.to_string() == rolled || output.len() > CONFIG.discord.long_msg_threshold {
+    if result.to_string() == rolled || original == rolled || output.len() > CONFIG.discord.long_msg_threshold {
         message.reply(&format!("{} \u{2192} **{}**", original, result))?;
     } else {
         message.reply(&output)?;
