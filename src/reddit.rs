@@ -199,6 +199,13 @@ fn main() -> Result<()> {
 }
 
 pub fn spawn() -> io::Result<thread::JoinHandle<()>> {
+    if !CONFIG.reddit.enabled {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Reddit functionality is disabled in config",
+        ));
+    }
+
     trace!("Spawning Reddit thread...");
 
     let check_interval = Duration::from_secs(60 * CONFIG.reddit.check_interval);

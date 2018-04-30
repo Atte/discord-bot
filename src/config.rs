@@ -35,6 +35,7 @@ pub struct DiscordConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RedditConfig {
+    pub enabled: bool,
     pub client_id: SubstitutingString,
     pub client_secret: SubstitutingString,
     pub username: SubstitutingString,

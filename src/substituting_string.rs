@@ -2,11 +2,6 @@ use regex::{Captures, Regex};
 use serde::{de, ser};
 use std::{borrow, cmp, convert, env, fmt, hash};
 
-lazy_static! {
-    static ref VARIABLE_RE: Regex =
-        Regex::new(r"\$\{?([A-Z0-9_]+)\}?").expect("Invalid regex for VARIABLE_RE");
-}
-
 #[derive(Debug)]
 pub struct SubstitutingString {
     raw: String,
@@ -15,6 +10,11 @@ pub struct SubstitutingString {
 
 impl SubstitutingString {
     pub fn new(raw: String) -> Result<Self, ::std::env::VarError> {
+        lazy_static! {
+            static ref VARIABLE_RE: Regex =
+                Regex::new(r"\$\{?([A-Z0-9_]+)\}?").expect("Invalid regex for VARIABLE_RE");
+        }
+
         for caps in VARIABLE_RE.captures_iter(&raw) {
             env::var(&caps[1])?;
         }

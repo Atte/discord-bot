@@ -13,6 +13,7 @@ log_channels = [
 ]
 
 [reddit]
+enabled = true
 client_id = "8dPf_HbyOJaJJw"
 client_secret = "$REDDIT_SECRET"
 username = "FlutterBitchBot"

@@ -21,13 +21,8 @@ pub struct Cache {
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CacheContent {
-    pub discord: DiscordCacheContent,
     pub reddit: RedditCacheContent,
 }
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct DiscordCacheContent {}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
