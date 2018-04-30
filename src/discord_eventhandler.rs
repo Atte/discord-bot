@@ -57,6 +57,10 @@ impl EventHandler for Handler {
             }
         }
 
+        if message.content.contains("pizza") {
+            message.react("\u{1f34d}").ok(); // pineapple
+        }
+
         {
             let mut cache = MESSAGE_CACHE.write();
             cache.insert(0, message);
