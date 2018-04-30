@@ -4,6 +4,7 @@ use serenity::prelude::*;
 use serenity::utils::Colour;
 use serenity::CACHE;
 
+use super::util::can_respond_to;
 use super::CONFIG;
 
 lazy_static! {
@@ -47,10 +48,11 @@ impl EventHandler for Handler {
     }
 
     fn message(&self, _context: Context, message: Message) {
-        if message
-            .mentions
-            .iter()
-            .any(|user| user.id == CACHE.read().user.id)
+        if can_respond_to(&message)
+            && message
+                .mentions
+                .iter()
+                .any(|user| user.id == CACHE.read().user.id)
         {
             if let Some(insult) = rand::thread_rng().choose(&CONFIG.bulk.insults) {
                 message.reply(insult.as_ref()).ok();

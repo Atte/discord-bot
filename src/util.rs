@@ -1,3 +1,4 @@
+use super::CONFIG;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::CACHE;
@@ -29,4 +30,22 @@ pub fn use_emoji(guild: Option<&Guild>, name: &str) -> String {
         }
     }
     String::new()
+}
+
+pub fn can_talk_in(channel: &GuildChannel) -> bool {
+    channel
+        .permissions_for(CACHE.read().user.id)
+        .ok()
+        .map_or(true, |perms| perms.contains(Permissions::SEND_MESSAGES))
+        && !CONFIG.discord.channel_blacklist.contains(&channel.id)
+        && (CONFIG.discord.channel_whitelist.is_empty()
+            || CONFIG.discord.channel_whitelist.contains(&channel.id))
+}
+
+pub fn can_respond_to(message: &Message) -> bool {
+    if let Some(channel) = message.channel().and_then(|ch| ch.guild()) {
+        can_talk_in(&channel.read())
+    } else {
+        true
+    }
 }

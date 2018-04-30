@@ -1,10 +1,9 @@
 use rand::{self, Rng};
 use serenity::framework::standard::{help_commands, DispatchError, StandardFramework};
-use serenity::model::prelude::*;
 use serenity::prelude::*;
-use serenity::CACHE;
 
 use super::discord_eventhandler as handler;
+use super::util::can_respond_to;
 use super::{commands, CONFIG};
 
 pub fn run_forever() {
@@ -32,33 +31,16 @@ pub fn run_forever() {
                 .striked_commands_tip(None)
         })
         .before(|_context, message, cmd_name| {
-            if let Some(channel) = message.channel().and_then(|ch| ch.guild()) {
-                let channel = channel.read();
-                if let Ok(perms) = channel.permissions_for(CACHE.read().user.id) {
-                    if perms.contains(Permissions::SEND_MESSAGES)
-                        && !CONFIG.discord.channel_blacklist.contains(&channel.id)
-                        && (CONFIG.discord.channel_whitelist.is_empty()
-                            || CONFIG.discord.channel_whitelist.contains(&channel.id))
-                    {
-                        info!(
-                            "Running command {} for @{} ({}) on #{} ({})",
-                            cmd_name,
-                            message.author.tag(),
-                            message.author.id,
-                            channel.name(),
-                            message.channel_id
-                        );
-                        return true;
-                    }
-                }
+            if can_respond_to(&message) {
                 info!(
-                    "Ignored command because couldn't respond on #{} ({}) anyways.",
-                    channel.name(),
-                    message.channel_id
+                    "Running command {} for @{} ({})",
+                    cmd_name,
+                    message.author.tag(),
+                    message.author.id,
                 );
-                false
-            } else {
                 true
+            } else {
+                false
             }
         })
         .after(|_context, message, cmd_name, result| {
@@ -76,6 +58,9 @@ pub fn run_forever() {
             }
         })
         .unrecognised_command(|_context, message, _cmd_name| {
+            if !can_respond_to(&message) {
+                return;
+            }
             message
                 .reply(&format!(
                     "That's not even a command! {}",
@@ -86,6 +71,9 @@ pub fn run_forever() {
                 .ok();
         })
         .on_dispatch_error(|_context, message, error| {
+            if !can_respond_to(&message) {
+                return;
+            }
             let reason = match error {
                 DispatchError::LackOfPermissions(_) => {
                     "You're not good enough to use that command."
