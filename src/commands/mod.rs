@@ -1,5 +1,6 @@
 use serenity::framework::standard::StandardFramework;
 
+mod derp;
 mod misc;
 mod ranks;
 
@@ -29,5 +30,7 @@ pub fn register(framework: StandardFramework) -> StandardFramework {
                 .num_args(0)
                 .cmd(misc::info)
         })
-        .command("gib", |cmd| cmd.desc("Gibs pics from derpibooru.").cmd(misc::gib))
+        .command("gib", |cmd| {
+            cmd.desc("Gibs pics from derpibooru.").cmd(derp::gib)
+        })
 }
