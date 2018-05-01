@@ -20,6 +20,7 @@ pub struct Config {
     pub reddit: RedditConfig,
     pub subreddits: HashMap<SubstitutingString, SubredditConfig>,
     pub bulk: BulkConfig,
+    pub gib: GibConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -53,6 +54,25 @@ pub struct SubredditConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BulkConfig {
     pub insults: Vec<SubstitutingString>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Filter {
+    pub filter: u64,
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Filters {
+    pub sfw: Filter,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GibConfig {
+    pub found: Vec<String>,
+    pub not_found: Vec<String>,
+    pub filters: Filters,
+    pub aliases: HashMap<String, HashSet<String>>,
 }
 
 impl Config {
