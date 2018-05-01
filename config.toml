@@ -82,9 +82,8 @@ not_found = [
     "Guess there isn't any. Too bad so sad."
 ]
 
-[gib.filters.sfw]
-filter = 152796
-tags = []
+[gib.filters]
+sfw = 152796
 
 [gib.aliases]
 "twilight sparkle" = ["twily", "twi", "twiggles", "sporkle", "purple smart", "ts"]

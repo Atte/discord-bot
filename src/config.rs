@@ -66,13 +66,7 @@ pub struct GibConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GibFilters {
-    pub sfw: GibFilter,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GibFilter {
-    pub filter: usize,
-    pub tags: Vec<String>,
+    pub sfw: usize,
 }
 
 impl Config {
