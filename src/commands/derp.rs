@@ -12,17 +12,9 @@ pub struct Response {
 #[derive(Debug, Deserialize)]
 pub struct Search {
     id: usize,
-    first_seen_at: DateTime<Utc>,
-    file_name: String,
+    first_seen_at: Option<DateTime<Utc>>,
+    file_name: Option<String>,
     image: String,
-    representations: SearchImages,
-    uploader: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct SearchImages {
-    thumb: String,
-    medium: String,
 }
 
 command!(gib(_context, message, args) {
@@ -63,15 +55,18 @@ command!(gib(_context, message, args) {
 
         let first = &response.search[0];
         message.channel_id.send_message(|msg| {
-            msg.embed(|e|
+            msg.embed(|mut e| {
+                if let Some(ref fname) = first.file_name {
+                    e = e.title(fname);
+                }
+                if let Some(ref timestamp) = first.first_seen_at {
+                    e = e.timestamp(timestamp);
+                }
                 e.colour(Colour::gold())
                     .description(&reply)
-                    .title(&first.file_name)
                     .url(format!("https://derpibooru.org/{}", first.id))
-                    .image(format!("https:{}", first.representations.medium))
-                    .timestamp(&first.first_seen_at)
-                    .author(|a| a.name(&first.uploader))
-            )
+                    .image(format!("https:{}", first.image))
+            })
         })?;
     }
 });

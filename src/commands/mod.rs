@@ -31,6 +31,8 @@ pub fn register(framework: StandardFramework) -> StandardFramework {
                 .cmd(misc::info)
         })
         .command("gib", |cmd| {
-            cmd.desc("Gibs pics from derpibooru.").cmd(derp::gib)
+            cmd.desc("Gibs pics from derpibooru.")
+                .min_args(1)
+                .cmd(derp::gib)
         })
 }
