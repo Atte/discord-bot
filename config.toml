@@ -72,3 +72,32 @@ insults = [
     "Don't you have a terribly empty feeling - in your skull?",
     "Are you always this stupid or is today a special occasion?"
 ]
+
+[gib]
+found = [
+    "It's not like I got this just for you... baka",
+    "Look at what I found in the trash! And I'm not refering to you."
+]
+not_found = [
+    "Guess there isn't any. Too bad so sad."
+]
+
+[gib.filters.sfw]
+filter = 152796
+tags = []
+
+[gib.aliases]
+"twilight sparkle" = ["twily", "twi", "twiggles", "sporkle", "purple smart", "ts"]
+"rarity" = ["rarara", "rararara", "rarararara", "white fancy", "rararararara"]
+"pinkie pie" = ["ponka", "pinkie", "ponk", "panko", "pinka poe", "panko pie", "ponka pank", "ponka ponk", "pankie ponk", "pinko", "pinko panko", "pp"]
+"applejack" = ["appul", "aj"]
+"rainbow dash" = ["dash", "dashie", "bluefast", "rd"]
+"fluttershy" = ["shy", "flutters", "yellow quiet", "fs"]
+"princess celestia" = ["tia", "celly", "sunbutt"]
+"princess luna" = ["moonbutt"]
+"sunset shimmer" = ["shim sham", "shimmy", "sunset", "ss"]
+"starlight glimmer" = ["glim glam", "glimmy", "glimmers", "sg"]
+"lyra heartstrings" = ["lyra"]
+"bon bon" = ["bonbon", "bon"]
+"octavia melody" = ["octavia", "octy"]
+"vinyl scratch" = ["vinyl"]
