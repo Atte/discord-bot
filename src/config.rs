@@ -71,7 +71,7 @@ pub struct GibFilters {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GibFilter {
-    pub filter: u64,
+    pub filter: usize,
     pub tags: Vec<String>,
 }
 

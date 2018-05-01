@@ -21,6 +21,7 @@ maplit = "1.0"
 log = "0.4"
 meval = "0.1"
 rand = "0.3"
+chrono = "0.4"
 
 [features]
 default = []

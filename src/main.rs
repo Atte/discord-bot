@@ -19,6 +19,7 @@ extern crate lazy_static;
 extern crate regex;
 #[macro_use]
 extern crate maplit;
+extern crate chrono;
 extern crate meval;
 extern crate rand;
 
