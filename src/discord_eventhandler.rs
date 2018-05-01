@@ -59,15 +59,13 @@ impl EventHandler for Handler {
             }
         }
 
-        if message.content.contains("pizza") {
+        if message.content.to_lowercase().contains("pizza") {
             message.react('\u{1f34d}').ok(); // pineapple
         }
 
-        {
-            let mut cache = MESSAGE_CACHE.write();
-            cache.insert(0, message);
-            cache.truncate(CONFIG.discord.deleted_msg_cache);
-        }
+        let mut cache = MESSAGE_CACHE.write();
+        cache.insert(0, message);
+        cache.truncate(CONFIG.discord.deleted_msg_cache);
     }
 
     fn message_update(&self, _context: Context, update: MessageUpdateEvent) {
