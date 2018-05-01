@@ -22,29 +22,25 @@ pub struct SearchImages {
 }
 
 command!(gib(_context, message, args) {
-    let filter = CONFIG.gib.filters.sfw.filter.to_string();
-    let mut input = args.full();
-
-    'outer: for ( tag, aliases ) in CONFIG.gib.aliases.iter() {
-        for alias in aliases {
-            if input == alias {
-                input = tag;
-                break 'outer;
-            }
-        }
-    }
+    let args = args.full();
+    let tag = CONFIG
+        .gib
+        .aliases
+        .iter()
+        .find(|(_tag, aliases)| aliases.contains(args))
+        .map_or(args, |(tag, _aliases)| tag.as_ref());
 
     let search = if CONFIG.gib.filters.sfw.tags.is_empty() {
-        input.replace(" ", "+")
-    }else{
+        tag.replace(" ", "+")
+    } else {
         format!("({}) AND ({})",
             CONFIG.gib.filters.sfw.tags.join(" AND "),
-            input.replace(" ", "+"))
+            tag.replace(" ", "+"))
     };
 
     let link = format!("https://derpibooru.org/search.json?min_score=100&sf=random%3A{}&perpage=1&filter_id={}&q={}",
         rand::thread_rng().gen::<u32>(),
-        filter,
+        CONFIG.gib.filters.sfw.filter.to_string(),
         search
     );
 
@@ -58,7 +54,7 @@ command!(gib(_context, message, args) {
                         .map_or("", |reply| reply.as_ref());
 
         message.reply( &reply )?;
-    }else{
+    } else {
         let reply = rand::thread_rng()
                         .choose(&CONFIG.gib.found)
                         .map_or("", |reply| reply.as_ref());
