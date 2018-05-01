@@ -57,22 +57,22 @@ pub struct BulkConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Filter {
-    pub filter: u64,
-    pub tags: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Filters {
-    pub sfw: Filter,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct GibConfig {
     pub found: Vec<String>,
     pub not_found: Vec<String>,
-    pub filters: Filters,
+    pub filters: GibFilters,
     pub aliases: HashMap<String, HashSet<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GibFilters {
+    pub sfw: GibFilter,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GibFilter {
+    pub filter: u64,
+    pub tags: Vec<String>,
 }
 
 impl Config {

@@ -4,20 +4,20 @@ use reqwest;
 use reqwest::Url;
 use serenity::utils::Colour;
 
-#[derive(Deserialize)]
-pub struct DerpResponse {
-    pub search: Vec<DerpSearch>,
+#[derive(Debug, Deserialize)]
+pub struct Response {
+    pub search: Vec<Search>,
 }
 
-#[derive(Deserialize)]
-pub struct DerpSearch {
+#[derive(Debug, Deserialize)]
+pub struct Search {
     pub id: u64,
     pub image: String,
-    pub representations: DerpSearchImages,
+    pub representations: SearchImages,
 }
 
-#[derive(Deserialize)]
-pub struct DerpSearchImages {
+#[derive(Debug, Deserialize)]
+pub struct SearchImages {
     pub thumb: String,
     pub medium: String,
 }
@@ -54,7 +54,7 @@ command!(gib(_context, message, args) {
 
     let mut curl = Url::parse(&link)?;
     let mut res = reqwest::get(curl)?;
-    let json: DerpResponse = res.json()?;
+    let json: Response = res.json()?;
 
     if json.search.len() == 0 {
         let reply = rand::thread_rng()
