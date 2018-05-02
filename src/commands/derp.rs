@@ -15,6 +15,7 @@ pub struct SearchResponse {
     id: usize,
     image: String,
     tags: String,
+    description: Option<String>,
     file_name: Option<String>,
     first_seen_at: Option<DateTime<Utc>>,
     representations: Option<RepresentationList>,
@@ -47,19 +48,13 @@ command!(gib(_context, message, args) {
     let response: Response = reqwest::get(&url.as_ref().replace("%2B", "+"))?.json()?;
 
     if response.search.is_empty() {
-        let reply = rand::thread_rng()
+        message.reply(rand::thread_rng()
                         .choose(&CONFIG.gib.not_found)
-                        .map_or("", |reply| reply.as_ref());
-
-        message.reply(&reply)?;
+                        .map_or("", |reply| reply.as_ref()))?;
     } else if let Some(first) = response.search.into_iter().next() {
-        let reply = rand::thread_rng()
-                        .choose(&CONFIG.gib.found)
-                        .map_or("", |reply| reply.as_ref());
-
         let url = Url::parse("https://derpibooru.org/")?.join(&first.id.to_string())?;
         let image = Url::parse("https://derpicdn.net/")?
-            .join(if let Some(ref reprs) = first.representations { &reprs.medium } else { &first.image })?;
+            .join(first.representations.as_ref().map_or(&first.image, |reprs| &reprs.medium))?;
         let artists: Vec<_> = first.tags.split(", ").filter_map(|tag| {
             if tag.starts_with("artist:") {
                 Some(&tag[7..])
@@ -67,6 +62,13 @@ command!(gib(_context, message, args) {
                 None
             }
         }).collect();
+        let description = first.description.as_ref().map(|desc| {
+            if desc.len() > CONFIG.discord.long_msg_threshold {
+                format!("{}\u{2026}", &desc[..CONFIG.discord.long_msg_threshold])
+            } else {
+                desc.clone()
+            }
+        });
 
         message.channel_id.send_message(|msg| {
             msg.embed(|mut e| {
@@ -76,8 +78,10 @@ command!(gib(_context, message, args) {
                 if !artists.is_empty() {
                     e = e.author(|a| a.name(&artists.join(" & ")));
                 }
+                if let Some(ref desc) = description {
+                    e = e.description(desc);
+                }
                 e.colour(Colour::gold())
-                    .description(&reply)
                     .title(if let Some(ref fname) = first.file_name { fname } else { "<no filename>" })
                     .url(url)
                     .image(image)

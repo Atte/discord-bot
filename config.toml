@@ -75,10 +75,6 @@ insults = [
 
 [gib]
 filter = 152796
-found = [
-    "It's not like I got this just for you... baka",
-    "Look at what I found in the trash! And I'm not refering to you."
-]
 not_found = [
     "Guess there isn't any. Too bad so sad."
 ]

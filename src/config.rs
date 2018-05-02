@@ -59,7 +59,6 @@ pub struct BulkConfig {
 #[derive(Debug, Deserialize)]
 pub struct GibConfig {
     pub filter: usize,
-    pub found: Vec<String>,
     pub not_found: Vec<String>,
     pub aliases: HashMap<String, HashSet<String>>,
 }
