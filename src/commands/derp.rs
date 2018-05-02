@@ -44,7 +44,7 @@ command!(gib(_context, message, args) {
         ("q", search.join(","))
     ])?;
 
-    let response: Response = reqwest::get(url)?.json()?;
+    let response: Response = reqwest::get(&url.as_ref().replace("%2B", "+"))?.json()?;
 
     if response.search.is_empty() {
         let reply = rand::thread_rng()
@@ -78,7 +78,7 @@ command!(gib(_context, message, args) {
                 }
                 e.colour(Colour::gold())
                     .description(&reply)
-                    .title(if let Some(ref fname) = first.file_name { fname } else { "poni" })
+                    .title(if let Some(ref fname) = first.file_name { fname } else { "<no filename>" })
                     .url(url)
                     .image(image)
             })
