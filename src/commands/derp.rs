@@ -3,18 +3,26 @@ use chrono::{DateTime, Utc};
 use rand::{self, Rng};
 use reqwest;
 use serenity::utils::Colour;
+use url::Url;
 
 #[derive(Debug, Deserialize)]
 pub struct Response {
-    search: Vec<Search>,
+    search: Vec<SearchResponse>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Search {
+pub struct SearchResponse {
     id: usize,
-    first_seen_at: Option<DateTime<Utc>>,
-    file_name: Option<String>,
     image: String,
+    tags: String,
+    file_name: Option<String>,
+    first_seen_at: Option<DateTime<Utc>>,
+    representations: Option<RepresentationList>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RepresentationList {
+    medium: String,
 }
 
 command!(gib(_context, message, args) {
@@ -29,13 +37,14 @@ command!(gib(_context, message, args) {
             .replace(" ", "+")
     }).collect();
 
-    let link = format!("https://derpibooru.org/search.json?sf=random%3A{}&perpage=1&filter_id={}&q={}",
-        rand::thread_rng().gen::<u32>(),
-        CONFIG.gib.filters.sfw,
-        search.join(",")
-    );
+    let url = Url::parse_with_params("https://derpibooru.org/search.json", &[
+        ("sf", format!("random:{}", rand::thread_rng().gen::<u32>())),
+        ("perpage", "1".to_owned()),
+        ("filter_id", CONFIG.gib.filter.to_string()),
+        ("q", search.join(","))
+    ])?;
 
-    let response: Response = reqwest::get(&link)?.json()?;
+    let response: Response = reqwest::get(url)?.json()?;
 
     if response.search.is_empty() {
         let reply = rand::thread_rng()
@@ -43,22 +52,35 @@ command!(gib(_context, message, args) {
                         .map_or("", |reply| reply.as_ref());
 
         message.reply(&reply)?;
-    } else {
+    } else if let Some(first) = response.search.into_iter().next() {
         let reply = rand::thread_rng()
                         .choose(&CONFIG.gib.found)
                         .map_or("", |reply| reply.as_ref());
 
-        let first = &response.search[0];
+        let url = Url::parse("https://derpibooru.org/")?.join(&first.id.to_string())?;
+        let image = Url::parse("https://derpicdn.net/")?
+            .join(if let Some(ref reprs) = first.representations { &reprs.medium } else { &first.image })?;
+        let artists: Vec<_> = first.tags.split(", ").filter_map(|tag| {
+            if tag.starts_with("artist:") {
+                Some(&tag[7..])
+            } else {
+                None
+            }
+        }).collect();
+
         message.channel_id.send_message(|msg| {
             msg.embed(|mut e| {
                 if let Some(ref timestamp) = first.first_seen_at {
                     e = e.timestamp(timestamp);
                 }
+                if !artists.is_empty() {
+                    e = e.author(|a| a.name(&artists.join(" & ")));
+                }
                 e.colour(Colour::gold())
                     .description(&reply)
-                    .title(if let Some(ref fname) = first.file_name { fname } else { "poni "})
-                    .url(format!("https://derpibooru.org/{}", first.id))
-                    .image(format!("https:{}", first.image))
+                    .title(if let Some(ref fname) = first.file_name { fname } else { "poni" })
+                    .url(url)
+                    .image(image)
             })
         })?;
     }

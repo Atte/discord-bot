@@ -22,6 +22,7 @@ extern crate maplit;
 extern crate chrono;
 extern crate meval;
 extern crate rand;
+extern crate url;
 
 mod cache;
 mod config;

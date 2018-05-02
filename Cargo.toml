@@ -6,6 +6,8 @@ authors = ["Atte"]
 license = "MIT"
 publish = false
 
+[workspace]
+
 [dependencies]
 env_logger = "0.5"
 serenity = "0.5"
@@ -22,6 +24,7 @@ log = "0.4"
 meval = "0.1"
 rand = "0.3"
 chrono = "0.4"
+url = "1.7"
 
 [features]
 default = []

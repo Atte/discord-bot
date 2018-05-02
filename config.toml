@@ -74,6 +74,7 @@ insults = [
 ]
 
 [gib]
+filter = 152796
 found = [
     "It's not like I got this just for you... baka",
     "Look at what I found in the trash! And I'm not refering to you."
@@ -81,9 +82,6 @@ found = [
 not_found = [
     "Guess there isn't any. Too bad so sad."
 ]
-
-[gib.filters]
-sfw = 152796
 
 [gib.aliases]
 "twilight sparkle" = ["twily", "twi", "twiggles", "sporkle", "purple smart", "ts"]
@@ -93,10 +91,10 @@ sfw = 152796
 "rainbow dash" = ["dash", "dashie", "bluefast", "rd"]
 "fluttershy" = ["shy", "flutters", "yellow quiet", "fs"]
 "princess celestia" = ["tia", "celly", "sunbutt"]
-"princess luna" = ["moonbutt"]
+"princess luna" = ["moonbutt", "luna"]
 "sunset shimmer" = ["shim sham", "shimmy", "sunset", "ss"]
 "starlight glimmer" = ["glim glam", "glimmy", "glimmers", "sg"]
 "lyra heartstrings" = ["lyra"]
 "bon bon" = ["bonbon", "bon"]
-"octavia melody" = ["octavia", "octy"]
+"octavia melody" = ["octavia", "octy", "tavi"]
 "vinyl scratch" = ["vinyl"]

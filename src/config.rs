@@ -13,7 +13,7 @@ error_chain! {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Config {
     pub cache_path: SubstitutingString,
     pub discord: DiscordConfig,
@@ -23,7 +23,7 @@ pub struct Config {
     pub gib: GibConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
     pub deleted_msg_cache: usize,
@@ -36,7 +36,7 @@ pub struct DiscordConfig {
     pub channel_whitelist: HashSet<ChannelId>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct RedditConfig {
     pub enabled: bool,
     pub client_id: SubstitutingString,
@@ -46,27 +46,22 @@ pub struct RedditConfig {
     pub check_interval: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct SubredditConfig {
     pub notify_channels: HashSet<ChannelId>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct BulkConfig {
     pub insults: Vec<SubstitutingString>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct GibConfig {
+    pub filter: usize,
     pub found: Vec<String>,
     pub not_found: Vec<String>,
-    pub filters: GibFilters,
     pub aliases: HashMap<String, HashSet<String>>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GibFilters {
-    pub sfw: usize,
 }
 
 impl Config {
