@@ -4,11 +4,10 @@
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-#[macro_use]
-extern crate serenity;
 extern crate reqwest;
 extern crate serde;
 extern crate serde_json;
+extern crate serenity;
 #[macro_use]
 extern crate serde_derive;
 extern crate toml;

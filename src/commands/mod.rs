@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+
 use serenity::framework::standard::StandardFramework;
 
 mod derp;
