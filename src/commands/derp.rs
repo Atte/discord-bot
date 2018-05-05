@@ -4,6 +4,7 @@ use rand::{self, Rng};
 use reqwest;
 use serenity::utils::Colour;
 use url::Url;
+use regex::Regex;
 
 #[derive(Debug, Deserialize)]
 pub struct Response {
@@ -27,6 +28,25 @@ pub struct RepresentationList {
 }
 
 command!(gib(_context, message, args) {
+    lazy_static! {
+        static ref REGEXES: Vec<(Regex, &'static str)> = [
+            (r"(?P<s1>^|\s)\*(?P<t>[\w ]+?)\*(?P<s2>\s|$)", "$s1**$t**$s2"),
+            (r"(?P<s1>^|\s)_(?P<t>[\w ]+?)_(?P<s2>\s|$)", "$s1*$t*$s2"),
+            (r"(?P<s1>^|\s)\+(?P<t>[\w ]+?)\+(?P<s2>\s|$)", r"$s1__${t}__$s2"),
+            (r"(?P<s1>^|\s)@(?P<t>[\w ]+?)@(?P<s2>\s|$)", "$s1`$t`$s2"),
+            (r"(?P<s1>^|\s)\-(?P<t>[\w ]+?)\-(?P<s2>\s|$)", "$s1~~$t~~$s2"),
+            (r"(?P<s1>^|\s)\^(?P<t>[\w ]+?)\^(?P<s2>\s|$)", "$s1$t$s2"),
+            (r"(?P<s1>^|\s)\~(?P<t>[\w ]+?)\~(?P<s2>\s|$)", "$s1$t$s2"),
+            (r"\[bq\]", ""),
+            (r"\[/bq\]", ""),
+            (r"\[spoiler\]", ""),
+            (r"\[/spoiler\]", ""),
+            (r#""(?P<t>.+?)":(?P<u>\S+)"#, "[$t]($u)"),
+            (r"(?P<s1>^|\s)!(?P<t>\S+?)!(?P<s2>\s)", "$s1[Image]($t)$s2"),
+            (r"\[==(?P<t>[\w ]+?)==\]", "$t")
+        ].into_iter().map(|x| (Regex::new(x.0).unwrap(), x.1)  ).collect();
+    }
+
     let search: Vec<_> = args.full().split(',').map(|arg| {
         let arg = arg.trim();
         CONFIG
@@ -63,10 +83,11 @@ command!(gib(_context, message, args) {
             }
         }).collect();
         let description = first.description.as_ref().map(|desc| {
-            if desc.len() > CONFIG.discord.long_msg_threshold {
-                format!("{}\u{2026}", &desc[..CONFIG.discord.long_msg_threshold])
+            let d = REGEXES.iter().fold( desc.to_owned(), |acc, x| x.0.replace_all(&acc, x.1).into_owned() );
+            if d.len() > CONFIG.discord.long_msg_threshold {
+                format!("{}\u{2026}", &d[..CONFIG.discord.long_msg_threshold])
             } else {
-                desc.clone()
+                d.clone()
             }
         });
 
