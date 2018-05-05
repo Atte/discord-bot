@@ -2,7 +2,7 @@ use regex::{Captures, Regex};
 use serde::{de, ser};
 use std::{borrow, cmp, convert, env, fmt, hash};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubstitutingString {
     raw: String,
     resolved: String,
@@ -59,6 +59,7 @@ impl Ord for SubstitutingString {
 }
 
 impl PartialOrd for SubstitutingString {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
@@ -70,7 +71,7 @@ impl hash::Hash for SubstitutingString {
     where
         H: hash::Hasher,
     {
-        self.to_string().hash(&mut state)
+        self.resolved.hash(&mut state)
     }
 }
 
@@ -93,8 +94,8 @@ impl borrow::Borrow<str> for SubstitutingString {
 
 impl From<SubstitutingString> for String {
     #[inline]
-    fn from(s: SubstitutingString) -> Self {
-        s.resolved
+    fn from(ss: SubstitutingString) -> Self {
+        ss.resolved
     }
 }
 

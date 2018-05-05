@@ -51,7 +51,7 @@ command!(gib(_context, message, args) {
         message.reply(rand::thread_rng()
                         .choose(&CONFIG.gib.not_found)
                         .map_or("", |reply| reply.as_ref()))?;
-    } else if let Some(first) = response.search.into_iter().next() {
+    } else if let Some(first) = response.search.first() {
         let url = Url::parse("https://derpibooru.org/")?.join(&first.id.to_string())?;
         let image = Url::parse("https://derpicdn.net/")?
             .join(first.representations.as_ref().map_or(&first.image, |reprs| &reprs.medium))?;

@@ -3,7 +3,7 @@ cache_path = "cache.toml"
 [discord]
 command_prefix = "!"
 deleted_msg_cache = 2048
-long_msg_threshold = 1000
+long_msg_threshold = 512
 username = "FlutterBitch"
 token = "$DISCORD_TOKEN"
 owners = [119122043923988483]
