@@ -8,6 +8,7 @@ extern crate reqwest;
 extern crate serde;
 extern crate serde_json;
 extern crate serenity;
+extern crate digit_group;
 #[macro_use]
 extern crate serde_derive;
 extern crate toml;
