@@ -130,13 +130,15 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             })
             .collect();
         let description = first.description.as_ref().map(|desc| {
-            let d = REGEXES.iter().fold(desc.to_owned(), |acc, x| {
-                x.0.replace_all(&acc, x.1).into_owned()
-            });
-            if d.len() > CONFIG.discord.long_msg_threshold {
-                format!("{}\u{2026}", &d[..CONFIG.discord.long_msg_threshold])
+            let desc = REGEXES
+                .iter()
+                .fold(desc.to_owned(), |acc, (pattern, replacement)| {
+                    pattern.replace_all(&acc, *replacement).into_owned()
+                });
+            if desc.len() > CONFIG.discord.long_msg_threshold {
+                format!("{}\u{2026}", &desc[..CONFIG.discord.long_msg_threshold])
             } else {
-                d.clone()
+                desc.clone()
             }
         });
 
