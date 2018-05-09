@@ -1,5 +1,6 @@
 use super::super::CONFIG;
 use chrono::{DateTime, Utc};
+use digit_group::FormatGroup;
 use rand::{self, Rng};
 use regex::Regex;
 use reqwest;
@@ -8,12 +9,13 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::Colour;
 use url::Url;
-use digit_group::FormatGroup;
+
+const MAX_ARTISTS: usize = 4;
 
 #[derive(Debug, Deserialize)]
 pub struct Response {
     search: Vec<SearchResponse>,
-    total: usize
+    total: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -98,6 +100,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             ("q", search.join(",")),
         ],
     )?;
+    trace!("Search URL: {}", url);
 
     let response: Response = reqwest::get(&url.as_ref().replace("%2B", "+"))?.json()?;
 
@@ -143,7 +146,17 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                     e = e.timestamp(timestamp);
                 }
                 if !artists.is_empty() {
-                    e = e.author(|a| a.name(&artists.join(" & ")));
+                    if artists.len() > MAX_ARTISTS {
+                        e = e.author(|a| {
+                            a.name(&format!(
+                                "{} & {} others",
+                                artists[..MAX_ARTISTS - 1].join(" & "),
+                                artists.len() - (MAX_ARTISTS - 1)
+                            ))
+                        });
+                    } else {
+                        e = e.author(|a| a.name(&artists.join(" & ")));
+                    }
                 }
                 if let Some(ref desc) = description {
                     e = e.description(desc);
