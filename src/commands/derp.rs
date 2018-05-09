@@ -8,10 +8,12 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::Colour;
 use url::Url;
+use digit_group::FormatGroup;
 
 #[derive(Debug, Deserialize)]
 pub struct Response {
     search: Vec<SearchResponse>,
+    total: usize
 }
 
 #[derive(Debug, Deserialize)]
@@ -154,6 +156,9 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                     })
                     .url(url)
                     .image(image)
+                    .footer(|f| {
+                        f.text(&format!("Out of {} results", response.total.format_si('.')))
+                    })
             })
         })?;
     }
