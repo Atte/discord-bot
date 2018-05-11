@@ -75,6 +75,7 @@ insults = [
 
 [gib]
 filter = 152796
+history = 100
 not_found = [
     "Guess there isn't any. Too bad so sad."
 ]

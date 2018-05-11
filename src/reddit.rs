@@ -134,10 +134,9 @@ fn contains_unseen(data: RedditObject<RedditListing<RedditMessageish>>) -> Resul
         let has_unseen = data.data
             .children
             .iter()
-            .any(|obj| !cache.reddit.seen.contains(&obj.data.id));
+            .any(|obj| !cache.reddit_seen.contains(&obj.data.id));
         cache
-            .reddit
-            .seen
+            .reddit_seen
             .extend(data.data.children.into_iter().map(|obj| obj.data.id));
         has_unseen
     })?)

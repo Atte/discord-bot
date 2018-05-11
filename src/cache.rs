@@ -21,13 +21,8 @@ pub struct Cache {
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CacheContent {
-    pub reddit: RedditCacheContent,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct RedditCacheContent {
-    pub seen: HashSet<String>,
+    pub reddit_seen: HashSet<String>,
+    pub gib_seen: Vec<usize>,
 }
 
 impl Cache {

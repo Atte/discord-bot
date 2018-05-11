@@ -1,4 +1,4 @@
-use super::super::CONFIG;
+use super::super::{CACHE, CONFIG};
 use chrono::{DateTime, Utc};
 use digit_group::FormatGroup;
 use rand::{self, Rng};
@@ -94,8 +94,8 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
     let url = Url::parse_with_params(
         "https://derpibooru.org/search.json",
         &[
-            ("sf", format!("random:{}", rand::thread_rng().gen::<u32>())),
-            ("perpage", "1".to_owned()),
+            ("sf", "random".to_owned()),
+            ("perpage", "50".to_owned()),
             ("filter_id", CONFIG.gib.filter.to_string()),
             ("q", search.join(",")),
         ],
@@ -110,15 +110,26 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                 .choose(&CONFIG.gib.not_found)
                 .map_or("", |reply| reply.as_ref()),
         )?;
-    } else if let Some(first) = response.search.first() {
-        let url = Url::parse("https://derpibooru.org/")?.join(&first.id.to_string())?;
+    } else if let Some(result) = CACHE.with(|cache| {
+        let result = response
+            .search
+            .iter()
+            .find(|result| !cache.gib_seen.contains(&result.id))
+            .or_else(|| response.search.first());
+        if let Some(result) = result {
+            cache.gib_seen.insert(0, result.id);
+            cache.gib_seen.truncate(CONFIG.gib.history);
+        }
+        result
+    })? {
+        let url = Url::parse("https://derpibooru.org/")?.join(&result.id.to_string())?;
         let image = Url::parse("https://derpicdn.net/")?.join(
-            first
+            result
                 .representations
                 .as_ref()
-                .map_or(&first.image, |reprs| &reprs.medium),
+                .map_or(&result.image, |reprs| &reprs.medium),
         )?;
-        let artists: Vec<_> = first
+        let artists: Vec<_> = result
             .tags
             .split(", ")
             .filter_map(|tag| {
@@ -129,7 +140,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                 }
             })
             .collect();
-        let description = first.description.as_ref().map(|desc| {
+        let description = result.description.as_ref().map(|desc| {
             let desc = REGEXES
                 .iter()
                 .fold(desc.to_owned(), |acc, (pattern, replacement)| {
@@ -144,7 +155,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
 
         message.channel_id.send_message(|msg| {
             msg.embed(|mut e| {
-                if let Some(ref timestamp) = first.first_seen_at {
+                if let Some(ref timestamp) = result.first_seen_at {
                     e = e.timestamp(timestamp);
                 }
                 if !artists.is_empty() {
@@ -164,7 +175,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                     e = e.description(desc);
                 }
                 e.colour(Colour::gold())
-                    .title(if let Some(ref fname) = first.file_name {
+                    .title(if let Some(ref fname) = result.file_name {
                         fname
                     } else {
                         "<no filename>"
