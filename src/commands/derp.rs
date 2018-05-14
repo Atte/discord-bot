@@ -77,7 +77,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             .collect();
     }
 
-    let search: Vec<_> = args.full()
+    let search = args.full()
         .split(',')
         .map(|arg| {
             let arg = arg.trim();
@@ -89,7 +89,8 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                 .map_or(arg, |(tag, _aliases)| tag.as_ref())
                 .replace(" ", "+")
         })
-        .collect();
+        .collect::<Vec<_>>()
+        .join(",");
 
     let url = Url::parse_with_params(
         "https://derpibooru.org/search.json",
@@ -97,7 +98,14 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             ("sf", "random".to_owned()),
             ("perpage", "50".to_owned()),
             ("filter_id", CONFIG.gib.filter.to_string()),
-            ("q", search.join(",")),
+            (
+                "q",
+                if search.is_empty() {
+                    "*".to_owned()
+                } else {
+                    search
+                },
+            ),
         ],
     )?;
     trace!("Search URL: {}", url);
