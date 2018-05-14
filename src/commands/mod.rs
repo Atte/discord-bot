@@ -34,7 +34,7 @@ pub fn register(framework: StandardFramework) -> StandardFramework {
         })
         .command("gib", |cmd| {
             cmd.desc("Gibs pics from derpibooru.")
-                .usage("[tags]")
+                .usage("[tags\u{2026}]")
                 .cmd(derp::gib)
         })
 }
