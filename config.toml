@@ -26,7 +26,10 @@ password = "$REDDIT_PASSWORD"
 check_interval = 5 # minutes
 
 [subreddits.BerryTubeLounge]
-notify_channels = [350075683827089408]
+notify_channels = [
+    #324598323489013770, # test
+    350075683827089408, # BT
+]
 
 [bulk]
 insults = [

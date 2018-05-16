@@ -7,7 +7,7 @@ use reqwest;
 use serenity::framework::standard::{Args, CommandError};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use serenity::utils::Colour;
+use serenity::utils::{Colour, MessageBuilder};
 use url::Url;
 
 const MAX_ARTISTS: usize = 4;
@@ -184,9 +184,9 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                 }
                 e.colour(Colour::gold())
                     .title(if let Some(ref fname) = result.file_name {
-                        fname
+                        MessageBuilder::new().push_safe(fname).build()
                     } else {
-                        "<no filename>"
+                        "<no filename>".to_owned()
                     })
                     .url(url)
                     .image(image)
