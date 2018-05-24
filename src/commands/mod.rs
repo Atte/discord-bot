@@ -1,10 +1,21 @@
 #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 
+use super::util::can_respond_to;
+use super::CONFIG;
 use serenity::framework::standard::StandardFramework;
+use serenity::model::prelude::*;
 
 mod derp;
 mod misc;
+mod pin;
 mod ranks;
+
+pub fn is_allowed(message: &Message, cmd: &str) -> bool {
+    match cmd {
+        "pin" => CONFIG.discord.pin_channels.contains(&message.channel_id),
+        _ => can_respond_to(&message),
+    }
+}
 
 pub fn register(framework: StandardFramework) -> StandardFramework {
     framework
@@ -36,5 +47,11 @@ pub fn register(framework: StandardFramework) -> StandardFramework {
             cmd.desc("Gibs pics from derpibooru.")
                 .usage("[tags\u{2026}]")
                 .cmd(derp::gib)
+        })
+        .command("pin", |cmd| {
+            cmd.desc("Manage the public pin on the current channel.")
+                .usage("new_text\u{2026}")
+                .guild_only(true)
+                .cmd(pin::pin)
         })
 }

@@ -16,6 +16,10 @@ channel_whitelist = [
     324598323489013770, # test
     409178792938962964, # BT
 ]
+pin_channels = [
+    449210490699251742, # test
+    432712024578064385, # BT
+]
 
 [reddit]
 enabled = true

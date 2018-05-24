@@ -11,7 +11,7 @@ lazy_static! {
     pub static ref MESSAGE_CACHE: RwLock<Vec<Message>> = RwLock::new(Vec::new());
 }
 
-fn get_log_channels(guild_id: GuildId) -> Vec<ChannelId> {
+pub fn get_log_channels(guild_id: GuildId) -> Vec<ChannelId> {
     CONFIG
         .discord
         .log_channels

@@ -31,7 +31,7 @@ pub fn run_forever() {
                 .striked_commands_tip(None)
         })
         .before(|_context, message, cmd_name| {
-            if can_respond_to(&message) {
+            if commands::is_allowed(message, cmd_name) {
                 info!(
                     "Running command {} for @{} ({})",
                     cmd_name,
