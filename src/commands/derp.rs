@@ -31,7 +31,7 @@ pub struct SearchResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct RepresentationList {
-    large: String,
+    tall: String,
 }
 
 pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
@@ -135,7 +135,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             result
                 .representations
                 .as_ref()
-                .map_or(&result.image, |reprs| &reprs.large),
+                .map_or(&result.image, |reprs| &reprs.tall),
         )?;
         let artists: Vec<_> = result
             .tags
