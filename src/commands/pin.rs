@@ -25,17 +25,7 @@ pub fn pin(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
 
         for log_channel in get_log_channels(channel.read().guild_id) {
             log_channel.send_message(|msg| {
-                msg.embed(|mut e| {
-                    if let Some(embed) = message.embeds.iter().next() {
-                        if let Some(ref thumb) = embed.thumbnail {
-                            e = e.thumbnail(&thumb.proxy_url);
-                        }
-                        if let Some(ref image) = embed.image {
-                            e = e.image(&image.proxy_url);
-                        }
-                    } else if let Some(attach) = message.attachments.iter().next() {
-                        e = e.image(&attach.proxy_url);
-                    }
+                msg.embed(|e| {
                     e.colour(Colour::blue())
                         .description(format!(
                             "**<@{}> changed the public pin on <#{}>**\n{}",
