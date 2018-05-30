@@ -1,9 +1,9 @@
 use super::super::discord_eventhandler::get_log_channels;
+use super::super::util;
 use serenity::framework::standard::{Args, CommandError};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::Colour;
-use serenity::CACHE;
 
 pub fn pin(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
     let content = args.full();
@@ -13,7 +13,7 @@ pub fn pin(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             .read()
             .pins()?
             .into_iter()
-            .find(|msg| msg.author.id == CACHE.read().user.id)
+            .find(|msg| msg.author.id == util::uid())
         {
             pinned.edit(|edit| edit.content(content))?;
         } else {

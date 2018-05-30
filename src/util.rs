@@ -4,6 +4,10 @@ use serenity::prelude::*;
 use serenity::CACHE;
 use std::sync::Arc;
 
+pub fn uid() -> UserId {
+    CACHE.read().user.id
+}
+
 pub fn guild_from_message(msg: &Message) -> Option<Arc<RwLock<Guild>>> {
     if let Some(Channel::Guild(channel)) = msg.channel() {
         channel.read().guild()
@@ -34,7 +38,7 @@ pub fn use_emoji(guild: Option<&Guild>, name: &str) -> String {
 
 pub fn can_talk_in(channel: &GuildChannel) -> bool {
     channel
-        .permissions_for(CACHE.read().user.id)
+        .permissions_for(uid())
         .ok()
         .map_or(true, |perms| perms.contains(Permissions::SEND_MESSAGES))
         && !CONFIG.discord.channel_blacklist.contains(&channel.id)

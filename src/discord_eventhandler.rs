@@ -1,11 +1,9 @@
+use super::{util, CONFIG};
 use rand::{self, Rng};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::Colour;
 use serenity::CACHE;
-
-use super::util::can_respond_to;
-use super::CONFIG;
 
 lazy_static! {
     pub static ref MESSAGE_CACHE: RwLock<Vec<Message>> = RwLock::new(Vec::new());
@@ -48,11 +46,8 @@ impl EventHandler for Handler {
     }
 
     fn message(&self, _context: Context, message: Message) {
-        if can_respond_to(&message)
-            && message
-                .mentions
-                .iter()
-                .any(|user| user.id == CACHE.read().user.id)
+        if util::can_respond_to(&message)
+            && message.mentions.iter().any(|user| user.id == util::uid())
         {
             if let Some(insult) = rand::thread_rng().choose(&CONFIG.bulk.insults) {
                 message.reply(insult.as_ref()).ok();

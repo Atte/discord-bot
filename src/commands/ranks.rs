@@ -1,15 +1,14 @@
-use super::super::util::{guild_from_message, use_emoji};
+use super::super::util;
 use serenity::framework::standard::{Args, CommandError};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::Colour;
-use serenity::CACHE;
 
 fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError> {
     let bot = guild
         .members
         .values()
-        .find(|member| member.user.read().id == CACHE.read().user.id)
+        .find(|member| member.user.read().id == util::uid())
         .ok_or_else(|| SerenityError::Other("Can't find bot as a guild member"))?;
     trace!(
         "Found bot as a guild member (bot has {} roles)",
@@ -63,7 +62,7 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
 }
 
 pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandError> {
-    let (reply, rank_text) = if let Some(guild) = guild_from_message(&message) {
+    let (reply, rank_text) = if let Some(guild) = util::guild_from_message(&message) {
         let guild = guild.read();
         let ranks = get_ranks(&guild)?;
         if ranks.is_empty() {
@@ -134,10 +133,10 @@ pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
 
 pub fn joinleave(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
     let rankname = args.full().trim();
-    let response = if let Some(guild) = guild_from_message(&message) {
+    let response = if let Some(guild) = util::guild_from_message(&message) {
         let mut guild = guild.write();
-        let leave_emoji = use_emoji(Some(&guild), "aj05");
-        let join_emoji = use_emoji(Some(&guild), "twiyay");
+        let leave_emoji = util::use_emoji(Some(&guild), "aj05");
+        let join_emoji = util::use_emoji(Some(&guild), "twiyay");
         if let Some(rank_id) = get_ranks(&guild)?
             .into_iter()
             .find(|(rank, _members)| rank.name.to_lowercase() == rankname.to_lowercase())
@@ -156,7 +155,10 @@ pub fn joinleave(_: &mut Context, message: &Message, args: Args) -> Result<(), C
                 "You are not on the server? WTF?".to_owned()
             }
         } else {
-            format!("There is no such rank. {}", use_emoji(Some(&guild), "lyou"))
+            format!(
+                "There is no such rank. {}",
+                util::use_emoji(Some(&guild), "lyou")
+            )
         }
     } else {
         "Rank joining/leaving is only available on a server!".to_owned()

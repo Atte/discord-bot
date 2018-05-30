@@ -1,5 +1,6 @@
-use super::{CACHE, CONFIG};
+use super::{util, CACHE, CONFIG};
 use reqwest::{self, header};
+use serenity::builder::CreateEmbed;
 use serenity::utils::Colour;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
@@ -175,24 +176,52 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
     Ok(out)
 }
 
+fn apply_embed(
+    e: CreateEmbed,
+    reddit_type: &NotificationClass,
+    sub: &str,
+    new: bool,
+) -> CreateEmbed {
+    let e = e.colour(reddit_type.colour())
+        .title(reddit_type.title())
+        .url(reddit_type.url(sub))
+        .author(|a| a.name(&format!("/r/{}", sub)));
+    if new {
+        e
+    } else {
+        e.description("(has been resolved)")
+    }
+}
+
 fn main() -> Result<()> {
     trace!("Time for a Reddit check!");
 
     let client = make_user_client()?;
     for (sub, sub_config) in &CONFIG.subreddits {
         let sub = sub.as_ref();
-        for reddit_type in check_sub(&client, sub)? {
+        let reddit_types = check_sub(&client, sub)?;
+        for reddit_type in &reddit_types {
             for channel_id in &sub_config.notify_channels {
-                channel_id.send_message(|msg| {
-                    msg.embed(|e| {
-                        e.colour(reddit_type.colour())
-                            .title(reddit_type.title())
-                            .url(reddit_type.url(sub))
-                            .author(|a| a.name(&format!("/r/{}", sub)))
-                    })
-                })?;
+                channel_id
+                    .send_message(|msg| msg.embed(|e| apply_embed(e, reddit_type, sub, true)))?;
             }
         }
+        /*
+        if !reddit_types.contains(&NotificationClass::Modqueue) {
+            for channel_id in &sub_config.notify_channels {
+                if let Some(mut msg) = channel_id
+                    .messages(|req| req.limit(10))?
+                    .into_iter()
+                    .filter(|msg| msg.author.id == util::uid())
+                    .last()
+                {
+                    msg.edit(|msg| {
+                        msg.embed(|e| apply_embed(e, &NotificationClass::Modqueue, sub, false))
+                    })?;
+                }
+            }
+        }
+        */
     }
     Ok(())
 }

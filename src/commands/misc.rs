@@ -1,5 +1,4 @@
-use super::super::util::use_emoji;
-use super::super::CONFIG;
+use super::super::{util, CONFIG};
 use meval;
 use rand::{self, Rng};
 use regex::{Captures, Regex};
@@ -10,7 +9,7 @@ use serenity::utils::Colour;
 use serenity::CACHE;
 
 pub fn ping(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandError> {
-    message.reply(&format!("Pong! {}", use_emoji(None, "DIDNEYWORL")))?;
+    message.reply(&format!("Pong! {}", util::use_emoji(None, "DIDNEYWORL")))?;
     Ok(())
 }
 
