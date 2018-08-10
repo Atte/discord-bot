@@ -78,11 +78,10 @@ pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
                     .iter()
                     .map(|(rank, members)| {
                         format!(
-                            "{:w$}{:3} member{}",
+                            "{:w$}{:3}",
                             format!("{}:", rank.name),
                             members.len(),
-                            if members.len() == 1 { "" } else { "s" },
-                            w = longest_name + 2
+                            w = longest_name + 1
                         )
                     })
                     .collect();

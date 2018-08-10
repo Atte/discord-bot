@@ -1,4 +1,4 @@
-use super::{util, CACHE, CONFIG};
+use super::{CACHE, CONFIG};
 use reqwest::{self, header};
 use serenity::builder::CreateEmbed;
 use serenity::utils::Colour;
