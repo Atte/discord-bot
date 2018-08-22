@@ -23,6 +23,7 @@ extern crate chrono;
 extern crate meval;
 extern crate rand;
 extern crate url;
+extern crate void;
 
 mod cache;
 mod config;
@@ -36,6 +37,7 @@ lazy_static! {
         cache::Cache::from_file(&CONFIG.cache_path).expect("Error loading cache");
 }
 
+mod serialization;
 mod commands;
 mod discord;
 mod discord_eventhandler;

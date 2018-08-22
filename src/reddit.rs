@@ -5,6 +5,9 @@ use serenity::utils::Colour;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 use std::{io, thread};
+use super::serialization::string_or_struct;
+use void::Void;
+use std::str::FromStr;
 
 error_chain! {
     links {
@@ -40,12 +43,15 @@ struct RedditListing<T> {
 #[derive(Debug, Serialize, Deserialize)]
 struct RedditMessageish {
     id: String,
+    #[serde(deserialize_with = "string_or_struct")]
+    replies: RedditObject<RedditListing<RedditMessageish>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum NotificationClass {
     Modqueue,
     Modmail,
+    ModmailReply,
 }
 
 impl NotificationClass {
@@ -53,6 +59,7 @@ impl NotificationClass {
         match *self {
             NotificationClass::Modqueue => "New stuff in the modqueue",
             NotificationClass::Modmail => "New modmail",
+            NotificationClass::ModmailReply => "New reply to modmail",
         }
     }
 
@@ -64,7 +71,7 @@ impl NotificationClass {
             NotificationClass::Modqueue => {
                 format!("https://old.reddit.com/r/{}/about/modqueue/", sub.as_ref())
             }
-            NotificationClass::Modmail => format!(
+            NotificationClass::Modmail | NotificationClass::ModmailReply => format!(
                 "https://old.reddit.com/r/{}/about/message/inbox/",
                 sub.as_ref()
             ),
@@ -74,8 +81,23 @@ impl NotificationClass {
     fn colour(&self) -> Colour {
         match *self {
             NotificationClass::Modqueue => Colour::blue(),
-            NotificationClass::Modmail => Colour::red(),
+            NotificationClass::Modmail | NotificationClass::ModmailReply => Colour::red(),
         }
+    }
+}
+
+impl<T> FromStr for RedditObject<RedditListing<T>> {
+    type Err = Void;
+
+    fn from_str(_s: &str) -> ::std::result::Result<Self, Self::Err> {
+        Ok(RedditObject{
+            kind: "Listing".to_owned(),
+            data: RedditListing {
+                after: None,
+                before: None,
+                children: Vec::new(),
+            }
+        })
     }
 }
 
@@ -130,15 +152,15 @@ fn make_user_client() -> Result<reqwest::Client> {
     Ok(make_client(auth)?)
 }
 
-fn contains_unseen(data: RedditObject<RedditListing<RedditMessageish>>) -> Result<bool> {
+fn contains_unseen(data: &RedditListing<RedditMessageish>) -> Result<bool> {
     Ok(CACHE.with(|cache| {
-        let has_unseen = data.data
+        let has_unseen = data
             .children
             .iter()
             .any(|obj| !cache.reddit_seen.contains(&obj.data.id));
         cache
             .reddit_seen
-            .extend(data.data.children.into_iter().map(|obj| obj.data.id));
+            .extend(data.children.iter().map(|obj| obj.data.id.clone()));
         has_unseen
     })?)
 }
@@ -156,7 +178,7 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
             .send()?
             .error_for_status()?
             .json()?;
-        if contains_unseen(data)? {
+        if contains_unseen(&data.data)? {
             out.insert(NotificationClass::Modqueue);
         }
     }
@@ -169,8 +191,13 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
             .send()?
             .error_for_status()?
             .json()?;
-        if contains_unseen(data)? {
+        if contains_unseen(&data.data)? {
             out.insert(NotificationClass::Modmail);
+        }
+        for msg in data.data.children.into_iter() {
+            if contains_unseen(&msg.data.replies.data)? {
+                out.insert(NotificationClass::ModmailReply);
+            }
         }
     }
     Ok(out)

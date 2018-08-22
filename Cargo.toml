@@ -26,6 +26,7 @@ rand = "0.3"
 chrono = "0.4"
 url = "1.7"
 digit_group = "0.1"
+void = "1.0"
 
 [features]
 default = []
