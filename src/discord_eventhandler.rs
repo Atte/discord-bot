@@ -25,8 +25,7 @@ pub fn get_log_channels(guild_id: GuildId) -> Vec<ChannelId> {
             } else {
                 None
             }
-        })
-        .collect()
+        }).collect()
 }
 
 pub struct Handler;
@@ -109,12 +108,10 @@ impl EventHandler for Handler {
                                     message.author.id,
                                     channel_id,
                                     message.content_safe()
-                                ))
-                                .author(|a| {
+                                )).author(|a| {
                                     a.name(&message.author.tag())
                                         .icon_url(&message.author.face())
-                                })
-                                .timestamp(&message.timestamp)
+                                }).timestamp(&message.timestamp)
                         })
                     }) {
                         warn!("Unable to add message deletion to log channel: {:?}", err);
@@ -187,8 +184,7 @@ impl EventHandler for Handler {
                             .description(format!(
                                 "**<@{}> changed their nick**\n{} \u{2192} {}",
                                 new_user.id, old_nick, new_nick
-                            ))
-                            .author(|a| a.name(&new_user.tag()).icon_url(&new_user.face()))
+                            )).author(|a| a.name(&new_user.tag()).icon_url(&new_user.face()))
                     })
                 }) {
                     warn!("Unable to add nick change to log channel: {:?}", err);

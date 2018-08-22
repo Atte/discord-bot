@@ -24,8 +24,7 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
             } else {
                 None
             }
-        })
-        .min()
+        }).min()
         .ok_or_else(|| SerenityError::Other("Can't find bot roles"))?;
     trace!("Rank positions are less than {}", max_pos);
 
@@ -38,8 +37,7 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
             } else {
                 None
             }
-        })
-        .collect();
+        }).collect();
     trace!("Found {} ranks", ranks.len());
 
     Ok(ranks
@@ -54,11 +52,9 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
                     } else {
                         None
                     }
-                })
-                .collect();
+                }).collect();
             (rank, rank_members)
-        })
-        .collect())
+        }).collect())
 }
 
 pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandError> {
@@ -83,8 +79,7 @@ pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
                             members.len(),
                             w = longest_name + 1
                         )
-                    })
-                    .collect();
+                    }).collect();
                 desc_lines.sort();
                 Some(format!("```ldif\n{}```", desc_lines.join("\n")))
             };
@@ -97,8 +92,7 @@ pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
                         } else {
                             None
                         }
-                    })
-                    .collect();
+                    }).collect();
                 if rank_names.is_empty() {
                     None
                 } else {

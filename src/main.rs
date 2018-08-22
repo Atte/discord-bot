@@ -1,5 +1,8 @@
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
-#![cfg_attr(feature = "cargo-clippy", allow(missing_docs_in_private_items, stutter))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(missing_docs_in_private_items, stutter)
+)]
 
 #[macro_use]
 extern crate log;
@@ -37,11 +40,11 @@ lazy_static! {
         cache::Cache::from_file(&CONFIG.cache_path).expect("Error loading cache");
 }
 
-mod serialization;
 mod commands;
 mod discord;
 mod discord_eventhandler;
 mod reddit;
+mod serialization;
 mod util;
 
 fn main() {

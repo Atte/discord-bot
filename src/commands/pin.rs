@@ -32,12 +32,10 @@ pub fn pin(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                             message.author.id,
                             channel.read().id,
                             content
-                        ))
-                        .author(|a| {
+                        )).author(|a| {
                             a.name(&message.author.tag())
                                 .icon_url(&message.author.face())
-                        })
-                        .timestamp(&message.timestamp)
+                        }).timestamp(&message.timestamp)
                 })
             })?;
         }

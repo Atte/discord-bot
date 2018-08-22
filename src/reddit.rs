@@ -1,13 +1,13 @@
+use super::serialization::string_or_struct;
 use super::{CACHE, CONFIG};
 use reqwest::{self, header};
 use serenity::builder::CreateEmbed;
 use serenity::utils::Colour;
 use std::collections::HashSet;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 use std::{io, thread};
-use super::serialization::string_or_struct;
 use void::Void;
-use std::str::FromStr;
 
 error_chain! {
     links {
@@ -90,13 +90,13 @@ impl<T> FromStr for RedditObject<RedditListing<T>> {
     type Err = Void;
 
     fn from_str(_s: &str) -> ::std::result::Result<Self, Self::Err> {
-        Ok(RedditObject{
+        Ok(RedditObject {
             kind: "Listing".to_owned(),
             data: RedditListing {
                 after: None,
                 before: None,
                 children: Vec::new(),
-            }
+            },
         })
     }
 }
@@ -141,8 +141,7 @@ fn make_user_client() -> Result<reqwest::Client> {
             "grant_type" => "password".to_owned(),
             "username" => CONFIG.reddit.username.to_string(),
             "password" => CONFIG.reddit.password.to_string(),
-        })
-        .send()?
+        }).send()?
         .error_for_status()?;
 
     let data: AccessTokenResponse = resp.json()?;
@@ -174,8 +173,7 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
             .get(&format!(
                 "https://oauth.reddit.com/r/{}/about/modqueue",
                 sub
-            ))
-            .send()?
+            )).send()?
             .error_for_status()?
             .json()?;
         if contains_unseen(&data.data)? {
@@ -187,8 +185,7 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
             .get(&format!(
                 "https://oauth.reddit.com/r/{}/about/message/inbox",
                 sub
-            ))
-            .send()?
+            )).send()?
             .error_for_status()?
             .json()?;
         if contains_unseen(&data.data)? {
@@ -209,7 +206,8 @@ fn apply_embed(
     sub: &str,
     new: bool,
 ) -> CreateEmbed {
-    let e = e.colour(reddit_type.colour())
+    let e = e
+        .colour(reddit_type.colour())
         .title(reddit_type.title())
         .url(reddit_type.url(sub))
         .author(|a| a.name(&format!("/r/{}", sub)));

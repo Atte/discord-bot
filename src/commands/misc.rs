@@ -18,13 +18,14 @@ pub fn roll(_: &mut Context, message: &Message, args: Args) -> Result<(), Comman
         static ref DIE_RE: Regex = Regex::new(r"(\d+)?d(\d+)").expect("Invalid DIE_RE");
     }
 
-    let original =
-        if args.is_empty() { "1d6" } else { args.full() };
+    let original = if args.is_empty() { "1d6" } else { args.full() };
     let rolled = DIE_RE.replace_all(original, |caps: &Captures| {
-        let rolls: usize = caps.get(1)
+        let rolls: usize = caps
+            .get(1)
             .and_then(|m| m.as_str().parse().ok())
             .unwrap_or(1);
-        let sides: usize = caps.get(2)
+        let sides: usize = caps
+            .get(2)
             .and_then(|m| m.as_str().parse().ok())
             .unwrap_or(6);
         if rolls < 1 {
@@ -40,7 +41,8 @@ pub fn roll(_: &mut Context, message: &Message, args: Args) -> Result<(), Comman
     });
     let result = meval::eval_str(&rolled)?;
     let output = format!("{} \u{2192} {} \u{2192} **{}**", original, rolled, result);
-    if result.to_string() == rolled || original == rolled
+    if result.to_string() == rolled
+        || original == rolled
         || output.len() > CONFIG.discord.long_msg_threshold
     {
         message.reply(&format!("{} \u{2192} **{}**", original, result))?;
@@ -61,8 +63,7 @@ pub fn info(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
                     "Source code",
                     "https://gitlab.com/AtteLynx/flutterbitch",
                     false,
-                )
-                .footer(|f| {
+                ).footer(|f| {
                     f.text(&format!(
                         "Use {}help for a list of available commands.",
                         CONFIG.discord.command_prefix

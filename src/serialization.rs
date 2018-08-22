@@ -1,8 +1,8 @@
-use std::marker::PhantomData;
-use serde::de::{self, Deserialize, Deserializer, Visitor, MapAccess};
-use void::Void;
-use std::str::FromStr;
+use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 use std::fmt;
+use std::marker::PhantomData;
+use std::str::FromStr;
+use void::Void;
 
 // https://serde.rs/string-or-struct.html
 pub fn string_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
