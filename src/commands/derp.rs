@@ -181,7 +181,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                 if let Some(ref desc) = description {
                     e = e.description(desc);
                 }
-                e.colour(Colour::gold())
+                e.colour(Colour::GOLD)
                     .title(if let Some(ref fname) = result.file_name {
                         MessageBuilder::new().push_safe(fname).build()
                     } else {

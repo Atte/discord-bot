@@ -33,8 +33,9 @@ pub struct Handler;
 impl EventHandler for Handler {
     fn ready(&self, context: Context, _: Ready) {
         let wanted_name: &str = CONFIG.discord.username.as_ref();
-        if CACHE.read().user.name != wanted_name {
-            if let Err(err) = context.edit_profile(|p| p.username(wanted_name)) {
+        let current_name = CACHE.read().user.name.clone();
+        if current_name != wanted_name {
+            if let Err(err) = CACHE.write().user.edit(|p| p.username(wanted_name)) {
                 warn!("Error settings username: {:?}", err);
             }
         }
@@ -86,7 +87,7 @@ impl EventHandler for Handler {
             return;
         }
 
-        if let Ok(Channel::Guild(channel)) = channel_id.get() {
+        if let Ok(Channel::Guild(channel)) = channel_id.to_channel() {
             let channel = channel.read();
             if let Some(message) = MESSAGE_CACHE.read().iter().find(|msg| msg.id == message_id) {
                 for log_channel in get_log_channels(channel.guild_id) {
@@ -102,7 +103,7 @@ impl EventHandler for Handler {
                             } else if let Some(attach) = message.attachments.iter().next() {
                                 e = e.image(&attach.proxy_url);
                             }
-                            e.colour(Colour::red())
+                            e.colour(Colour::RED)
                                 .description(format!(
                                     "**Message sent by <@{}> deleted in <#{}>**\n{}",
                                     message.author.id,
@@ -130,7 +131,7 @@ impl EventHandler for Handler {
             if let Err(err) = log_channel.send_message(|msg| {
                 let user = member.user.read();
                 msg.embed(|e| {
-                    e.colour(Colour::fooyoo())
+                    e.colour(Colour::FOOYOO)
                         .description(format!("**<@{}> joined**", user.id))
                         .author(|a| a.name(&user.tag()).icon_url(&user.face()))
                 })
@@ -150,7 +151,7 @@ impl EventHandler for Handler {
         for log_channel in get_log_channels(guild_id) {
             if let Err(err) = log_channel.send_message(|msg| {
                 msg.embed(|e| {
-                    e.colour(Colour::red())
+                    e.colour(Colour::RED)
                         .description(format!("**<@{}> left**", user.id))
                         .author(|a| a.name(&user.tag()).icon_url(&user.face()))
                 })
@@ -180,7 +181,7 @@ impl EventHandler for Handler {
             for log_channel in get_log_channels(old_member.guild_id) {
                 if let Err(err) = log_channel.send_message(|msg| {
                     msg.embed(|e| {
-                        e.colour(Colour::red())
+                        e.colour(Colour::RED)
                             .description(format!(
                                 "**<@{}> changed their nick**\n{} \u{2192} {}",
                                 new_user.id, old_nick, new_nick

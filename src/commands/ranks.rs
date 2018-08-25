@@ -111,7 +111,7 @@ pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
     if let Some(rank_text) = rank_text {
         message.channel_id.send_message(|msg| {
             msg.embed(|e| {
-                e.colour(Colour::blue())
+                e.colour(Colour::BLUE)
                     .title("Available ranks")
                     .description(rank_text)
                     .footer(|f| f.text("Use the !rank command to join/leave a rank."))

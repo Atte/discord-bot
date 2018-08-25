@@ -43,7 +43,7 @@ struct RedditListing<T> {
 #[derive(Debug, Serialize, Deserialize)]
 struct RedditMessageish {
     id: String,
-    #[serde(deserialize_with = "string_or_struct")]
+    #[serde(default, deserialize_with = "string_or_struct")]
     replies: RedditObject<RedditListing<RedditMessageish>>,
 }
 
@@ -80,8 +80,21 @@ impl NotificationClass {
 
     fn colour(&self) -> Colour {
         match *self {
-            NotificationClass::Modqueue => Colour::blue(),
-            NotificationClass::Modmail | NotificationClass::ModmailReply => Colour::red(),
+            NotificationClass::Modqueue => Colour::BLUE,
+            NotificationClass::Modmail | NotificationClass::ModmailReply => Colour::RED,
+        }
+    }
+}
+
+impl<T> Default for RedditObject<RedditListing<T>> {
+    fn default() -> Self {
+        RedditObject {
+            kind: "Listing".to_owned(),
+            data: RedditListing {
+                after: None,
+                before: None,
+                children: Vec::new(),
+            },
         }
     }
 }
@@ -90,14 +103,7 @@ impl<T> FromStr for RedditObject<RedditListing<T>> {
     type Err = Void;
 
     fn from_str(_s: &str) -> ::std::result::Result<Self, Self::Err> {
-        Ok(RedditObject {
-            kind: "Listing".to_owned(),
-            data: RedditListing {
-                after: None,
-                before: None,
-                children: Vec::new(),
-            },
-        })
+        Ok(Self::default())
     }
 }
 

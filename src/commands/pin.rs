@@ -26,7 +26,7 @@ pub fn pin(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
         for log_channel in get_log_channels(channel.read().guild_id) {
             log_channel.send_message(|msg| {
                 msg.embed(|e| {
-                    e.colour(Colour::blue())
+                    e.colour(Colour::BLUE)
                         .description(format!(
                             "**<@{}> changed the public pin on <#{}>**\n{}",
                             message.author.id,

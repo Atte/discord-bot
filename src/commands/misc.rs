@@ -56,7 +56,7 @@ pub fn info(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
     let avatar = CACHE.read().user.face();
     message.channel_id.send_message(|msg| {
         msg.embed(|e| {
-            e.colour(Colour::gold())
+            e.colour(Colour::GOLD)
                 .thumbnail(avatar)
                 .field("Author", "<@119122043923988483>", false)
                 .field(
