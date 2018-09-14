@@ -40,6 +40,13 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
         }).collect();
     trace!("Found {} ranks", ranks.len());
 
+    /*
+    if let Some(rank) = ranks.iter().find(|rank| !rank.permissions.is_empty()) {
+        trace!("Removing permissions from rank {}", rank.name);
+        rank.edit(|role| role.permissions(Permissions::empty()))?;
+    }
+    */
+
     Ok(ranks
         .into_iter()
         .map(|rank| {
