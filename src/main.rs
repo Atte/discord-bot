@@ -1,33 +1,14 @@
-#![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(missing_docs_in_private_items, stutter)
-)]
+#![deny(clippy::all, clippy::pedantic)]
+#![allow(clippy::missing_docs_in_private_items, clippy::stutter)]
 
-#[macro_use]
-extern crate log;
-extern crate digit_group;
-extern crate env_logger;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
-extern crate serenity;
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
+// TODO: remove these once macro dependencies are handled properly
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
-extern crate lazy_static;
-extern crate regex;
-#[macro_use]
-extern crate maplit;
-extern crate base64;
-extern crate chrono;
-extern crate meval;
-extern crate rand;
-extern crate url;
-extern crate void;
+extern crate serde_derive;
+
+use lazy_static::lazy_static;
+use log::error;
 
 mod cache;
 mod config;

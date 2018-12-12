@@ -1,4 +1,5 @@
 use super::super::{util, CONFIG};
+use lazy_static::lazy_static;
 use meval;
 use rand::{self, Rng};
 use regex::{Captures, Regex};
@@ -19,7 +20,7 @@ pub fn roll(_: &mut Context, message: &Message, args: Args) -> Result<(), Comman
     }
 
     let original = if args.is_empty() { "1d6" } else { args.full() };
-    let rolled = DIE_RE.replace_all(original, |caps: &Captures| {
+    let rolled = DIE_RE.replace_all(original, |caps: &Captures<'_>| {
         let rolls: usize = caps
             .get(1)
             .and_then(|m| m.as_str().parse().ok())

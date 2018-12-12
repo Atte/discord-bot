@@ -1,3 +1,4 @@
+use log::{error, info, trace};
 use rand;
 use rand::seq::SliceRandom;
 use serenity::framework::standard::{help_commands, DispatchError, StandardFramework};

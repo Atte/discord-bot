@@ -1,4 +1,5 @@
 use super::super::util;
+use log::trace;
 use serenity::framework::standard::{Args, CommandError};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
@@ -32,13 +33,7 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
     let ranks: Vec<_> = guild
         .roles
         .values()
-        .filter_map(|role| {
-            if !role.name.starts_with('@') && role.position < max_pos {
-                Some(role)
-            } else {
-                None
-            }
-        })
+        .filter(|role| !role.name.starts_with('@') && role.position < max_pos)
         .collect();
     trace!("Found {} ranks", ranks.len());
 
@@ -55,13 +50,7 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
             let rank_members: Vec<_> = guild
                 .members
                 .values()
-                .filter_map(|member| {
-                    if member.roles.contains(&rank.id) {
-                        Some(member)
-                    } else {
-                        None
-                    }
-                })
+                .filter(|member| member.roles.contains(&rank.id))
                 .collect();
             (rank, rank_members)
         })
@@ -148,7 +137,7 @@ pub fn joinleave(_: &mut Context, message: &Message, args: Args) -> Result<(), C
             .find(|(rank, _members)| rank.name.to_lowercase() == rankname.to_lowercase())
             .map(|(rank, _members)| rank.id)
         {
-            if let Some(mut user) = guild.members.get_mut(&message.author.id) {
+            if let Some(user) = guild.members.get_mut(&message.author.id) {
                 let is_current = user.roles.contains(&rank_id);
                 if is_current {
                     user.remove_role(rank_id)?;

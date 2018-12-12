@@ -1,5 +1,7 @@
 use super::serialization::string_or_struct;
 use super::{CACHE, CONFIG};
+use log::{debug, error, trace};
+use maplit::hashmap;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::{self, header};
 use serenity::builder::CreateEmbed;
@@ -89,7 +91,7 @@ impl NotificationClass {
 
 impl<T> Default for RedditObject<RedditListing<T>> {
     fn default() -> Self {
-        RedditObject {
+        Self {
             kind: "Listing".to_owned(),
             data: RedditListing {
                 after: None,
@@ -209,7 +211,7 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
         if contains_unseen(&data.data)? {
             out.insert(NotificationClass::Modmail);
         }
-        for msg in data.data.children.into_iter() {
+        for msg in data.data.children {
             if contains_unseen(&msg.data.replies.data)? {
                 out.insert(NotificationClass::ModmailReply);
             }

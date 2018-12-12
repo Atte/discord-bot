@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::{de, ser};
 use std::{borrow, cmp, convert, env, fmt, hash};
@@ -9,7 +10,7 @@ pub struct SubstitutingString {
 }
 
 impl SubstitutingString {
-    pub fn new(raw: String) -> Result<Self, ::std::env::VarError> {
+    pub fn try_new(raw: String) -> Result<Self, ::std::env::VarError> {
         lazy_static! {
             static ref VARIABLE_RE: Regex =
                 Regex::new(r"\$\{?([A-Z0-9_]+)\}?").expect("Invalid regex for VARIABLE_RE");
@@ -19,7 +20,7 @@ impl SubstitutingString {
             env::var(&caps[1])?;
         }
         let resolved = VARIABLE_RE
-            .replace_all(&raw, |caps: &Captures| env::var(&caps[1]).unwrap())
+            .replace_all(&raw, |caps: &Captures<'_>| env::var(&caps[1]).unwrap())
             .into_owned();
         Ok(Self { raw, resolved })
     }
@@ -27,7 +28,7 @@ impl SubstitutingString {
 
 impl fmt::Display for SubstitutingString {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.resolved)
     }
 }
@@ -115,7 +116,7 @@ impl<'de> de::Visitor<'de> for SubstitutingStringVisitor {
     type Value = SubstitutingString;
 
     #[inline]
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("a string optionally containing $ENV variables")
     }
 
@@ -124,7 +125,7 @@ impl<'de> de::Visitor<'de> for SubstitutingStringVisitor {
     where
         E: de::Error,
     {
-        SubstitutingString::new(s).map_err(de::Error::custom)
+        SubstitutingString::try_new(s).map_err(de::Error::custom)
     }
 
     #[inline]
@@ -132,7 +133,7 @@ impl<'de> de::Visitor<'de> for SubstitutingStringVisitor {
     where
         E: de::Error,
     {
-        SubstitutingString::new(s.to_owned()).map_err(de::Error::custom)
+        SubstitutingString::try_new(s.to_owned()).map_err(de::Error::custom)
     }
 }
 

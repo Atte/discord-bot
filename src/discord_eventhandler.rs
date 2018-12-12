@@ -1,4 +1,6 @@
 use super::{util, CONFIG};
+use lazy_static::lazy_static;
+use log::{info, warn};
 use rand;
 use rand::seq::SliceRandom;
 use serenity::model::prelude::*;
