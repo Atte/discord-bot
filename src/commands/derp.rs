@@ -1,7 +1,8 @@
 use super::super::{CACHE, CONFIG};
 use chrono::{DateTime, Utc};
 use digit_group::FormatGroup;
-use rand::{self, Rng};
+use rand;
+use rand::seq::SliceRandom;
 use regex::Regex;
 use reqwest;
 use serenity::framework::standard::{Args, CommandError};
@@ -89,7 +90,8 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                 .find(|(_tag, aliases)| aliases.contains(arg))
                 .map_or(arg, |(tag, _aliases)| tag.as_ref())
                 .replace(" ", "+")
-        }).collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>()
         .join(",");
 
     let url = Url::parse_with_params(
@@ -114,8 +116,10 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
 
     if response.search.is_empty() {
         message.reply(
-            rand::thread_rng()
-                .choose(&CONFIG.gib.not_found)
+            CONFIG
+                .gib
+                .not_found
+                .choose(&mut rand::thread_rng())
                 .map_or("", |reply| reply.as_ref()),
         )?;
     } else if let Some(result) = CACHE.with(|cache| {
@@ -146,7 +150,8 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                 } else {
                     None
                 }
-            }).collect();
+            })
+            .collect();
         let description = result.description.as_ref().map(|desc| {
             let desc = REGEXES
                 .iter()
@@ -186,7 +191,8 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                         MessageBuilder::new().push_safe(fname).build()
                     } else {
                         "<no filename>".to_owned()
-                    }).url(url)
+                    })
+                    .url(url)
                     .image(image)
                     .footer(|f| {
                         f.text(&format!("Out of {} results", response.total.format_si('.')))

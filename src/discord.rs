@@ -1,4 +1,5 @@
-use rand::{self, Rng};
+use rand;
+use rand::seq::SliceRandom;
 use serenity::framework::standard::{help_commands, DispatchError, StandardFramework};
 use serenity::prelude::*;
 
@@ -23,12 +24,14 @@ pub fn run_forever() {
                 .owners(CONFIG.discord.owners.clone())
                 .prefix(CONFIG.discord.command_prefix.as_ref())
                 .case_insensitivity(true)
-        }).customised_help(help_commands::with_embeds, |help| {
+        })
+        .customised_help(help_commands::with_embeds, |help| {
             help.dm_only_text("Only in DM")
                 .guild_only_text("Only on channels")
                 .dm_and_guilds_text("In DM and on channels")
                 .striked_commands_tip(None)
-        }).before(|_context, message, cmd_name| {
+        })
+        .before(|_context, message, cmd_name| {
             if commands::is_allowed(message, cmd_name) {
                 info!(
                     "Running command {} for @{} ({})",
@@ -40,30 +43,39 @@ pub fn run_forever() {
             } else {
                 false
             }
-        }).after(|_context, message, cmd_name, result| {
+        })
+        .after(|_context, message, cmd_name, result| {
             trace!("Command {} done", cmd_name);
             if let Err(err) = result {
                 error!("Error during command {}: {:?}", cmd_name, err);
                 message
                     .reply(&format!(
                         "That's not a valid command! {}",
-                        rand::thread_rng()
-                            .choose(&CONFIG.bulk.insults)
+                        CONFIG
+                            .bulk
+                            .insults
+                            .choose(&mut rand::thread_rng())
                             .map_or("", |insult| insult.as_ref())
-                    )).ok();
+                    ))
+                    .ok();
             }
-        }).unrecognised_command(|_context, message, _cmd_name| {
+        })
+        .unrecognised_command(|_context, message, _cmd_name| {
             if !can_respond_to(&message) {
                 return;
             }
             message
                 .reply(&format!(
                     "That's not even a command! {}",
-                    rand::thread_rng()
-                        .choose(&CONFIG.bulk.insults)
+                    CONFIG
+                        .bulk
+                        .insults
+                        .choose(&mut rand::thread_rng())
                         .map_or("", |insult| insult.as_ref())
-                )).ok();
-        }).on_dispatch_error(|_context, message, error| {
+                ))
+                .ok();
+        })
+        .on_dispatch_error(|_context, message, error| {
             if !can_respond_to(&message) {
                 return;
             }
@@ -82,10 +94,13 @@ pub fn run_forever() {
                 .reply(&format!(
                     "{} {}",
                     reason,
-                    rand::thread_rng()
-                        .choose(&CONFIG.bulk.insults)
+                    CONFIG
+                        .bulk
+                        .insults
+                        .choose(&mut rand::thread_rng())
                         .map_or("", |insult| insult.as_ref())
-                )).ok();
+                ))
+                .ok();
         });
 
     client.with_framework(commands::register(framework));

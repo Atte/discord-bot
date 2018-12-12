@@ -63,7 +63,8 @@ pub fn info(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
                     "Source code",
                     "https://gitlab.com/AtteLynx/flutterbitch",
                     false,
-                ).footer(|f| {
+                )
+                .footer(|f| {
                     f.text(&format!(
                         "Use {}help for a list of available commands.",
                         CONFIG.discord.command_prefix

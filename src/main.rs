@@ -22,6 +22,7 @@ extern crate lazy_static;
 extern crate regex;
 #[macro_use]
 extern crate maplit;
+extern crate base64;
 extern crate chrono;
 extern crate meval;
 extern crate rand;
@@ -35,7 +36,8 @@ mod substituting_string;
 lazy_static! {
     pub static ref CONFIG: config::Config = config::Config::from_file(
         ::std::env::var("CONFIG_PATH").unwrap_or_else(|_| "config.toml".to_owned())
-    ).expect("Error loading config");
+    )
+    .expect("Error loading config");
     pub static ref CACHE: cache::Cache =
         cache::Cache::from_file(&CONFIG.cache_path).expect("Error loading cache");
 }

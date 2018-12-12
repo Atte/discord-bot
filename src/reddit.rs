@@ -1,5 +1,6 @@
 use super::serialization::string_or_struct;
 use super::{CACHE, CONFIG};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::{self, header};
 use serenity::builder::CreateEmbed;
 use serenity::utils::Colour;
@@ -107,20 +108,20 @@ impl<T> FromStr for RedditObject<RedditListing<T>> {
     }
 }
 
-fn make_client<H>(auth: H) -> Result<reqwest::Client>
-where
-    H: header::Header,
-{
-    let mut headers = header::Headers::new();
-    headers.set(header::UserAgent::new(concat!(
-        "bot:fi.atte.",
-        env!("CARGO_PKG_NAME"),
-        ":v",
-        env!("CARGO_PKG_VERSION"),
-        " (by /u/AtteLynx)"
-    )));
-    headers.set(header::Accept::json());
-    headers.set(auth);
+fn make_client(auth_name: HeaderName, auth_value: HeaderValue) -> Result<reqwest::Client> {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::USER_AGENT,
+        HeaderValue::from_static(concat!(
+            "bot:fi.atte.",
+            env!("CARGO_PKG_NAME"),
+            ":v",
+            env!("CARGO_PKG_VERSION"),
+            " (by /u/AtteLynx)"
+        )),
+    );
+    headers.insert(header::ACCEPT, HeaderValue::from_static("application/json"));
+    headers.insert(auth_name, auth_value);
 
     Ok(reqwest::Client::builder()
         .referer(false)
@@ -131,10 +132,17 @@ where
 fn make_login_client() -> Result<reqwest::Client> {
     trace!("Making login client...");
 
-    make_client(header::Authorization(header::Basic {
-        username: CONFIG.reddit.client_id.to_string(),
-        password: Some(CONFIG.reddit.client_secret.to_string()),
-    }))
+    make_client(
+        header::AUTHORIZATION,
+        HeaderValue::from_str(&format!(
+            "Basic {}",
+            ::base64::encode(&format!(
+                "{}:{}",
+                CONFIG.reddit.client_id, CONFIG.reddit.client_secret
+            ))
+        ))
+        .unwrap(),
+    )
 }
 
 // TODO: cache results
@@ -143,18 +151,20 @@ fn make_user_client() -> Result<reqwest::Client> {
 
     let mut resp = make_login_client()?
         .post("https://www.reddit.com/api/v1/access_token")
-        .form(&hashmap!{
+        .form(&hashmap! {
             "grant_type" => "password".to_owned(),
             "username" => CONFIG.reddit.username.to_string(),
             "password" => CONFIG.reddit.password.to_string(),
-        }).send()?
+        })
+        .send()?
         .error_for_status()?;
 
     let data: AccessTokenResponse = resp.json()?;
-    let auth = header::Authorization(header::Bearer {
-        token: data.access_token,
-    });
-    Ok(make_client(auth)?)
+    Ok(make_client(
+        header::AUTHORIZATION,
+        HeaderValue::from_str(&format!("Bearer {}", data.access_token))
+            .expect("invalid characters in access_token"),
+    )?)
 }
 
 fn contains_unseen(data: &RedditListing<RedditMessageish>) -> Result<bool> {
@@ -179,7 +189,8 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
             .get(&format!(
                 "https://oauth.reddit.com/r/{}/about/modqueue",
                 sub
-            )).send()?
+            ))
+            .send()?
             .error_for_status()?
             .json()?;
         if contains_unseen(&data.data)? {
@@ -191,7 +202,8 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
             .get(&format!(
                 "https://oauth.reddit.com/r/{}/about/message/inbox",
                 sub
-            )).send()?
+            ))
+            .send()?
             .error_for_status()?
             .json()?;
         if contains_unseen(&data.data)? {
