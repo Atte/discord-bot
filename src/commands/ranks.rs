@@ -1,9 +1,12 @@
-use super::super::util;
+#![allow(clippy::needless_pass_by_value)]
+use crate::util;
 use log::trace;
-use serenity::framework::standard::{Args, CommandError};
-use serenity::model::prelude::*;
-use serenity::prelude::*;
-use serenity::utils::Colour;
+use serenity::{
+    framework::standard::{Args, CommandError},
+    model::prelude::*,
+    prelude::*,
+    utils::Colour,
+};
 
 fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError> {
     let bot = guild

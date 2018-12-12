@@ -1,13 +1,16 @@
-use super::super::{util, CONFIG};
+#![allow(clippy::needless_pass_by_value)]
+use crate::{util, CONFIG};
 use lazy_static::lazy_static;
 use meval;
 use rand::{self, Rng};
 use regex::{Captures, Regex};
-use serenity::framework::standard::{Args, CommandError};
-use serenity::model::prelude::*;
-use serenity::prelude::*;
-use serenity::utils::Colour;
-use serenity::CACHE;
+use serenity::{
+    framework::standard::{Args, CommandError},
+    model::prelude::*,
+    prelude::*,
+    utils::Colour,
+    CACHE,
+};
 
 pub fn ping(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandError> {
     message.reply(&format!("Pong! {}", util::use_emoji(None, "DIDNEYWORL")))?;

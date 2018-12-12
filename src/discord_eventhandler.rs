@@ -1,12 +1,8 @@
-use super::{util, CONFIG};
+use crate::{util, CONFIG};
 use lazy_static::lazy_static;
 use log::{info, warn};
-use rand;
-use rand::seq::SliceRandom;
-use serenity::model::prelude::*;
-use serenity::prelude::*;
-use serenity::utils::Colour;
-use serenity::CACHE;
+use rand::{self, seq::SliceRandom};
+use serenity::{model::prelude::*, prelude::*, utils::Colour, CACHE};
 
 lazy_static! {
     pub static ref MESSAGE_CACHE: RwLock<Vec<Message>> = RwLock::new(Vec::new());

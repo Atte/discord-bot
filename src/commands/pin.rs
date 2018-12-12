@@ -1,9 +1,11 @@
-use super::super::discord_eventhandler::get_log_channels;
-use super::super::util;
-use serenity::framework::standard::{Args, CommandError};
-use serenity::model::prelude::*;
-use serenity::prelude::*;
-use serenity::utils::Colour;
+#![allow(clippy::needless_pass_by_value)]
+use crate::{discord_eventhandler::get_log_channels, util};
+use serenity::{
+    framework::standard::{Args, CommandError},
+    model::prelude::*,
+    prelude::*,
+    utils::Colour,
+};
 
 pub fn pin(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
     let content = args.full();

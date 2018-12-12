@@ -1,12 +1,10 @@
+use crate::{commands, discord_eventhandler as handler, util::can_respond_to, CONFIG};
 use log::{error, info, trace};
-use rand;
-use rand::seq::SliceRandom;
-use serenity::framework::standard::{help_commands, DispatchError, StandardFramework};
-use serenity::prelude::*;
-
-use super::discord_eventhandler as handler;
-use super::util::can_respond_to;
-use super::{commands, CONFIG};
+use rand::{self, seq::SliceRandom};
+use serenity::{
+    framework::standard::{help_commands, DispatchError, StandardFramework},
+    prelude::*,
+};
 
 pub fn run_forever() {
     ::lazy_static::initialize(&handler::MESSAGE_CACHE);

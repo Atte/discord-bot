@@ -1,8 +1,10 @@
 use serenity::prelude::*;
-use std::collections::HashSet;
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::Path;
+use std::{
+    collections::HashSet,
+    fs::{File, OpenOptions},
+    io::{Read, Seek, SeekFrom, Write},
+    path::Path,
+};
 use toml;
 
 error_chain! {

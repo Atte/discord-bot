@@ -1,7 +1,5 @@
-use super::CONFIG;
-use serenity::model::prelude::*;
-use serenity::prelude::*;
-use serenity::CACHE;
+use crate::CONFIG;
+use serenity::{model::prelude::*, prelude::*, CACHE};
 use std::sync::Arc;
 
 pub fn uid() -> UserId {

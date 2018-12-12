@@ -1,9 +1,5 @@
-#![allow(clippy::needless_pass_by_value)]
-
-use super::util::can_respond_to;
-use super::CONFIG;
-use serenity::framework::standard::StandardFramework;
-use serenity::model::prelude::*;
+use crate::{util::can_respond_to, CONFIG};
+use serenity::{framework::standard::StandardFramework, model::prelude::*};
 
 mod derp;
 mod misc;

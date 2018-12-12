@@ -1,15 +1,18 @@
-use super::serialization::string_or_struct;
-use super::{CACHE, CONFIG};
+use crate::{serialization::string_or_struct, CACHE, CONFIG};
 use log::{debug, error, trace};
 use maplit::hashmap;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use reqwest::{self, header};
-use serenity::builder::CreateEmbed;
-use serenity::utils::Colour;
-use std::collections::HashSet;
-use std::str::FromStr;
-use std::time::{Duration, Instant};
-use std::{io, thread};
+use reqwest::{
+    self, header,
+    header::{HeaderMap, HeaderName, HeaderValue},
+};
+use serenity::{builder::CreateEmbed, utils::Colour};
+use std::{
+    collections::HashSet,
+    io,
+    str::FromStr,
+    thread,
+    time::{Duration, Instant},
+};
 use void::Void;
 
 error_chain! {

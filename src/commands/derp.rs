@@ -1,16 +1,18 @@
-use super::super::{CACHE, CONFIG};
+#![allow(clippy::needless_pass_by_value)]
+use crate::{CACHE, CONFIG};
 use chrono::{DateTime, Utc};
 use digit_group::FormatGroup;
 use lazy_static::lazy_static;
 use log::trace;
-use rand;
-use rand::seq::SliceRandom;
+use rand::{self, seq::SliceRandom};
 use regex::Regex;
 use reqwest;
-use serenity::framework::standard::{Args, CommandError};
-use serenity::model::prelude::*;
-use serenity::prelude::*;
-use serenity::utils::{Colour, MessageBuilder};
+use serenity::{
+    framework::standard::{Args, CommandError},
+    model::prelude::*,
+    prelude::*,
+    utils::{Colour, MessageBuilder},
+};
 use url::Url;
 
 const MAX_ARTISTS: usize = 4;

@@ -1,9 +1,11 @@
-use super::substituting_string::SubstitutingString;
+use crate::substituting_string::SubstitutingString;
 use serenity::model::prelude::*;
-use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::Read,
+    path::Path,
+};
 use toml;
 
 error_chain! {
