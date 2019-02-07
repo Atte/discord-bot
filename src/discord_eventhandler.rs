@@ -58,6 +58,10 @@ impl EventHandler for Handler {
             message.react('\u{1f34d}').ok(); // pineapple
         }
 
+        if message.content.to_lowercase().contains("pineapple") {
+            message.react('\u{1f355}').ok(); // pizza
+        }
+
         let mut cache = MESSAGE_CACHE.write();
         cache.insert(0, message);
         cache.truncate(CONFIG.discord.deleted_msg_cache);
