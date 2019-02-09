@@ -3,6 +3,7 @@ use lazy_static::lazy_static;
 use log::{info, warn};
 use rand::{self, seq::SliceRandom};
 use serenity::{model::prelude::*, prelude::*, utils::Colour, CACHE};
+use std::collections::HashSet;
 
 lazy_static! {
     pub static ref MESSAGE_CACHE: RwLock<Vec<Message>> = RwLock::new(Vec::new());
@@ -132,7 +133,7 @@ impl EventHandler for Handler {
         }
     }
 
-    fn guild_member_addition(&self, _context: Context, guild_id: GuildId, member: Member) {
+    fn guild_member_addition(&self, _context: Context, guild_id: GuildId, mut member: Member) {
         for log_channel in get_log_channels(guild_id) {
             if let Err(err) = log_channel.send_message(|msg| {
                 let user = member.user.read();
@@ -144,6 +145,19 @@ impl EventHandler for Handler {
             }) {
                 warn!("Unable to add member join to log channel: {:?}", err);
             }
+        }
+
+        if let Err(err) = crate::CACHE.with(|cache| {
+            let uid = member.user.read().id.to_string();
+            if let Some(roles) = cache.sticky_roles.get(&uid) {
+                for role in roles {
+                    if let Err(err) = member.add_role(role) {
+                        warn!("Unable to restore a sticky role: {:?}", err);
+                    }
+                }
+            }
+        }) {
+            warn!("Unable to restore sticky roles: {:?}", err);
         }
     }
 
@@ -173,29 +187,43 @@ impl EventHandler for Handler {
         old_member: Option<Member>,
         new_member: Member,
     ) {
-        if let Some(old_member) = old_member {
-            if old_member.nick == new_member.nick {
-                return;
+        let new_user = new_member.user.read();
+        let new_nick = new_member.nick.unwrap_or_else(|| new_user.name.clone());
+        let sticky_roles: HashSet<RoleId> = new_member
+            .roles
+            .into_iter()
+            .filter(|id| CONFIG.discord.sticky_roles.contains(id))
+            .collect();
+
+        if let Err(err) = crate::CACHE.with(|cache| {
+            let uid = new_user.id.to_string();
+            if sticky_roles.is_empty() {
+                cache.sticky_roles.remove(&uid);
+            } else {
+                cache.sticky_roles.insert(uid, sticky_roles);
             }
+        }) {
+            warn!("Unable to update sticky roles: {:?}", err);
+        }
 
+        if let Some(old_member) = old_member {
             let old_user = old_member.user.read();
-            let new_user = new_member.user.read();
-
             let old_nick = old_member.nick.unwrap_or_else(|| old_user.name.clone());
-            let new_nick = new_member.nick.unwrap_or_else(|| new_user.name.clone());
 
-            for log_channel in get_log_channels(old_member.guild_id) {
-                if let Err(err) = log_channel.send_message(|msg| {
-                    msg.embed(|e| {
-                        e.colour(Colour::RED)
-                            .description(format!(
-                                "**<@{}> changed their nick**\n{} \u{2192} {}",
-                                new_user.id, old_nick, new_nick
-                            ))
-                            .author(|a| a.name(&new_user.tag()).icon_url(&new_user.face()))
-                    })
-                }) {
-                    warn!("Unable to add nick change to log channel: {:?}", err);
+            if new_nick != old_nick {
+                for log_channel in get_log_channels(old_member.guild_id) {
+                    if let Err(err) = log_channel.send_message(|msg| {
+                        msg.embed(|e| {
+                            e.colour(Colour::RED)
+                                .description(format!(
+                                    "**<@{}> changed their nick**\n{} \u{2192} {}",
+                                    new_user.id, old_nick, new_nick
+                                ))
+                                .author(|a| a.name(&new_user.tag()).icon_url(&new_user.face()))
+                        })
+                    }) {
+                        warn!("Unable to add nick change to log channel: {:?}", err);
+                    }
                 }
             }
         }

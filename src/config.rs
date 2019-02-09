@@ -37,6 +37,7 @@ pub struct DiscordConfig {
     pub channel_blacklist: HashSet<ChannelId>,
     pub channel_whitelist: HashSet<ChannelId>,
     pub pin_channels: HashSet<ChannelId>,
+    pub sticky_roles: HashSet<RoleId>,
 }
 
 #[derive(Debug, Deserialize)]

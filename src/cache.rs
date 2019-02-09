@@ -1,6 +1,6 @@
-use serenity::prelude::*;
+use serenity::{model::prelude::*, prelude::*};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
     path::Path,
@@ -25,6 +25,7 @@ pub struct Cache {
 pub struct CacheContent {
     pub reddit_seen: HashSet<String>,
     pub gib_seen: Vec<usize>,
+    pub sticky_roles: HashMap<String, HashSet<RoleId>>,
 }
 
 impl Cache {
