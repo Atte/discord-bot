@@ -65,7 +65,7 @@ pub fn info(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
                 .field("Author", "<@119122043923988483>", false)
                 .field(
                     "Source code",
-                    "https://gitlab.com/AtteLynx/flutterbitch",
+                    "https://github.com/Atte/discord-bot",
                     false,
                 )
                 .footer(|f| {
