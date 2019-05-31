@@ -7,6 +7,7 @@ use log::trace;
 use rand::{self, seq::SliceRandom};
 use regex::Regex;
 use reqwest;
+use serde_aux::field_attributes::deserialize_default_from_null;
 use serenity::{
     framework::standard::{Args, CommandError},
     model::prelude::*,
@@ -27,16 +28,19 @@ pub struct Response {
 pub struct SearchResponse {
     id: usize,
     image: String,
+    #[serde(deserialize_with = "deserialize_default_from_null")]
     tags: String,
-    description: Option<String>,
-    file_name: Option<String>,
+    #[serde(deserialize_with = "deserialize_default_from_null")]
+    description: String,
+    #[serde(deserialize_with = "deserialize_default_from_null")]
+    file_name: String,
     first_seen_at: Option<DateTime<Utc>>,
     representations: Option<RepresentationList>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct RepresentationList {
-    tall: String,
+    tall: Option<String>,
 }
 
 pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
@@ -77,7 +81,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             (r"(?P<s1>^|\s)!(?P<t>\S+?)!(?P<s2>\s)", "$s1[Image]($t)$s2"),
             // no parse
             (r"\[==(?P<t>[\w ]+?)==\]", "$t"),
-        ].into_iter()
+        ].iter()
             .map(|x| (Regex::new(x.0).unwrap(), x.1))
             .collect();
     }
@@ -143,7 +147,8 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             result
                 .representations
                 .as_ref()
-                .map_or(&result.image, |reprs| &reprs.tall),
+                .and_then(|reprs| reprs.tall.as_ref())
+                .unwrap_or(&result.image),
         )?;
         let artists: Vec<_> = result
             .tags
@@ -156,18 +161,19 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                 }
             })
             .collect();
-        let description = result.description.as_ref().map(|desc| {
-            let desc = REGEXES
-                .iter()
-                .fold(desc.to_owned(), |acc, (pattern, replacement)| {
-                    pattern.replace_all(&acc, *replacement).into_owned()
-                });
-            if desc.len() > CONFIG.discord.long_msg_threshold {
-                format!("{}\u{2026}", &desc[..CONFIG.discord.long_msg_threshold])
-            } else {
-                desc.clone()
-            }
-        });
+
+        let full_desc = REGEXES.iter().fold(
+            result.description.to_owned(),
+            |acc, (pattern, replacement)| pattern.replace_all(&acc, *replacement).into_owned(),
+        );
+        let description = if full_desc.len() > CONFIG.discord.long_msg_threshold {
+            format!(
+                "{}\u{2026}",
+                &full_desc[..CONFIG.discord.long_msg_threshold]
+            )
+        } else {
+            full_desc
+        };
 
         message.channel_id.send_message(|msg| {
             msg.embed(|mut e| {
@@ -187,14 +193,14 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
                         e = e.author(|a| a.name(&artists.join(" & ")));
                     }
                 }
-                if let Some(ref desc) = description {
-                    e = e.description(desc);
+                if !description.is_empty() {
+                    e = e.description(description);
                 }
                 e.colour(Colour::GOLD)
-                    .title(if let Some(ref fname) = result.file_name {
-                        MessageBuilder::new().push_safe(fname).build()
-                    } else {
+                    .title(if result.file_name.is_empty() {
                         "<no filename>".to_owned()
+                    } else {
+                        MessageBuilder::new().push_safe(&result.file_name).build()
                     })
                     .url(url)
                     .image(image)

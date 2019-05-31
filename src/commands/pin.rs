@@ -10,7 +10,7 @@ use serenity::{
 pub fn pin(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
     let content = args.full();
 
-    if let Some(channel) = message.channel().and_then(|ch| ch.guild()) {
+    if let Some(channel) = message.channel().and_then(Channel::guild) {
         if let Some(mut pinned) = channel
             .read()
             .pins()?

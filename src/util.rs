@@ -45,7 +45,7 @@ pub fn can_talk_in(channel: &GuildChannel) -> bool {
 }
 
 pub fn can_respond_to(message: &Message) -> bool {
-    if let Some(channel) = message.channel().and_then(|ch| ch.guild()) {
+    if let Some(channel) = message.channel().and_then(Channel::guild) {
         can_talk_in(&channel.read())
     } else {
         true

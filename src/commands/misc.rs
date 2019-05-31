@@ -63,11 +63,7 @@ pub fn info(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
             e.colour(Colour::GOLD)
                 .thumbnail(avatar)
                 .field("Author", "<@119122043923988483>", false)
-                .field(
-                    "Source code",
-                    "https://github.com/Atte/discord-bot",
-                    false,
-                )
+                .field("Source code", "https://github.com/Atte/discord-bot", false)
                 .footer(|f| {
                     f.text(&format!(
                         "Use {}help for a list of available commands.",

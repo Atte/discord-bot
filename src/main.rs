@@ -1,5 +1,5 @@
 #![deny(clippy::all, clippy::pedantic)]
-#![allow(clippy::missing_docs_in_private_items, clippy::stutter)]
+#![allow(clippy::missing_docs_in_private_items, clippy::module_name_repetitions)]
 
 // TODO: remove these once macro dependencies are handled properly
 #[macro_use]
