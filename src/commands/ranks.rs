@@ -135,11 +135,13 @@ pub fn joinleave(_: &mut Context, message: &Message, args: Args) -> Result<(), C
         let mut guild = guild.write();
         let leave_emoji = util::use_emoji(Some(&guild), "aj05");
         let join_emoji = util::use_emoji(Some(&guild), "twiyay");
-        if let Some(rank_id) = get_ranks(&guild)?
-            .into_iter()
-            .find(|(rank, _members)| rank.name.to_lowercase() == rankname.to_lowercase())
-            .map(|(rank, _members)| rank.id)
-        {
+        if let Some(rank_id) = get_ranks(&guild)?.into_iter().find_map(|(rank, _members)| {
+            if rank.name.to_lowercase() == rankname.to_lowercase() {
+                Some(rank.id)
+            } else {
+                None
+            }
+        }) {
             if let Some(user) = guild.members.get_mut(&message.author.id) {
                 let is_current = user.roles.contains(&rank_id);
                 if is_current {
