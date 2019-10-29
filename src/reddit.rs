@@ -1,15 +1,18 @@
 use crate::{serialization::string_or_struct, CACHE, CONFIG};
+use error_chain::error_chain;
 use log::{debug, error, trace};
 use maplit::hashmap;
 use reqwest::{
     self, header,
     header::{HeaderMap, HeaderName, HeaderValue},
 };
-use serenity::{builder::CreateEmbed, utils::Colour};
+use serde::{Deserialize, Serialize};
+use serenity::{builder::CreateEmbed, http::Http, utils::Colour};
 use std::{
     collections::HashSet,
     io,
     str::FromStr,
+    sync::Arc,
     thread,
     time::{Duration, Instant},
 };
@@ -63,9 +66,9 @@ enum NotificationClass {
 impl NotificationClass {
     fn title(&self) -> &'static str {
         match *self {
-            NotificationClass::Modqueue => "New stuff in the modqueue",
-            NotificationClass::Modmail => "New modmail",
-            NotificationClass::ModmailReply => "New reply to modmail",
+            Self::Modqueue => "New stuff in the modqueue",
+            Self::Modmail => "New modmail",
+            Self::ModmailReply => "New reply to modmail",
         }
     }
 
@@ -74,10 +77,8 @@ impl NotificationClass {
         S: AsRef<str>,
     {
         match *self {
-            NotificationClass::Modqueue => {
-                format!("https://old.reddit.com/r/{}/about/modqueue/", sub.as_ref())
-            }
-            NotificationClass::Modmail | NotificationClass::ModmailReply => format!(
+            Self::Modqueue => format!("https://old.reddit.com/r/{}/about/modqueue/", sub.as_ref()),
+            Self::Modmail | Self::ModmailReply => format!(
                 "https://old.reddit.com/r/{}/about/message/inbox/",
                 sub.as_ref()
             ),
@@ -86,8 +87,8 @@ impl NotificationClass {
 
     fn colour(&self) -> Colour {
         match *self {
-            NotificationClass::Modqueue => Colour::BLUE,
-            NotificationClass::Modmail | NotificationClass::ModmailReply => Colour::RED,
+            Self::Modqueue => Colour::BLUE,
+            Self::Modmail | Self::ModmailReply => Colour::RED,
         }
     }
 }
@@ -223,12 +224,12 @@ fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<Notification
     Ok(out)
 }
 
-fn apply_embed(
-    e: CreateEmbed,
+fn apply_embed<'a>(
+    e: &'a mut CreateEmbed,
     reddit_type: &NotificationClass,
     sub: &str,
     new: bool,
-) -> CreateEmbed {
+) -> &'a mut CreateEmbed {
     let e = e
         .colour(reddit_type.colour())
         .title(reddit_type.title())
@@ -241,7 +242,7 @@ fn apply_embed(
     }
 }
 
-fn main() -> Result<()> {
+fn main(http: &Arc<Http>) -> Result<()> {
     trace!("Time for a Reddit check!");
 
     let client = make_user_client()?;
@@ -250,8 +251,9 @@ fn main() -> Result<()> {
         let reddit_types = check_sub(&client, sub)?;
         for reddit_type in &reddit_types {
             for channel_id in &sub_config.notify_channels {
-                channel_id
-                    .send_message(|msg| msg.embed(|e| apply_embed(e, reddit_type, sub, true)))?;
+                channel_id.send_message(&http, |msg| {
+                    msg.embed(|e| apply_embed(e, reddit_type, sub, true))
+                })?;
             }
         }
         /*
@@ -274,7 +276,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-pub fn spawn() -> io::Result<thread::JoinHandle<()>> {
+pub fn spawn(http: Arc<Http>) -> io::Result<thread::JoinHandle<()>> {
     if !CONFIG.reddit.enabled {
         return Err(io::Error::new(
             io::ErrorKind::Other,
@@ -295,19 +297,12 @@ pub fn spawn() -> io::Result<thread::JoinHandle<()>> {
     thread::Builder::new()
         .name("reddit".to_owned())
         .spawn(move || {
-            if cfg!(feature = "reddit-debug") {
-                if let Err(err) = main() {
-                    error!("{}", err);
-                }
-                return;
-            }
-
             let mut start = Instant::now();
             loop {
                 thread::sleep(Duration::from_secs(1));
                 if start.elapsed() >= check_interval {
                     start = Instant::now();
-                    if let Err(err) = main() {
+                    if let Err(err) = main(&http) {
                         error!("{}", err);
                     }
                 }

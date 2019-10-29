@@ -1,18 +1,20 @@
-#![allow(clippy::needless_pass_by_value)]
-use crate::util;
 use log::trace;
 use serenity::{
-    framework::standard::{Args, CommandError},
+    framework::standard::{macros::command, Args, CommandResult},
     model::prelude::*,
     prelude::*,
     utils::Colour,
 };
 
-fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError> {
+fn get_ranks<'a>(
+    context: &Context,
+    guild: &'a Guild,
+) -> Result<Vec<(&'a Role, Vec<&'a Member>)>, SerenityError> {
+    let uid = context.cache.read().user.id;
     let bot = guild
         .members
         .values()
-        .find(|member| member.user.read().id == util::uid())
+        .find(|member| member.user.read().id == uid)
         .ok_or_else(|| SerenityError::Other("Can't find bot as a guild member"))?;
     trace!(
         "Found bot as a guild member (bot has {} roles)",
@@ -60,10 +62,14 @@ fn get_ranks(guild: &Guild) -> Result<Vec<(&Role, Vec<&Member>)>, SerenityError>
         .collect())
 }
 
-pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandError> {
-    let (reply, rank_text) = if let Some(guild) = util::guild_from_message(&message) {
+#[command]
+#[description("Lists all available ranks, as well as the current user's active ones.")]
+#[num_args(0)]
+#[only_in("guilds")]
+pub fn ranks(context: &mut Context, message: &Message, _: Args) -> CommandResult {
+    let (reply, rank_text) = if let Some(guild) = message.guild(&context) {
         let guild = guild.read();
-        let ranks = get_ranks(&guild)?;
+        let ranks = get_ranks(&context, &guild)?;
         if ranks.is_empty() {
             (Some("There are no ranks on the server!".to_owned()), None)
         } else {
@@ -114,7 +120,7 @@ pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
         )
     };
     if let Some(rank_text) = rank_text {
-        message.channel_id.send_message(|msg| {
+        message.channel_id.send_message(&context, |msg| {
             msg.embed(|e| {
                 e.colour(Colour::BLUE)
                     .title("Available ranks")
@@ -124,45 +130,52 @@ pub fn list(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandEr
         })?;
     }
     if let Some(reply) = reply {
-        message.reply(&reply)?;
+        message.reply(&context, &reply)?;
     }
     Ok(())
 }
 
-pub fn joinleave(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
-    let rankname = args.full().trim();
-    let response = if let Some(guild) = util::guild_from_message(&message) {
+#[command]
+#[description("Joins/leaves a rank.")]
+#[usage("rankname")]
+#[num_args(1)]
+#[only_in("guilds")]
+pub fn rank(context: &mut Context, message: &Message, args: Args) -> CommandResult {
+    let rankname = args.message().trim();
+    let response = if let Some(guild) = message.guild(&context) {
         let mut guild = guild.write();
-        let leave_emoji = util::use_emoji(Some(&guild), "aj05");
-        let join_emoji = util::use_emoji(Some(&guild), "twiyay");
-        if let Some(rank_id) = get_ranks(&guild)?.into_iter().find_map(|(rank, _members)| {
-            if rank.name.to_lowercase() == rankname.to_lowercase() {
-                Some(rank.id)
-            } else {
-                None
-            }
-        }) {
+        if let Some(rank_id) =
+            get_ranks(&context, &guild)?
+                .into_iter()
+                .find_map(|(rank, _members)| {
+                    if rank.name.to_lowercase() == rankname.to_lowercase() {
+                        Some(rank.id)
+                    } else {
+                        None
+                    }
+                })
+        {
             if let Some(user) = guild.members.get_mut(&message.author.id) {
                 let is_current = user.roles.contains(&rank_id);
                 if is_current {
-                    user.remove_role(rank_id)?;
-                    format!("You have left **{}**! {}", rankname, leave_emoji)
+                    user.remove_role(&context, rank_id)?;
+                    format!("You have left **{}**! <:aj05:310579190770434050>", rankname)
                 } else {
-                    user.add_role(rank_id)?;
-                    format!("You have joined **{}**! {}", rankname, join_emoji)
+                    user.add_role(&context, rank_id)?;
+                    format!(
+                        "You have joined **{}**! <:twiyay:310582814565466112>",
+                        rankname
+                    )
                 }
             } else {
                 "You are not on the server? WTF?".to_owned()
             }
         } else {
-            format!(
-                "There is no such rank. {}",
-                util::use_emoji(Some(&guild), "lyou")
-            )
+            "There is no such rank. <:lyou:350623520494977035>".to_owned()
         }
     } else {
         "Rank joining/leaving is only available on a server!".to_owned()
     };
-    message.reply(&response)?;
+    message.reply(&context, &response)?;
     Ok(())
 }

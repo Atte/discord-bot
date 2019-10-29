@@ -1,11 +1,5 @@
 #![deny(clippy::all, clippy::pedantic)]
-#![allow(clippy::missing_docs_in_private_items, clippy::module_name_repetitions)]
-
-// TODO: remove these once macro dependencies are handled properly
-#[macro_use]
-extern crate error_chain;
-#[macro_use]
-extern crate serde_derive;
+#![allow(clippy::module_name_repetitions)]
 
 use lazy_static::lazy_static;
 use log::error;
@@ -38,12 +32,16 @@ fn main() {
     lazy_static::initialize(&CONFIG);
     lazy_static::initialize(&CACHE);
 
-    let reddit_thread = reddit::spawn();
+    let mut client = discord::create_client();
+
+    let reddit_thread = reddit::spawn(client.cache_and_http.http.clone());
     if let Err(ref err) = reddit_thread {
         error!("Error spawning Reddit thread: {}", err);
     }
 
-    discord::run_forever();
+    if let Err(err) = client.start() {
+        error!("Error running the client: {}", err);
+    }
 
     if let Ok(handle) = reddit_thread {
         if handle.join().is_err() {

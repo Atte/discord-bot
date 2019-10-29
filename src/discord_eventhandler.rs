@@ -2,24 +2,24 @@ use crate::{util, CONFIG};
 use lazy_static::lazy_static;
 use log::{info, warn};
 use rand::{self, seq::SliceRandom};
-use serenity::{model::prelude::*, prelude::*, utils::Colour, CACHE};
+use serenity::{model::prelude::*, prelude::*, utils::Colour};
 use std::collections::HashSet;
 
 lazy_static! {
     pub static ref MESSAGE_CACHE: RwLock<Vec<Message>> = RwLock::new(Vec::new());
 }
 
-pub fn get_log_channels(guild_id: GuildId) -> Vec<ChannelId> {
+pub fn get_log_channels(context: &Context, guild_id: GuildId) -> Vec<ChannelId> {
     CONFIG
         .discord
         .log_channels
         .iter()
         .filter_map(|id| {
-            if CACHE
-                .read()
-                .channels
-                .get(id)
-                .map_or(false, |chan| chan.read().guild_id == guild_id)
+            if id
+                .to_channel(context)
+                .ok()
+                .and_then(Channel::guild)
+                .map_or(false, |guild| guild.read().guild_id == guild_id)
             {
                 Some(*id)
             } else {
@@ -33,34 +33,18 @@ pub struct Handler;
 
 impl EventHandler for Handler {
     fn ready(&self, context: Context, _: Ready) {
-        let wanted_name: &str = CONFIG.discord.username.as_ref();
-        let current_name = CACHE.read().user.name.clone();
-        if current_name != wanted_name {
-            if let Err(err) = CACHE.write().user.edit(|p| p.username(wanted_name)) {
-                warn!("Error settings username: {:?}", err);
-            }
-        }
-        context.set_game(Game::listening(&format!(
+        context.set_activity(Activity::listening(&format!(
             "{}help",
             CONFIG.discord.command_prefix.as_ref() as &str
         )));
     }
 
-    fn message(&self, _context: Context, message: Message) {
-        if util::can_respond_to(&message)
-            && message.mentions.iter().any(|user| user.id == util::uid())
-        {
+    fn message(&self, context: Context, message: Message) {
+        let uid = context.cache.read().user.id;
+        if util::can_respond_to(&message) && message.mentions.iter().any(|user| user.id == uid) {
             if let Some(insult) = CONFIG.bulk.insults.choose(&mut rand::thread_rng()) {
-                message.reply(insult.as_ref()).ok();
+                message.reply(&context, insult).ok();
             }
-        }
-
-        if message.content.to_lowercase().contains("pizza") {
-            message.react('\u{1f34d}').ok(); // pineapple
-        }
-
-        if message.content.to_lowercase().contains("pineapple") {
-            message.react('\u{1f355}').ok(); // pizza
         }
 
         let mut cache = MESSAGE_CACHE.write();
@@ -68,7 +52,13 @@ impl EventHandler for Handler {
         cache.truncate(CONFIG.discord.deleted_msg_cache);
     }
 
-    fn message_update(&self, _context: Context, update: MessageUpdateEvent) {
+    fn message_update(
+        &self,
+        _context: Context,
+        _old: Option<Message>,
+        _new: Option<Message>,
+        update: MessageUpdateEvent,
+    ) {
         if let Some(message) = MESSAGE_CACHE
             .write()
             .iter_mut()
@@ -87,16 +77,16 @@ impl EventHandler for Handler {
         }
     }
 
-    fn message_delete(&self, _context: Context, channel_id: ChannelId, message_id: MessageId) {
+    fn message_delete(&self, context: Context, channel_id: ChannelId, message_id: MessageId) {
         if CONFIG.discord.log_channels.contains(&channel_id) {
             return;
         }
 
-        if let Ok(Channel::Guild(channel)) = channel_id.to_channel() {
+        if let Ok(Channel::Guild(channel)) = channel_id.to_channel(&context) {
             let channel = channel.read();
             if let Some(message) = MESSAGE_CACHE.read().iter().find(|msg| msg.id == message_id) {
-                for log_channel in get_log_channels(channel.guild_id) {
-                    if let Err(err) = log_channel.send_message(|msg| {
+                for log_channel in get_log_channels(&context, channel.guild_id) {
+                    if let Err(err) = log_channel.send_message(&context, |msg| {
                         msg.embed(|mut e| {
                             if let Some(embed) = message.embeds.iter().next() {
                                 if let Some(ref thumb) = embed.thumbnail {
@@ -113,7 +103,7 @@ impl EventHandler for Handler {
                                     "**Message sent by <@{}> deleted in <#{}>**\n{}",
                                     message.author.id,
                                     channel_id,
-                                    message.content_safe()
+                                    message.content_safe(&context)
                                 ))
                                 .author(|a| {
                                     a.name(&message.author.tag())
@@ -133,9 +123,9 @@ impl EventHandler for Handler {
         }
     }
 
-    fn guild_member_addition(&self, _context: Context, guild_id: GuildId, mut member: Member) {
-        for log_channel in get_log_channels(guild_id) {
-            if let Err(err) = log_channel.send_message(|msg| {
+    fn guild_member_addition(&self, context: Context, guild_id: GuildId, mut member: Member) {
+        for log_channel in get_log_channels(&context, guild_id) {
+            if let Err(err) = log_channel.send_message(&context, |msg| {
                 let user = member.user.read();
                 msg.embed(|e| {
                     e.colour(Colour::FOOYOO)
@@ -151,7 +141,7 @@ impl EventHandler for Handler {
             let uid = member.user.read().id.to_string();
             if let Some(roles) = cache.sticky_roles.get(&uid) {
                 for role in roles {
-                    if let Err(err) = member.add_role(role) {
+                    if let Err(err) = member.add_role(&context, role) {
                         warn!("Unable to restore a sticky role: {:?}", err);
                     }
                 }
@@ -163,13 +153,13 @@ impl EventHandler for Handler {
 
     fn guild_member_removal(
         &self,
-        _context: Context,
+        context: Context,
         guild_id: GuildId,
         user: User,
         _member: Option<Member>,
     ) {
-        for log_channel in get_log_channels(guild_id) {
-            if let Err(err) = log_channel.send_message(|msg| {
+        for log_channel in get_log_channels(&context, guild_id) {
+            if let Err(err) = log_channel.send_message(&context, |msg| {
                 msg.embed(|e| {
                     e.colour(Colour::RED)
                         .description(format!("**<@{}> left**", user.id))
@@ -183,7 +173,7 @@ impl EventHandler for Handler {
 
     fn guild_member_update(
         &self,
-        _context: Context,
+        context: Context,
         old_member: Option<Member>,
         new_member: Member,
     ) {
@@ -211,8 +201,8 @@ impl EventHandler for Handler {
             let old_nick = old_member.nick.unwrap_or_else(|| old_user.name.clone());
 
             if new_nick != old_nick {
-                for log_channel in get_log_channels(old_member.guild_id) {
-                    if let Err(err) = log_channel.send_message(|msg| {
+                for log_channel in get_log_channels(&context, old_member.guild_id) {
+                    if let Err(err) = log_channel.send_message(&context, |msg| {
                         msg.embed(|e| {
                             e.colour(Colour::RED)
                                 .description(format!(

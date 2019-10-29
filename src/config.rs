@@ -1,4 +1,6 @@
 use crate::substituting_string::SubstitutingString;
+use error_chain::error_chain;
+use serde::Deserialize;
 use serenity::model::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
@@ -30,7 +32,6 @@ pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
     pub deleted_msg_cache: usize,
     pub long_msg_threshold: usize,
-    pub username: SubstitutingString,
     pub token: SubstitutingString,
     pub owners: HashSet<UserId>,
     pub log_channels: HashSet<ChannelId>,
@@ -64,7 +65,7 @@ pub struct BulkConfig {
 pub struct GibConfig {
     pub filter: usize,
     pub history: usize,
-    pub not_found: Vec<String>,
+    pub not_found: Vec<SubstitutingString>,
     pub aliases: HashMap<String, HashSet<String>>,
 }
 

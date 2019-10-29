@@ -1,3 +1,5 @@
+use error_chain::error_chain;
+use serde::{Deserialize, Serialize};
 use serenity::{model::prelude::*, prelude::*};
 use std::{
     collections::{HashMap, HashSet},

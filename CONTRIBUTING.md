@@ -1,2 +1,5 @@
-* All code should be formatted with `cargo fmt`.
-* All code should pass `cargo clippy` without any errors or warnings.
+Contributing
+============
+
+* All code MUST be formatted with `cargo fmt`.
+* All code SHOULD pass `cargo clippy` without any errors or warnings.

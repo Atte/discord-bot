@@ -1,4 +1,3 @@
-#![allow(clippy::needless_pass_by_value)]
 use crate::{CACHE, CONFIG};
 use chrono::{DateTime, Utc};
 use digit_group::FormatGroup;
@@ -7,9 +6,10 @@ use log::trace;
 use rand::{self, seq::SliceRandom};
 use regex::Regex;
 use reqwest;
+use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_default_from_null;
 use serenity::{
-    framework::standard::{Args, CommandError},
+    framework::standard::{macros::command, Args, CommandResult},
     model::prelude::*,
     prelude::*,
     utils::{Colour, MessageBuilder},
@@ -43,7 +43,11 @@ pub struct RepresentationList {
     tall: Option<String>,
 }
 
-pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
+#[command]
+#[description("Gibs pics from derpibooru.")]
+#[usage("[tags\u{2026}]")]
+#[bucket("derp")]
+pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResult {
     lazy_static! {
         static ref REGEXES: Vec<(Regex, &'static str)> = [
             // bold
@@ -87,7 +91,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
     }
 
     let search = args
-        .full()
+        .message()
         .split(',')
         .map(|arg| {
             let arg = arg.trim();
@@ -124,6 +128,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
 
     if response.search.is_empty() {
         message.reply(
+            &context,
             CONFIG
                 .gib
                 .not_found
@@ -175,7 +180,7 @@ pub fn gib(_: &mut Context, message: &Message, args: Args) -> Result<(), Command
             full_desc
         };
 
-        message.channel_id.send_message(|msg| {
+        message.channel_id.send_message(&context, |msg| {
             msg.embed(|mut e| {
                 if let Some(ref timestamp) = result.first_seen_at {
                     e = e.timestamp(timestamp);

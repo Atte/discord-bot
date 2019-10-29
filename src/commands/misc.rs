@@ -1,28 +1,35 @@
-#![allow(clippy::needless_pass_by_value)]
-use crate::{util, CONFIG};
+use crate::CONFIG;
 use lazy_static::lazy_static;
 use meval;
 use rand::{self, Rng};
 use regex::{Captures, Regex};
 use serenity::{
-    framework::standard::{Args, CommandError},
+    framework::standard::{macros::command, Args, CommandResult},
     model::prelude::*,
     prelude::*,
     utils::Colour,
-    CACHE,
 };
 
-pub fn ping(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandError> {
-    message.reply(&format!("Pong! {}", util::use_emoji(None, "DIDNEYWORL")))?;
+#[command]
+#[description("Replies with a pong.")]
+#[num_args(0)]
+pub fn ping(context: &mut Context, message: &Message, _: Args) -> CommandResult {
+    message.reply(&context, "Pong! <:DIDNEYWORL:365990182610272266>")?;
     Ok(())
 }
 
-pub fn roll(_: &mut Context, message: &Message, args: Args) -> Result<(), CommandError> {
+#[command]
+#[usage("1d6 + 2d20")]
+pub fn roll(context: &mut Context, message: &Message, args: Args) -> CommandResult {
     lazy_static! {
         static ref DIE_RE: Regex = Regex::new(r"(\d+)?d(\d+)").expect("Invalid DIE_RE");
     }
 
-    let original = if args.is_empty() { "1d6" } else { args.full() };
+    let original = if args.is_empty() {
+        "1d6"
+    } else {
+        args.message()
+    };
     let rolled = DIE_RE.replace_all(original, |caps: &Captures<'_>| {
         let rolls: usize = caps
             .get(1)
@@ -49,19 +56,24 @@ pub fn roll(_: &mut Context, message: &Message, args: Args) -> Result<(), Comman
         || original == rolled
         || output.len() > CONFIG.discord.long_msg_threshold
     {
-        message.reply(&format!("{} \u{2192} **{}**", original, result))?;
+        message.reply(&context, &format!("{} \u{2192} **{}**", original, result))?;
     } else {
-        message.reply(&output)?;
+        message.reply(&context, &output)?;
     }
     Ok(())
 }
 
-pub fn info(_: &mut Context, message: &Message, _: Args) -> Result<(), CommandError> {
-    let avatar = CACHE.read().user.face();
-    message.channel_id.send_message(|msg| {
-        msg.embed(|e| {
+#[command]
+#[description("Shows information about the bot.")]
+#[num_args(0)]
+pub fn info(context: &mut Context, message: &Message, _: Args) -> CommandResult {
+    let avatar = context.cache.read().user.avatar_url();
+    message.channel_id.send_message(&context, |msg| {
+        msg.embed(|mut e| {
+            if let Some(avatar) = avatar {
+                e = e.thumbnail(avatar);
+            }
             e.colour(Colour::GOLD)
-                .thumbnail(avatar)
                 .field("Author", "<@119122043923988483>", false)
                 .field("Source code", "https://github.com/Atte/discord-bot", false)
                 .footer(|f| {
