@@ -33,10 +33,13 @@ pub struct Handler;
 
 impl EventHandler for Handler {
     fn ready(&self, context: Context, _: Ready) {
-        context.set_activity(Activity::listening(&format!(
-            "{}help",
-            CONFIG.discord.command_prefix.as_ref() as &str
-        )));
+        context.set_presence(
+            Some(Activity::listening(&format!(
+                "{}help",
+                CONFIG.discord.command_prefix.as_ref() as &str
+            ))),
+            OnlineStatus::Online,
+        );
     }
 
     fn message(&self, context: Context, message: Message) {

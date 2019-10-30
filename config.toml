@@ -28,6 +28,10 @@ sticky_roles = [
     409178686957420554, # Muted
 ]
 
+[berrytube]
+enabled = false
+origin = "https://socket.berrytube.tv"
+
 [reddit]
 enabled = true
 client_id = "8dPf_HbyOJaJJw"

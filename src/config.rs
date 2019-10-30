@@ -20,11 +20,18 @@ error_chain! {
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub cache_path: SubstitutingString,
+    pub berrytube: BerrytubeConfig,
     pub discord: DiscordConfig,
     pub reddit: RedditConfig,
     pub subreddits: HashMap<SubstitutingString, SubredditConfig>,
     pub bulk: BulkConfig,
     pub gib: GibConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BerrytubeConfig {
+    pub enabled: bool,
+    pub origin: SubstitutingString,
 }
 
 #[derive(Debug, Deserialize)]

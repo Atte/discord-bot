@@ -17,11 +17,13 @@ lazy_static! {
         cache::Cache::from_file(&CONFIG.cache_path).expect("Error loading cache");
 }
 
+mod berrytube;
 mod commands;
 mod discord;
 mod discord_eventhandler;
 mod reddit;
 mod serialization;
+mod socketio;
 mod util;
 
 fn main() {
@@ -33,6 +35,11 @@ fn main() {
     lazy_static::initialize(&CACHE);
 
     let mut client = discord::create_client();
+
+    let berrytube_thread = berrytube::spawn(client.shard_manager.clone());
+    if let Err(ref err) = berrytube_thread {
+        error!("Error spawning Berrytube thread: {}", err);
+    }
 
     let reddit_thread = reddit::spawn(client.cache_and_http.http.clone());
     if let Err(ref err) = reddit_thread {
