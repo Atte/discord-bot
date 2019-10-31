@@ -1,4 +1,7 @@
-use crate::{socketio, CONFIG};
+use crate::{
+    socketio::{self, SocketIOClient},
+    CONFIG,
+};
 use error_chain::error_chain;
 use log::{error, trace};
 use percent_encoding::percent_decode_str;
@@ -36,30 +39,31 @@ struct VideoDetailMessage {
 fn main(shard_manager: &Arc<Mutex<ShardManager>>) -> Result<()> {
     let mut previous_title = String::new();
 
-    let mut sock = socketio::SocketIO::new(CONFIG.berrytube.origin.to_string().parse()?);
-    sock.connect()?;
+    let mut sock = SocketIOClient::new(CONFIG.berrytube.origin.to_string().parse()?);
     sock.run(move |event| {
-        if let Some(arg) = event.args.first() {
-            if event.name == "hbVideoDetail" || event.name == "forceVideoChange" {
-                if let Ok(VideoDetailMessage { video }) =
-                    serde_json::from_value::<VideoDetailMessage>(arg.clone())
-                {
-                    let title = percent_decode_str(video.videotitle.as_ref())
-                        .decode_utf8_lossy()
-                        .to_string();
+        if event.name == "hbVideoDetail" || event.name == "forceVideoChange" {
+            if let Some(VideoDetailMessage { video }) = event
+                .args
+                .first()
+                .cloned()
+                .and_then(|arg| serde_json::from_value::<VideoDetailMessage>(arg).ok())
+            {
+                let title = percent_decode_str(video.videotitle.as_ref())
+                    .decode_utf8_lossy()
+                    .to_string();
 
-                    if title != previous_title {
-                        previous_title = title.clone();
-                        trace!("video change: {}", title);
+                if title != previous_title {
+                    trace!("video change: {}", title);
 
-                        let manager = shard_manager.lock();
-                        for id in manager.shards_instantiated() {
-                            if let Some(shard) = manager.runners.lock().get(&id) {
-                                let messenger = ShardMessenger::new(shard.runner_tx.clone());
-                                messenger.set_activity(Some(Activity::listening(&title)));
-                            }
+                    let manager = shard_manager.lock();
+                    for id in manager.shards_instantiated() {
+                        if let Some(shard) = manager.runners.lock().get(&id) {
+                            let messenger = ShardMessenger::new(shard.runner_tx.clone());
+                            messenger.set_activity(Some(Activity::playing(&title)));
                         }
                     }
+
+                    previous_title = title;
                 }
             }
         }

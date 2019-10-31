@@ -29,7 +29,7 @@ sticky_roles = [
 ]
 
 [berrytube]
-enabled = false
+enabled = true
 origin = "https://socket.berrytube.tv"
 
 [reddit]

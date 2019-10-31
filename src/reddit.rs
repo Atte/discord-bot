@@ -136,8 +136,6 @@ fn make_client(auth_name: HeaderName, auth_value: HeaderValue) -> Result<reqwest
 }
 
 fn make_login_client() -> Result<reqwest::Client> {
-    trace!("Making login client...");
-
     make_client(
         header::AUTHORIZATION,
         HeaderValue::from_str(&format!(
@@ -153,8 +151,6 @@ fn make_login_client() -> Result<reqwest::Client> {
 
 // TODO: cache results
 fn make_user_client() -> Result<reqwest::Client> {
-    trace!("Making user client...");
-
     let mut resp = make_login_client()?
         .post("https://www.reddit.com/api/v1/access_token")
         .form(&hashmap! {
