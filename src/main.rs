@@ -1,8 +1,16 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
+// TODO: remove if diesel gets its act together
+#[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
+
 use lazy_static::lazy_static;
 use log::error;
+use serenity::prelude::Mutex;
+use std::sync::Arc;
 
 mod cache;
 mod config;
@@ -19,6 +27,7 @@ lazy_static! {
 
 mod berrytube;
 mod commands;
+mod db;
 mod discord;
 mod discord_eventhandler;
 mod reddit;
@@ -34,7 +43,12 @@ fn main() {
     lazy_static::initialize(&CONFIG);
     lazy_static::initialize(&CACHE);
 
+    let database = Arc::new(Mutex::new(
+        db::connect(&CONFIG.db).expect("Error opening database"),
+    ));
+
     let mut client = discord::create_client();
+    client.data.write().insert::<db::DatabaseKey>(database);
 
     let berrytube_thread = berrytube::spawn(client.shard_manager.clone());
     if let Err(ref err) = berrytube_thread {

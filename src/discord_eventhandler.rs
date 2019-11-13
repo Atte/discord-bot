@@ -1,12 +1,38 @@
-use crate::{util, CONFIG};
-use lazy_static::lazy_static;
+use crate::{
+    db::{self, with_db},
+    util, CONFIG,
+};
+use diesel::prelude::*;
 use log::{info, warn};
 use rand::{self, seq::SliceRandom};
 use serenity::{model::prelude::*, prelude::*, utils::Colour};
 use std::collections::HashSet;
 
-lazy_static! {
-    pub static ref MESSAGE_CACHE: RwLock<Vec<Message>> = RwLock::new(Vec::new());
+struct MessageCacheKey;
+
+impl TypeMapKey for MessageCacheKey {
+    type Value = Vec<Message>;
+}
+
+pub fn read_message_cache<T, F>(context: &Context, f: F) -> T
+where
+    F: FnOnce(&Vec<Message>) -> T,
+{
+    let data = context.data.read();
+    if let Some(ref cache) = data.get::<MessageCacheKey>() {
+        f(cache)
+    } else {
+        f(&Vec::new())
+    }
+}
+
+pub fn write_message_cache<T, F>(context: &Context, f: F) -> T
+where
+    F: FnOnce(&mut Vec<Message>) -> T,
+{
+    let mut data = context.data.write();
+    let mut cache = data.entry::<MessageCacheKey>().or_insert_with(Vec::new);
+    f(&mut cache)
 }
 
 pub fn get_log_channels(context: &Context, guild_id: GuildId) -> Vec<ChannelId> {
@@ -50,34 +76,46 @@ impl EventHandler for Handler {
             }
         }
 
-        let mut cache = MESSAGE_CACHE.write();
-        cache.insert(0, message);
-        cache.truncate(CONFIG.discord.deleted_msg_cache);
+        with_db(&context, |conn| {
+            use db::preludes::functions::*;
+            use db::preludes::users::*;
+
+            let uid = message.author.id.to_string();
+            diesel::insert_into(users)
+                .values(&id.eq(&uid))
+                .on_conflict(id)
+                .do_update()
+                .set(last_seen.eq(datetime("now")))
+                .execute(conn);
+        });
+
+        write_message_cache(&context, move |cache| {
+            cache.insert(0, message);
+            cache.truncate(CONFIG.discord.deleted_msg_cache);
+        });
     }
 
     fn message_update(
         &self,
-        _context: Context,
+        context: Context,
         _old: Option<Message>,
         _new: Option<Message>,
         update: MessageUpdateEvent,
     ) {
-        if let Some(message) = MESSAGE_CACHE
-            .write()
-            .iter_mut()
-            .find(|msg| msg.id == update.id)
-        {
-            // TODO: update embeds
-            if let Some(content) = update.content {
-                message.content = content;
+        write_message_cache(&context, |cache| {
+            if let Some(message) = cache.iter_mut().find(|msg| msg.id == update.id) {
+                // TODO: update embeds
+                if let Some(content) = update.content {
+                    message.content = content;
+                }
+                if let Some(attachments) = update.attachments {
+                    message.attachments = attachments;
+                }
+                if let Some(edited_timestamp) = update.edited_timestamp {
+                    message.edited_timestamp = Some(edited_timestamp);
+                }
             }
-            if let Some(attachments) = update.attachments {
-                message.attachments = attachments;
-            }
-            if let Some(edited_timestamp) = update.edited_timestamp {
-                message.edited_timestamp = Some(edited_timestamp);
-            }
-        }
+        });
     }
 
     fn message_delete(&self, context: Context, channel_id: ChannelId, message_id: MessageId) {
@@ -87,7 +125,9 @@ impl EventHandler for Handler {
 
         if let Ok(Channel::Guild(channel)) = channel_id.to_channel(&context) {
             let channel = channel.read();
-            if let Some(message) = MESSAGE_CACHE.read().iter().find(|msg| msg.id == message_id) {
+            if let Some(message) = read_message_cache(&context, |cache| {
+                cache.iter().find(|msg| msg.id == message_id).cloned()
+            }) {
                 for log_channel in get_log_channels(&context, channel.guild_id) {
                     if let Err(err) = log_channel.send_message(&context, |msg| {
                         msg.embed(|mut e| {

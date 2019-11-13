@@ -20,6 +20,7 @@ error_chain! {
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub cache_path: SubstitutingString,
+    pub db: SubstitutingString,
     pub berrytube: BerrytubeConfig,
     pub discord: DiscordConfig,
     pub reddit: RedditConfig,

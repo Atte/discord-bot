@@ -1,5 +1,5 @@
 /target
 **/*.rs.bk
-/cache.toml
 /log
-/*.test.toml
+/cache.*
+/*.test.*

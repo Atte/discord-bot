@@ -8,8 +8,6 @@ use serenity::{
 
 #[allow(clippy::too_many_lines)]
 pub fn create_client() -> Client {
-    ::lazy_static::initialize(&handler::MESSAGE_CACHE);
-
     let framework = StandardFramework::new()
         .bucket("derp", |b| b.delay(10).time_span(10).limit(10))
         .group(&commands::HORSE_GROUP)
