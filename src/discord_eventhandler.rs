@@ -1,8 +1,4 @@
-use crate::{
-    db::{self, with_db},
-    util, CONFIG,
-};
-use diesel::prelude::*;
+use crate::{db, util, CONFIG};
 use log::{info, warn};
 use rand::{self, seq::SliceRandom};
 use serenity::{model::prelude::*, prelude::*, utils::Colour};
@@ -76,17 +72,10 @@ impl EventHandler for Handler {
             }
         }
 
-        with_db(&context, |conn| {
-            use db::preludes::functions::*;
-            use db::preludes::users::*;
-
-            let uid = message.author.id.to_string();
-            diesel::insert_into(users)
-                .values(&id.eq(&uid))
-                .on_conflict(id)
-                .do_update()
-                .set(last_seen.eq(datetime("now")))
-                .execute(conn);
+        db::with_db(&context, |conn| {
+            if let Err(err) = db::user_seen(&conn, &message.author) {
+                log::error!("db::user_seen: {}", err);
+            }
         });
 
         write_message_cache(&context, move |cache| {

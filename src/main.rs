@@ -1,12 +1,6 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-// TODO: remove if diesel gets its act together
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate diesel_migrations;
-
 use lazy_static::lazy_static;
 use log::error;
 use serenity::prelude::Mutex;

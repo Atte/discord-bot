@@ -32,13 +32,9 @@ toml = "0.5"
 url = "2.1"
 void = "1.0"
 
-[dependencies.diesel]
-version = "1.4"
-features = ["sqlite"]
-
-[dependencies.diesel_migrations]
-version = "1.4"
-features = ["sqlite"]
+[dependencies.rusqlite]
+version = "0.20"
+features = ["chrono", "serde_json", "url", "bundled"]
 
 [dependencies.websocket]
 version = "0.24"
