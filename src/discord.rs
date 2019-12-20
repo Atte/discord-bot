@@ -6,6 +6,7 @@ use serenity::{
     prelude::*,
 };
 
+#[allow(clippy::too_many_lines)]
 pub fn create_client() -> Client {
     ::lazy_static::initialize(&handler::MESSAGE_CACHE);
 
