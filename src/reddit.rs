@@ -114,7 +114,7 @@ impl<T> FromStr for RedditObject<RedditListing<T>> {
     }
 }
 
-fn make_client(auth_name: HeaderName, auth_value: HeaderValue) -> Result<reqwest::Client> {
+fn make_client(auth_name: HeaderName, auth_value: HeaderValue) -> Result<reqwest::blocking::Client> {
     let mut headers = HeaderMap::new();
     headers.insert(
         header::USER_AGENT,
@@ -129,13 +129,13 @@ fn make_client(auth_name: HeaderName, auth_value: HeaderValue) -> Result<reqwest
     headers.insert(header::ACCEPT, HeaderValue::from_static("application/json"));
     headers.insert(auth_name, auth_value);
 
-    Ok(reqwest::Client::builder()
+    Ok(reqwest::blocking::Client::builder()
         .referer(false)
         .default_headers(headers)
         .build()?)
 }
 
-fn make_login_client() -> Result<reqwest::Client> {
+fn make_login_client() -> Result<reqwest::blocking::Client> {
     make_client(
         header::AUTHORIZATION,
         HeaderValue::from_str(&format!(
@@ -150,8 +150,8 @@ fn make_login_client() -> Result<reqwest::Client> {
 }
 
 // TODO: cache results
-fn make_user_client() -> Result<reqwest::Client> {
-    let mut resp = make_login_client()?
+fn make_user_client() -> Result<reqwest::blocking::Client> {
+    let resp = make_login_client()?
         .post("https://www.reddit.com/api/v1/access_token")
         .form(&hashmap! {
             "grant_type" => "password".to_owned(),
@@ -182,7 +182,7 @@ fn contains_unseen(data: &RedditListing<RedditMessageish>) -> Result<bool> {
     })?)
 }
 
-fn check_sub(client: &reqwest::Client, sub: &str) -> Result<HashSet<NotificationClass>> {
+fn check_sub(client: &reqwest::blocking::Client, sub: &str) -> Result<HashSet<NotificationClass>> {
     debug!("Checking /r/{}", sub);
 
     let mut out = HashSet::new();

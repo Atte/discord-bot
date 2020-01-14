@@ -43,9 +43,9 @@ impl SocketIOClient {
                 .map_err(|_| ErrorKind::InvalidUrl(self.origin.to_string(), "cannot be base"))?
                 .push(&self.namespace)
                 .push("1");
-            url
+            url.to_string()
         };
-        let response = reqwest::get(handshake_url)?.error_for_status()?.text()?;
+        let response = reqwest::blocking::get(&handshake_url)?.error_for_status()?.text()?;
 
         match response.split(':').collect::<Vec<&str>>().as_slice() {
             [sid, hbeat_timeout, conn_timeout, transports_string] => {
