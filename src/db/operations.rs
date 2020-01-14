@@ -20,7 +20,7 @@ pub fn user_seen(conn: &Connection, user: &User) -> Result<()> {
     ")?.execute_named(named_params!{
         ":id": user.id.to_string(),
         ":name": user.name,
-        ":discriminator": user.discriminator.to_string(),
+        ":discriminator": format!("{:04}", user.discriminator),
     })?;
 
     Ok(())

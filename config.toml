@@ -1,4 +1,5 @@
 cache_path = "cache.toml"
+db = "cache.db"
 
 [discord]
 command_prefix = "!"
