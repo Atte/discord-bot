@@ -43,3 +43,9 @@ features = ["chrono", "serde_json", "url", "bundled"]
 version = "0.24"
 default-features = false
 features = ["sync", "sync-ssl"]
+
+[dependencies.sse-client]
+version = "1.1"
+features = ["tls-native-vendored"]
+git = "https://github.com/Atte/sse-client.git"
+branch = "tls"

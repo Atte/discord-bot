@@ -26,7 +26,6 @@ mod discord;
 mod discord_eventhandler;
 mod reddit;
 mod serialization;
-mod socketio;
 mod util;
 
 fn main() {
@@ -62,5 +61,9 @@ fn main() {
         if handle.join().is_err() {
             error!("Error joining Reddit thread");
         }
+    }
+
+    if let Ok(handle) = berrytube_thread {
+        handle.close();
     }
 }
