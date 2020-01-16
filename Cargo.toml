@@ -46,6 +46,6 @@ features = ["sync", "sync-ssl"]
 
 [dependencies.sse-client]
 version = "1.1"
-features = ["tls-native-vendored"]
+features = ["native-tls-vendored"]
 git = "https://github.com/Atte/sse-client.git"
 branch = "tls"

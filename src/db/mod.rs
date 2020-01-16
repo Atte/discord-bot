@@ -9,12 +9,13 @@ pub use operations::*;
 
 error_chain::error_chain! {
     foreign_links {
+        Io(std::io::Error);
         Rusqlite(rusqlite::Error);
     }
 }
 
 pub fn connect(path: impl AsRef<Path>) -> Result<Connection> {
-    let conn = Connection::open(path)?;
+    let conn = Connection::open(path.as_ref().canonicalize()?)?;
     conn.query_row("PRAGMA journal_mode = WAL", NO_PARAMS, |_row| Ok(()))?;
     conn.execute("PRAGMA foreign_keys = ON", NO_PARAMS)?;
     migrations::apply_migrations(&conn)?;
