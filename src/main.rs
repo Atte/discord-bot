@@ -43,7 +43,7 @@ fn main() {
     let mut client = discord::create_client();
     client.data.write().insert::<db::DatabaseKey>(database);
 
-    let berrytube_thread = berrytube::spawn(client.shard_manager.clone());
+    let berrytube_thread = berrytube::spawn(client.data.clone(), client.shard_manager.clone());
     if let Err(ref err) = berrytube_thread {
         error!("Error spawning Berrytube thread: {}", err);
     }

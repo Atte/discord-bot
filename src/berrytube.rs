@@ -7,8 +7,8 @@ use serenity::{
     model::gateway::Activity,
     prelude::*,
 };
-use std::sync::Arc;
 use sse_client::EventSource;
+use std::sync::Arc;
 
 error_chain! {
     foreign_links {
@@ -28,6 +28,12 @@ error_chain! {
     }
 }
 
+pub struct NowPlayingKey;
+
+impl TypeMapKey for NowPlayingKey {
+    type Value = String;
+}
+
 #[derive(Debug, Deserialize)]
 struct Video {
     id: String,
@@ -35,22 +41,27 @@ struct Video {
     title: String,
     #[serde(rename = "type")]
     videotype: String,
-    volat: bool
+    volat: bool,
 }
 
-pub fn spawn(shard_manager: Arc<Mutex<ShardManager>>) -> Result<EventSource> {
+pub fn spawn(
+    client_data: Arc<RwLock<ShareMap>>,
+    shard_manager: Arc<Mutex<ShardManager>>,
+) -> Result<EventSource> {
     if !CONFIG.berrytube.enabled {
         return Err(ErrorKind::DisabledInConfig.into());
     }
 
     trace!("Spawning BerryTube thread...");
-    let previous_title = Mutex::new(String::new());
-    let source = EventSource::new(&format!("{}/sse", CONFIG.berrytube.origin)).map_err(|_| ErrorKind::InvalidUrl)?;
+    let source = EventSource::new(&format!("{}/sse", CONFIG.berrytube.origin))
+        .map_err(|_| ErrorKind::InvalidUrl)?;
 
     source.add_event_listener("videoChange", move |event| {
         if let Ok(video) = serde_json::from_str::<Video>(&event.data) {
-            let mut prev = previous_title.lock();
-            if video.title != *prev {
+            let mut data = client_data.write();
+            let previous_title = data.get::<NowPlayingKey>();
+
+            if previous_title.map_or(true, |prev| &video.title != prev) {
                 let manager = shard_manager.lock();
                 for id in manager.shards_instantiated() {
                     if let Some(shard) = manager.runners.lock().get(&id) {
@@ -59,7 +70,7 @@ pub fn spawn(shard_manager: Arc<Mutex<ShardManager>>) -> Result<EventSource> {
                     }
                 }
 
-                *prev = video.title;
+                data.insert::<NowPlayingKey>(video.title);
             }
         }
     });

@@ -14,23 +14,25 @@ error_chain::error_chain! {
     }
 }
 
-pub fn connect(path: impl AsRef<Path>) -> Result<Connection> {
-    let conn = Connection::open(path.as_ref().canonicalize()?)?;
-    conn.execute("PRAGMA foreign_keys = ON", NO_PARAMS)?;
-    migrations::apply_migrations(&conn)?;
-    Ok(conn)
-}
-
 pub struct DatabaseKey;
 
 impl TypeMapKey for DatabaseKey {
     type Value = Arc<Mutex<Connection>>;
 }
 
-pub fn with_db<T, F>(context: &Context, f: F) -> Option<T>
+pub fn connect(path: impl AsRef<Path>) -> Result<Connection> {
+    let conn = Connection::open(path)?;
+    conn.execute("PRAGMA foreign_keys = ON", NO_PARAMS)?;
+    migrations::apply_migrations(&conn)?;
+    Ok(conn)
+}
+
+pub fn with_db<F>(context: &Context, f: F)
 where
-    F: FnOnce(&Connection) -> T,
+    F: FnOnce(&Connection) -> Result<()>,
 {
     let mut data = context.data.write();
-    data.get_mut::<DatabaseKey>().map(|lock| f(&lock.lock()))
+    if let Some(Err(err)) = data.get_mut::<DatabaseKey>().map(|lock| f(&lock.lock())) {
+        log::error!("db error: {}", err);
+    }
 }

@@ -1,4 +1,4 @@
-use crate::{db, util, CONFIG};
+use crate::{berrytube::NowPlayingKey, db, util, CONFIG};
 use log::{info, warn};
 use rand::{self, seq::SliceRandom};
 use serenity::{model::prelude::*, prelude::*, utils::Colour};
@@ -55,28 +55,43 @@ pub struct Handler;
 
 impl EventHandler for Handler {
     fn ready(&self, context: Context, _: Ready) {
-        context.set_presence(
-            Some(Activity::listening(&format!(
-                "{}help",
-                CONFIG.discord.command_prefix.as_ref() as &str
-            ))),
-            OnlineStatus::Online,
-        );
+        if let Some(nowplaying) = context.data.read().get::<NowPlayingKey>() {
+            context.set_presence(Some(Activity::playing(nowplaying)), OnlineStatus::Online);
+        } else {
+            context.set_presence(
+                Some(Activity::listening(&format!(
+                    "{}help",
+                    CONFIG.discord.command_prefix.as_ref() as &str
+                ))),
+                OnlineStatus::Online,
+            );
+        }
+    }
+
+    fn guild_create(&self, context: Context, guild: Guild, _is_new: bool) {
+        for member in guild.members.values() {
+            if guild
+                .presences
+                .get(&member.user.read().id)
+                .map_or(false, |presence| presence.status != OnlineStatus::Offline)
+            {
+                db::with_db(&context, |conn| db::member_online(&conn, &member));
+            }
+        }
     }
 
     fn message(&self, context: Context, message: Message) {
+        db::with_db(&context, |conn| {
+            db::user_online(&conn, &message.author)?;
+            db::user_message(&conn, &message.author)
+        });
+
         let uid = context.cache.read().user.id;
         if util::can_respond_to(&message) && message.mentions.iter().any(|user| user.id == uid) {
             if let Some(insult) = CONFIG.bulk.insults.choose(&mut rand::thread_rng()) {
                 message.reply(&context, insult).ok();
             }
         }
-
-        db::with_db(&context, |conn| {
-            if let Err(err) = db::user_seen(&conn, &message.author) {
-                log::error!("db::user_seen: {}", err);
-            }
-        });
 
         write_message_cache(&context, move |cache| {
             cache.insert(0, message);
@@ -156,6 +171,8 @@ impl EventHandler for Handler {
     }
 
     fn guild_member_addition(&self, context: Context, guild_id: GuildId, mut member: Member) {
+        db::with_db(&context, |conn| db::member_online(&conn, &member));
+
         for log_channel in get_log_channels(&context, guild_id) {
             if let Err(err) = log_channel.send_message(&context, |msg| {
                 let user = member.user.read();
@@ -209,6 +226,8 @@ impl EventHandler for Handler {
         old_member: Option<Member>,
         new_member: Member,
     ) {
+        db::with_db(&context, |conn| db::member_online(&conn, &new_member));
+
         let new_user = new_member.user.read();
         let new_nick = new_member.nick.unwrap_or_else(|| new_user.name.clone());
         let sticky_roles: HashSet<RoleId> = new_member
@@ -248,6 +267,12 @@ impl EventHandler for Handler {
                     }
                 }
             }
+        }
+    }
+
+    fn presence_update(&self, context: Context, update: PresenceUpdateEvent) {
+        if let Some(user) = update.presence.user {
+            db::with_db(&context, |conn| db::user_online(&conn, &user.read()));
         }
     }
 }

@@ -114,7 +114,10 @@ impl<T> FromStr for RedditObject<RedditListing<T>> {
     }
 }
 
-fn make_client(auth_name: HeaderName, auth_value: HeaderValue) -> Result<reqwest::blocking::Client> {
+fn make_client(
+    auth_name: HeaderName,
+    auth_value: HeaderValue,
+) -> Result<reqwest::blocking::Client> {
     let mut headers = HeaderMap::new();
     headers.insert(
         header::USER_AGENT,
