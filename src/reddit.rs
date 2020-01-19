@@ -242,8 +242,6 @@ fn apply_embed<'a>(
 }
 
 fn main(http: &Arc<Http>) -> Result<()> {
-    trace!("Time for a Reddit check!");
-
     let client = make_user_client()?;
     for (sub, sub_config) in &CONFIG.subreddits {
         let sub = sub.as_ref();

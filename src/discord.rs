@@ -13,7 +13,7 @@ pub fn create_client() -> Client {
         .group(&commands::HORSE_GROUP)
         .group(&commands::DISCORD_GROUP)
         .group(&commands::MISC_GROUP)
-        .help(&commands::HELP)
+        .help(&commands::HELP_COMMAND)
         .configure(|conf| {
             conf.owners(CONFIG.discord.owners.clone())
                 .prefix(CONFIG.discord.command_prefix.as_ref())

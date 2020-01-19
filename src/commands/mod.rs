@@ -20,36 +20,25 @@ use misc::*;
 use pin::*;
 use ranks::*;
 
-group!({
-    name: "horse",
-    commands: [gib],
-    options: {
-        help_available: true
-    }
-});
+#[group]
+#[commands(gib)]
+struct Horse;
 
-group!({
-    name: "discord",
-    commands: [ranks, rank, pin],
-    options: {
-        help_available: true
-    }
-});
+#[group]
+#[commands(ranks, rank, pin)]
+struct Discord;
 
-group!({
-    name: "misc",
-    commands: [roll, ping, info],
-    options: {
-        help_available: true
-    }
-});
+#[group]
+#[commands(roll, ping, info)]
+struct Misc;
 
 #[help]
-#[wrong_channel("hide")]
-#[lacking_role("hide")]
+#[lacking_conditions("hide")]
 #[lacking_ownership("hide")]
 #[lacking_permissions("hide")]
-fn help(
+#[lacking_role("hide")]
+#[wrong_channel("hide")]
+fn help_command(
     context: &mut Context,
     msg: &Message,
     args: Args,
