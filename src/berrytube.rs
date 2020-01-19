@@ -58,19 +58,15 @@ pub fn spawn(
 
     source.add_event_listener("videoChange", move |event| {
         if let Ok(video) = serde_json::from_str::<Video>(&event.data) {
-            let mut data = client_data.write();
-            let previous_title = data.get::<NowPlayingKey>();
+            let previous_title = client_data.read().get::<NowPlayingKey>().cloned();
 
-            if previous_title.map_or(true, |prev| &video.title != prev) {
-                let manager = shard_manager.lock();
-                for id in manager.shards_instantiated() {
-                    if let Some(shard) = manager.runners.lock().get(&id) {
-                        let messenger = ShardMessenger::new(shard.runner_tx.clone());
-                        messenger.set_activity(Some(Activity::playing(&video.title)));
-                    }
+            if previous_title.map_or(true, |prev| video.title != prev) {
+                for runner in shard_manager.lock().runners.lock().values() {
+                    let messenger = ShardMessenger::new(runner.runner_tx.clone());
+                    messenger.set_activity(Some(Activity::playing(&video.title)));
                 }
 
-                data.insert::<NowPlayingKey>(video.title);
+                client_data.write().insert::<NowPlayingKey>(video.title);
             }
         }
     });
