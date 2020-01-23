@@ -240,7 +240,9 @@ fn check_sub(
 
         let mut replies = RedditListing::<RedditMessageish>::default();
         for msg in data.data.children {
-            replies.children.extend(msg.data.replies.data.children.into_iter());
+            replies
+                .children
+                .extend(msg.data.replies.data.children.into_iter());
         }
         if !replies.is_empty() && contains_unseen(&database, &replies)? {
             out.insert(NotificationClass::ModmailReply);

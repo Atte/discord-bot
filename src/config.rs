@@ -37,7 +37,7 @@ pub struct BerrytubeConfig {
 #[derive(Debug, Deserialize)]
 pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
-    pub deleted_msg_cache: usize,
+    pub deleted_msg_cache: u32,
     pub long_msg_threshold: usize,
     pub token: SubstitutingString,
     pub owners: HashSet<UserId>,

@@ -4,33 +4,6 @@ use rand::{self, seq::SliceRandom};
 use serenity::{model::prelude::*, prelude::*, utils::Colour};
 use std::collections::HashSet;
 
-struct MessageCacheKey;
-
-impl TypeMapKey for MessageCacheKey {
-    type Value = Vec<Message>;
-}
-
-pub fn read_message_cache<T, F>(context: &Context, f: F) -> T
-where
-    F: FnOnce(&Vec<Message>) -> T,
-{
-    let data = context.data.read();
-    if let Some(ref cache) = data.get::<MessageCacheKey>() {
-        f(cache)
-    } else {
-        f(&Vec::new())
-    }
-}
-
-pub fn write_message_cache<T, F>(context: &Context, f: F) -> T
-where
-    F: FnOnce(&mut Vec<Message>) -> T,
-{
-    let mut data = context.data.write();
-    let mut cache = data.entry::<MessageCacheKey>().or_insert_with(Vec::new);
-    f(&mut cache)
-}
-
 pub fn get_log_channels(context: &Context, guild_id: GuildId) -> Vec<ChannelId> {
     CONFIG
         .discord
@@ -83,7 +56,8 @@ impl EventHandler for Handler {
     fn message(&self, context: Context, message: Message) {
         let _ = db::with_db(&context, |conn| {
             db::user_online(&conn, &message.author)?;
-            db::user_message(&conn, message.author.id)
+            db::user_message(&conn, message.author.id)?;
+            db::cache_message(&conn, &message)
         });
 
         let uid = context.cache.read().user.id;
@@ -92,34 +66,18 @@ impl EventHandler for Handler {
                 message.reply(&context, insult).ok();
             }
         }
-
-        write_message_cache(&context, move |cache| {
-            cache.insert(0, message);
-            cache.truncate(CONFIG.discord.deleted_msg_cache);
-        });
     }
 
     fn message_update(
         &self,
         context: Context,
         _old: Option<Message>,
-        _new: Option<Message>,
-        update: MessageUpdateEvent,
+        new: Option<Message>,
+        _update: MessageUpdateEvent,
     ) {
-        write_message_cache(&context, |cache| {
-            if let Some(message) = cache.iter_mut().find(|msg| msg.id == update.id) {
-                // TODO: update embeds
-                if let Some(content) = update.content {
-                    message.content = content;
-                }
-                if let Some(attachments) = update.attachments {
-                    message.attachments = attachments;
-                }
-                if let Some(edited_timestamp) = update.edited_timestamp {
-                    message.edited_timestamp = Some(edited_timestamp);
-                }
-            }
-        });
+        if let Some(msg) = new {
+            let _ = db::with_db(&context, |conn| db::cache_message(&conn, &msg));
+        }
     }
 
     fn message_delete(&self, context: Context, channel_id: ChannelId, message_id: MessageId) {
@@ -129,9 +87,9 @@ impl EventHandler for Handler {
 
         if let Ok(Channel::Guild(channel)) = channel_id.to_channel(&context) {
             let channel = channel.read();
-            if let Some(message) = read_message_cache(&context, |cache| {
-                cache.iter().find(|msg| msg.id == message_id).cloned()
-            }) {
+            if let Ok(Some(message)) =
+                db::with_db(&context, |conn| db::get_message(&conn, message_id))
+            {
                 for log_channel in get_log_channels(&context, channel.guild_id) {
                     if let Err(err) = log_channel.send_message(&context, |msg| {
                         msg.embed(|mut e| {

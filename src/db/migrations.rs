@@ -65,12 +65,29 @@ fn migrate_step(conn: &Connection, step: u32) -> Result<()> {
                 ",
             )?;
         }
+        2 => {
+            conn.execute_batch(
+                "
+                BEGIN;
+
+                CREATE TABLE messages (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                    time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    json TEXT NOT NULL
+                ) WITHOUT ROWID;
+
+                COMMIT;
+                ",
+            )?;
+        }
+        MIGRATION_STEPS => unreachable!(),
         _ => unreachable!(),
     }
     Ok(())
 }
 
-const MIGRATION_STEPS: u32 = 2;
+const MIGRATION_STEPS: u32 = 3;
 
 pub fn apply_migrations(conn: &Connection) -> Result<(u32, u32)> {
     let initial: u32 = conn.query_row(
