@@ -6,7 +6,6 @@ use log::error;
 use serenity::prelude::Mutex;
 use std::sync::Arc;
 
-mod cache;
 mod config;
 mod substituting_string;
 
@@ -15,8 +14,6 @@ lazy_static! {
         ::std::env::var("CONFIG_PATH").unwrap_or_else(|_| "config.toml".to_owned())
     )
     .expect("Error loading config");
-    pub static ref CACHE: cache::Cache =
-        cache::Cache::from_file(&CONFIG.cache_path).expect("Error loading cache");
 }
 
 mod berrytube;
@@ -34,11 +31,12 @@ fn main() {
         .init();
 
     lazy_static::initialize(&CONFIG);
-    lazy_static::initialize(&CACHE);
 
-    let database = Arc::new(Mutex::new(
-        db::connect(&CONFIG.db).expect("Error opening database"),
-    ));
+    let database = Arc::new(Mutex::new({
+        let conn = db::connect().expect("Error opening database");
+        db::apply_migrations(&conn).expect("Error migrating database");
+        conn
+    }));
 
     let mut client = discord::create_client();
     client.data.write().insert::<db::DatabaseKey>(database);

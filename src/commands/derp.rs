@@ -1,4 +1,4 @@
-use crate::{CACHE, CONFIG};
+use crate::{db, CONFIG};
 use chrono::{DateTime, Utc};
 use digit_group::FormatGroup;
 use lazy_static::lazy_static;
@@ -26,7 +26,7 @@ pub struct Response {
 
 #[derive(Debug, Deserialize)]
 pub struct SearchResponse {
-    id: usize,
+    id: u32,
     image: String,
     #[serde(deserialize_with = "deserialize_default_from_null")]
     tags: String,
@@ -135,17 +135,16 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
                 .choose(&mut rand::thread_rng())
                 .map_or("", |reply| reply.as_ref()),
         )?;
-    } else if let Some(result) = CACHE.with(|cache| {
-        let result = response
+    } else if let Some(result) = db::with_db(&context, |conn| {
+        let unseen = response
             .search
             .iter()
-            .find(|result| !cache.gib_seen.contains(&result.id))
+            .find(|result| !db::gib_is_seen(&conn, result.id).unwrap_or(false))
             .or_else(|| response.search.first());
-        if let Some(result) = result {
-            cache.gib_seen.insert(0, result.id);
-            cache.gib_seen.truncate(CONFIG.gib.history);
+        if let Some(unseen) = unseen {
+            db::gib_seen(&conn, unseen.id)?;
         }
-        result
+        Ok(unseen)
     })? {
         let url = Url::parse("https://derpibooru.org/")?.join(&result.id.to_string())?;
         let image = Url::parse("https://derpicdn.net/")?.join(

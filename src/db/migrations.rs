@@ -2,8 +2,6 @@ use super::Result;
 use log::info;
 use rusqlite::{Connection, NO_PARAMS};
 
-const MIGRATION_STEPS: u32 = 1;
-
 fn migrate_step(conn: &Connection, step: u32) -> Result<()> {
     info!("Running migration step {}", step);
     match step {
@@ -38,13 +36,41 @@ fn migrate_step(conn: &Connection, step: u32) -> Result<()> {
                 ) WITHOUT ROWID;
 
                 COMMIT;
-            ",
+                ",
+            )?;
+        }
+        1 => {
+            conn.execute_batch(
+                "
+                BEGIN;
+
+                CREATE TABLE reddit_seen (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) WITHOUT ROWID;
+
+                CREATE TABLE gib_seen (
+                    id INTEGER PRIMARY KEY NOT NULL,
+                    time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) WITHOUT ROWID;
+
+                CREATE TABLE sticky_roles (
+                    user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                    role_id TEXT NOT NULL,
+                    time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, role_id)
+                ) WITHOUT ROWID;
+
+                COMMIT;
+                ",
             )?;
         }
         _ => unreachable!(),
     }
     Ok(())
 }
+
+const MIGRATION_STEPS: u32 = 2;
 
 pub fn apply_migrations(conn: &Connection) -> Result<(u32, u32)> {
     let initial: u32 = conn.query_row(

@@ -75,15 +75,15 @@ impl EventHandler for Handler {
                 .get(&member.user.read().id)
                 .map_or(false, |presence| presence.status != OnlineStatus::Offline)
             {
-                db::with_db(&context, |conn| db::member_online(&conn, &member));
+                let _ = db::with_db(&context, |conn| db::member_online(&conn, &member));
             }
         }
     }
 
     fn message(&self, context: Context, message: Message) {
-        db::with_db(&context, |conn| {
+        let _ = db::with_db(&context, |conn| {
             db::user_online(&conn, &message.author)?;
-            db::user_message(&conn, &message.author)
+            db::user_message(&conn, message.author.id)
         });
 
         let uid = context.cache.read().user.id;
@@ -171,7 +171,7 @@ impl EventHandler for Handler {
     }
 
     fn guild_member_addition(&self, context: Context, guild_id: GuildId, mut member: Member) {
-        db::with_db(&context, |conn| db::member_online(&conn, &member));
+        let _ = db::with_db(&context, |conn| db::member_online(&conn, &member));
 
         for log_channel in get_log_channels(&context, guild_id) {
             if let Err(err) = log_channel.send_message(&context, |msg| {
@@ -186,17 +186,14 @@ impl EventHandler for Handler {
             }
         }
 
-        if let Err(err) = crate::CACHE.with(|cache| {
-            let uid = member.user.read().id.to_string();
-            if let Some(roles) = cache.sticky_roles.get(&uid) {
-                for role in roles {
-                    if let Err(err) = member.add_role(&context, role) {
-                        warn!("Unable to restore a sticky role: {:?}", err);
-                    }
+        if let Ok(roles) = db::with_db(&context, |conn| {
+            db::get_sticky_roles(&conn, member.user.read().id)
+        }) {
+            for role in roles {
+                if let Err(err) = member.add_role(&context, role) {
+                    warn!("Unable to restore a sticky role: {:?}", err);
                 }
             }
-        }) {
-            warn!("Unable to restore sticky roles: {:?}", err);
         }
     }
 
@@ -226,7 +223,7 @@ impl EventHandler for Handler {
         old_member: Option<Member>,
         new_member: Member,
     ) {
-        db::with_db(&context, |conn| db::member_online(&conn, &new_member));
+        let _ = db::with_db(&context, |conn| db::member_online(&conn, &new_member));
 
         let new_user = new_member.user.read();
         let new_nick = new_member.nick.unwrap_or_else(|| new_user.name.clone());
@@ -236,16 +233,9 @@ impl EventHandler for Handler {
             .filter(|id| CONFIG.discord.sticky_roles.contains(id))
             .collect();
 
-        if let Err(err) = crate::CACHE.with(|cache| {
-            let uid = new_user.id.to_string();
-            if sticky_roles.is_empty() {
-                cache.sticky_roles.remove(&uid);
-            } else {
-                cache.sticky_roles.insert(uid, sticky_roles);
-            }
-        }) {
-            warn!("Unable to update sticky roles: {:?}", err);
-        }
+        let _ = db::with_db(&context, |conn| {
+            db::set_sticky_roles(&conn, new_user.id, sticky_roles)
+        });
 
         if let Some(old_member) = old_member {
             let old_user = old_member.user.read();
@@ -272,7 +262,7 @@ impl EventHandler for Handler {
 
     fn presence_update(&self, context: Context, update: PresenceUpdateEvent) {
         if let Some(user) = update.presence.user {
-            db::with_db(&context, |conn| db::user_online(&conn, &user.read()));
+            let _ = db::with_db(&context, |conn| db::user_online(&conn, &user.read()));
         }
     }
 }

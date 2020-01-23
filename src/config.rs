@@ -19,7 +19,6 @@ error_chain! {
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub cache_path: SubstitutingString,
     pub db: SubstitutingString,
     pub berrytube: BerrytubeConfig,
     pub discord: DiscordConfig,
@@ -71,8 +70,8 @@ pub struct BulkConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct GibConfig {
-    pub filter: usize,
-    pub history: usize,
+    pub filter: u32,
+    pub history: u32,
     pub not_found: Vec<SubstitutingString>,
     pub aliases: HashMap<String, HashSet<String>>,
 }

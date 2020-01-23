@@ -1,4 +1,4 @@
-use crate::{serialization::string_or_struct, CACHE, CONFIG};
+use crate::{db, serialization::string_or_struct, CONFIG};
 use error_chain::error_chain;
 use log::{debug, error, trace};
 use maplit::hashmap;
@@ -6,6 +6,7 @@ use reqwest::{
     self, header,
     header::{HeaderMap, HeaderName, HeaderValue},
 };
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serenity::{builder::CreateEmbed, http::Http, utils::Colour};
 use std::{
@@ -20,7 +21,7 @@ use void::Void;
 
 error_chain! {
     links {
-        Cache(super::cache::Error, super::cache::ErrorKind);
+        Database(db::Error, db::ErrorKind);
     }
 
     foreign_links {
@@ -85,6 +86,7 @@ impl NotificationClass {
         }
     }
 
+    #[inline]
     fn colour(&self) -> Colour {
         match *self {
             Self::Modqueue => Colour::BLUE,
@@ -93,15 +95,30 @@ impl NotificationClass {
     }
 }
 
+impl<T> RedditListing<T> {
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.children.is_empty()
+    }
+}
+
+impl<T> Default for RedditListing<T> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            after: None,
+            before: None,
+            children: Vec::new(),
+        }
+    }
+}
+
 impl<T> Default for RedditObject<RedditListing<T>> {
+    #[inline]
     fn default() -> Self {
         Self {
             kind: "Listing".to_owned(),
-            data: RedditListing {
-                after: None,
-                before: None,
-                children: Vec::new(),
-            },
+            data: RedditListing::default(),
         }
     }
 }
@@ -109,6 +126,7 @@ impl<T> Default for RedditObject<RedditListing<T>> {
 impl<T> FromStr for RedditObject<RedditListing<T>> {
     type Err = Void;
 
+    #[inline]
     fn from_str(_s: &str) -> ::std::result::Result<Self, Self::Err> {
         Ok(Self::default())
     }
@@ -172,23 +190,25 @@ fn make_user_client() -> Result<reqwest::blocking::Client> {
     )?)
 }
 
-fn contains_unseen(data: &RedditListing<RedditMessageish>) -> Result<bool> {
-    Ok(CACHE.with(|cache| {
-        let has_unseen = data
-            .children
-            .iter()
-            .any(|obj| !cache.reddit_seen.contains(&obj.data.id));
-        cache
-            .reddit_seen
-            .extend(data.children.iter().map(|obj| obj.data.id.clone()));
-        has_unseen
-    })?)
+fn contains_unseen(database: &Connection, data: &RedditListing<RedditMessageish>) -> Result<bool> {
+    let ids: Vec<String> = data
+        .children
+        .iter()
+        .map(|obj| obj.data.id.clone())
+        .collect();
+    let has_unseen = db::reddit_contains_unseen(&database, ids.clone())?;
+    db::reddit_seen(&database, ids)?;
+    Ok(has_unseen)
 }
 
-fn check_sub(client: &reqwest::blocking::Client, sub: &str) -> Result<HashSet<NotificationClass>> {
+fn check_sub(
+    database: &Connection,
+    client: &reqwest::blocking::Client,
+    sub: &str,
+) -> Result<HashSet<NotificationClass>> {
     debug!("Checking /r/{}", sub);
-
     let mut out = HashSet::new();
+
     {
         let data: RedditObject<RedditListing<RedditMessageish>> = client
             .get(&format!(
@@ -198,10 +218,12 @@ fn check_sub(client: &reqwest::blocking::Client, sub: &str) -> Result<HashSet<No
             .send()?
             .error_for_status()?
             .json()?;
-        if contains_unseen(&data.data)? {
+
+        if contains_unseen(&database, &data.data)? {
             out.insert(NotificationClass::Modqueue);
         }
     }
+
     {
         let data: RedditObject<RedditListing<RedditMessageish>> = client
             .get(&format!(
@@ -211,15 +233,20 @@ fn check_sub(client: &reqwest::blocking::Client, sub: &str) -> Result<HashSet<No
             .send()?
             .error_for_status()?
             .json()?;
-        if contains_unseen(&data.data)? {
+
+        if contains_unseen(&database, &data.data)? {
             out.insert(NotificationClass::Modmail);
         }
+
+        let mut replies = RedditListing::<RedditMessageish>::default();
         for msg in data.data.children {
-            if contains_unseen(&msg.data.replies.data)? {
-                out.insert(NotificationClass::ModmailReply);
-            }
+            replies.children.extend(msg.data.replies.data.children.into_iter());
+        }
+        if !replies.is_empty() && contains_unseen(&database, &replies)? {
+            out.insert(NotificationClass::ModmailReply);
         }
     }
+
     Ok(out)
 }
 
@@ -242,10 +269,11 @@ fn apply_embed<'a>(
 }
 
 fn main(http: &Arc<Http>) -> Result<()> {
+    let database = db::connect()?;
     let client = make_user_client()?;
     for (sub, sub_config) in &CONFIG.subreddits {
         let sub = sub.as_ref();
-        let reddit_types = check_sub(&client, sub)?;
+        let reddit_types = check_sub(&database, &client, sub)?;
         for reddit_type in &reddit_types {
             for channel_id in &sub_config.notify_channels {
                 channel_id.send_message(&http, |msg| {
@@ -296,11 +324,11 @@ pub fn spawn(http: Arc<Http>) -> io::Result<thread::JoinHandle<()>> {
         .spawn(move || {
             let mut start = Instant::now();
             loop {
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_secs(1).max(check_interval - start.elapsed()));
                 if start.elapsed() >= check_interval {
                     start = Instant::now();
                     if let Err(err) = main(&http) {
-                        error!("{}", err);
+                        error!("reddit error: {:?}", err);
                     }
                 }
             }

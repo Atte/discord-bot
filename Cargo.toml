@@ -37,7 +37,7 @@ features = ["blocking", "gzip", "json"]
 
 [dependencies.rusqlite]
 version = "0.21"
-features = ["chrono", "serde_json", "url", "bundled"]
+features = ["chrono", "serde_json", "url", "bundled", "array"]
 
 [dependencies.websocket]
 version = "0.24"
