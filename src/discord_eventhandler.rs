@@ -2,7 +2,7 @@ use crate::{berrytube::NowPlayingKey, db, util, CONFIG};
 use log::{info, warn};
 use rand::{self, seq::SliceRandom};
 use serenity::{model::prelude::*, prelude::*, utils::Colour};
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 pub fn get_log_channels(context: &Context, guild_id: GuildId) -> Vec<ChannelId> {
     CONFIG
@@ -52,6 +52,12 @@ impl EventHandler for Handler {
             } else {
                 let _ = db::with_db(&context, |conn| db::member_offline(&conn, &member));
             }
+        }
+    }
+
+    fn guild_members_chunk(&self, context: Context, _guild_id: GuildId, offline_members: HashMap<UserId, Member>) {
+        for member in offline_members.values() {
+            let _= db::with_db(&context, |conn| db::member_offline(&conn, &member));
         }
     }
 

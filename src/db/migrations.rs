@@ -17,13 +17,7 @@ fn migrate_step(conn: &Connection, step: u32) -> Result<()> {
 
 const MIGRATION_STEPS: u32 = 4;
 
-#[inline]
-fn tracer(s: &str) {
-    log::trace!("SQL: {}", s);
-}
-
-pub fn apply_migrations(conn: &mut Connection) -> Result<(u32, u32)> {
-    conn.trace(Some(tracer));
+pub fn apply_migrations(conn: &Connection) -> Result<(u32, u32)> {
     let initial: u32 = conn.query_row(
         "SELECT user_version FROM pragma_user_version",
         NO_PARAMS,
@@ -33,6 +27,5 @@ pub fn apply_migrations(conn: &mut Connection) -> Result<(u32, u32)> {
         migrate_step(&conn, step)?;
         conn.execute_batch(&format!("PRAGMA user_version = {}", step + 1))?;
     }
-    conn.trace(None);
     Ok((initial, MIGRATION_STEPS - 1))
 }

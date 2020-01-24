@@ -1,5 +1,5 @@
 use crate::CONFIG;
-use rusqlite::{Connection, NO_PARAMS};
+use rusqlite::Connection;
 use serenity::prelude::*;
 use std::sync::Arc;
 
@@ -29,10 +29,20 @@ impl TypeMapKey for DatabaseKey {
     type Value = Arc<Mutex<Connection>>;
 }
 
+#[inline]
+fn tracer(s: &str) {
+    let words: Vec<&str> = s.trim().split_ascii_whitespace().collect();
+    log::trace!("SQL({}): {}", thread_id::get(), words.join(" "));
+}
+
 pub fn connect() -> Result<Connection> {
-    let conn = Connection::open(CONFIG.db.to_string())?;
+    let mut conn = Connection::open(CONFIG.db.to_string())?;
     rusqlite::vtab::array::load_module(&conn)?;
-    conn.execute("PRAGMA foreign_keys = ON", NO_PARAMS)?;
+    conn.trace(Some(tracer));
+    conn.execute_batch("
+        PRAGMA journal_mode = WAL;
+        PRAGMA foreign_keys = ON;
+    ")?;
     Ok(conn)
 }
 
