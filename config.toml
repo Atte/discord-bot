@@ -1,4 +1,4 @@
-db = "cache.db"
+db = "bot.db"
 
 [discord]
 command_prefix = "!"
