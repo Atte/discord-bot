@@ -33,8 +33,8 @@ fn main() {
     lazy_static::initialize(&CONFIG);
 
     let database = Arc::new(Mutex::new({
-        let conn = db::connect().expect("Error opening database");
-        db::apply_migrations(&conn).expect("Error migrating database");
+        let mut conn = db::connect().expect("Error opening database");
+        db::apply_migrations(&mut conn).expect("Error migrating database");
         conn
     }));
 

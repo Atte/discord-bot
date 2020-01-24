@@ -49,6 +49,8 @@ impl EventHandler for Handler {
                 .map_or(false, |presence| presence.status != OnlineStatus::Offline)
             {
                 let _ = db::with_db(&context, |conn| db::member_online(&conn, &member));
+            } else {
+                let _ = db::with_db(&context, |conn| db::member_offline(&conn, &member));
             }
         }
     }
