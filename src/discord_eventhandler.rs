@@ -2,7 +2,10 @@ use crate::{berrytube::NowPlayingKey, db, util, CONFIG};
 use log::{info, warn};
 use rand::{self, seq::SliceRandom};
 use serenity::{model::prelude::*, prelude::*, utils::Colour};
-use std::collections::{HashSet, HashMap};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 pub fn get_log_channels(context: &Context, guild_id: GuildId) -> Vec<ChannelId> {
     CONFIG
@@ -42,6 +45,10 @@ impl EventHandler for Handler {
     }
 
     fn guild_create(&self, context: Context, guild: Guild, _is_new: bool) {
+        for channel in guild.channels.values() {
+            let _ = db::with_db(&context, |conn| db::channel_exists(&conn, &*channel.read()));
+        }
+
         for member in guild.members.values() {
             if guild
                 .presences
@@ -55,9 +62,18 @@ impl EventHandler for Handler {
         }
     }
 
-    fn guild_members_chunk(&self, context: Context, _guild_id: GuildId, offline_members: HashMap<UserId, Member>) {
+    fn channel_create(&self, context: Context, channel: Arc<RwLock<GuildChannel>>) {
+        let _ = db::with_db(&context, |conn| db::channel_exists(&conn, &*channel.read()));
+    }
+
+    fn guild_members_chunk(
+        &self,
+        context: Context,
+        _guild_id: GuildId,
+        offline_members: HashMap<UserId, Member>,
+    ) {
         for member in offline_members.values() {
-            let _= db::with_db(&context, |conn| db::member_offline(&conn, &member));
+            let _ = db::with_db(&context, |conn| db::member_offline(&conn, &member));
         }
     }
 

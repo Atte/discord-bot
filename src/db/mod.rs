@@ -39,10 +39,12 @@ pub fn connect() -> Result<Connection> {
     let mut conn = Connection::open(CONFIG.db.to_string())?;
     rusqlite::vtab::array::load_module(&conn)?;
     conn.trace(Some(tracer));
-    conn.execute_batch("
+    conn.execute_batch(
+        "
         PRAGMA journal_mode = WAL;
         PRAGMA foreign_keys = ON;
-    ")?;
+    ",
+    )?;
     Ok(conn)
 }
 
