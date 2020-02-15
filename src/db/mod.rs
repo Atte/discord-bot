@@ -1,7 +1,6 @@
 use crate::CONFIG;
 use rusqlite::Connection;
-use serenity::prelude::*;
-use std::sync::Arc;
+use std::cell::RefCell;
 
 mod migrations;
 mod operations;
@@ -23,12 +22,6 @@ error_chain::error_chain! {
     }
 }
 
-pub struct DatabaseKey;
-
-impl TypeMapKey for DatabaseKey {
-    type Value = Arc<Mutex<Connection>>;
-}
-
 #[inline]
 fn tracer(s: &str) {
     let words: Vec<&str> = s.trim().split_ascii_whitespace().collect();
@@ -48,20 +41,19 @@ pub fn connect() -> Result<Connection> {
     Ok(conn)
 }
 
-pub fn with_db<F, T>(context: &Context, f: F) -> Result<T>
+thread_local!(static THREAD_CONNECTION: RefCell<Connection> = RefCell::new(connect().expect("db connection error")));
+
+pub fn with_db<F, T>(f: F) -> Result<T>
 where
     F: FnOnce(&Connection) -> Result<T>,
 {
-    let mut data = context.data.write();
-    match data.get_mut::<DatabaseKey>().map(|lock| f(&lock.lock())) {
-        None => {
-            log::error!("lost db handle!");
-            Err(ErrorKind::NoDatabaseHandle.into())
+    THREAD_CONNECTION.with(|conn| {
+        match f(&conn.borrow()) {
+            Err(err) => {
+                log::error!("db error: {:?}", err);
+                Err(err)
+            }
+            result @ Ok(_) => result,
         }
-        Some(Err(err)) => {
-            log::error!("db error: {:?}", err);
-            Err(err)
-        }
-        Some(result @ Ok(_)) => result,
-    }
+    })
 }

@@ -3,8 +3,6 @@
 
 use lazy_static::lazy_static;
 use log::error;
-use serenity::prelude::Mutex;
-use std::sync::Arc;
 
 mod config;
 mod substituting_string;
@@ -32,14 +30,13 @@ fn main() {
 
     lazy_static::initialize(&CONFIG);
 
-    let database = Arc::new(Mutex::new({
-        let conn = db::connect().expect("Error opening database");
+    {
+        let conn = db::connect().expect("Error opening database for migration");
         db::apply_migrations(&conn).expect("Error migrating database");
-        conn
-    }));
+        conn.close().expect("Error closing database after migration");
+    }
 
     let mut client = discord::create_client();
-    client.data.write().insert::<db::DatabaseKey>(database);
 
     let berrytube_thread = berrytube::spawn(client.data.clone(), client.shard_manager.clone());
     if let Err(ref err) = berrytube_thread {

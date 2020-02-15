@@ -128,7 +128,7 @@ pub fn channel_exists(conn: &Connection, channel: &GuildChannel) -> Result<()> {
         INSERT INTO channels (id, guild_id, name, nsfw)
         VALUES (:id, :guild_id, :name, :nsfw)
         ON CONFLICT (id)
-        DO UPDATE SET last_online = datetime('now')
+        DO UPDATE SET last_exists = datetime('now')
         ",
     )?
     .execute_named(named_params! {

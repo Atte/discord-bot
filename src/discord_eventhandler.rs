@@ -44,9 +44,9 @@ impl EventHandler for Handler {
         }
     }
 
-    fn guild_create(&self, context: Context, guild: Guild, _is_new: bool) {
+    fn guild_create(&self, _context: Context, guild: Guild, _is_new: bool) {
         for channel in guild.channels.values() {
-            let _ = db::with_db(&context, |conn| db::channel_exists(&conn, &*channel.read()));
+            let _ = db::with_db(|conn| db::channel_exists(&conn, &*channel.read()));
         }
 
         for member in guild.members.values() {
@@ -55,30 +55,30 @@ impl EventHandler for Handler {
                 .get(&member.user.read().id)
                 .map_or(false, |presence| presence.status != OnlineStatus::Offline)
             {
-                let _ = db::with_db(&context, |conn| db::member_online(&conn, &member));
+                let _ = db::with_db(|conn| db::member_online(&conn, &member));
             } else {
-                let _ = db::with_db(&context, |conn| db::member_offline(&conn, &member));
+                let _ = db::with_db(|conn| db::member_offline(&conn, &member));
             }
         }
     }
 
-    fn channel_create(&self, context: Context, channel: Arc<RwLock<GuildChannel>>) {
-        let _ = db::with_db(&context, |conn| db::channel_exists(&conn, &*channel.read()));
+    fn channel_create(&self, _context: Context, channel: Arc<RwLock<GuildChannel>>) {
+        let _ = db::with_db(|conn| db::channel_exists(&conn, &*channel.read()));
     }
 
     fn guild_members_chunk(
         &self,
-        context: Context,
+        _context: Context,
         _guild_id: GuildId,
         offline_members: HashMap<UserId, Member>,
     ) {
         for member in offline_members.values() {
-            let _ = db::with_db(&context, |conn| db::member_offline(&conn, &member));
+            let _ = db::with_db(|conn| db::member_offline(&conn, &member));
         }
     }
 
     fn message(&self, context: Context, message: Message) {
-        let _ = db::with_db(&context, |conn| {
+        let _ = db::with_db(|conn| {
             db::user_online(&conn, &message.author)?;
             db::user_message(&conn, message.author.id)?;
             db::cache_message(&conn, &message)
@@ -94,13 +94,13 @@ impl EventHandler for Handler {
 
     fn message_update(
         &self,
-        context: Context,
+        _context: Context,
         _old: Option<Message>,
         new: Option<Message>,
         _update: MessageUpdateEvent,
     ) {
         if let Some(msg) = new {
-            let _ = db::with_db(&context, |conn| db::cache_message(&conn, &msg));
+            let _ = db::with_db(|conn| db::cache_message(&conn, &msg));
         }
     }
 
@@ -112,7 +112,7 @@ impl EventHandler for Handler {
         if let Ok(Channel::Guild(channel)) = channel_id.to_channel(&context) {
             let channel = channel.read();
             if let Ok(Some(message)) =
-                db::with_db(&context, |conn| db::get_message(&conn, message_id))
+                db::with_db(|conn| db::get_message(&conn, message_id))
             {
                 for log_channel in get_log_channels(&context, channel.guild_id) {
                     if let Err(err) = log_channel.send_message(&context, |msg| {
@@ -153,7 +153,7 @@ impl EventHandler for Handler {
     }
 
     fn guild_member_addition(&self, context: Context, guild_id: GuildId, mut member: Member) {
-        let _ = db::with_db(&context, |conn| db::member_online(&conn, &member));
+        let _ = db::with_db(|conn| db::member_online(&conn, &member));
 
         for log_channel in get_log_channels(&context, guild_id) {
             if let Err(err) = log_channel.send_message(&context, |msg| {
@@ -168,7 +168,7 @@ impl EventHandler for Handler {
             }
         }
 
-        if let Ok(roles) = db::with_db(&context, |conn| {
+        if let Ok(roles) = db::with_db(|conn| {
             db::get_sticky_roles(&conn, member.user.read().id)
         }) {
             for role in roles {
@@ -205,7 +205,7 @@ impl EventHandler for Handler {
         old_member: Option<Member>,
         new_member: Member,
     ) {
-        let _ = db::with_db(&context, |conn| db::member_online(&conn, &new_member));
+        let _ = db::with_db(|conn| db::member_online(&conn, &new_member));
 
         let new_user = new_member.user.read();
         let new_nick = new_member.nick.unwrap_or_else(|| new_user.name.clone());
@@ -215,7 +215,7 @@ impl EventHandler for Handler {
             .filter(|id| CONFIG.discord.sticky_roles.contains(id))
             .collect();
 
-        let _ = db::with_db(&context, |conn| {
+        let _ = db::with_db(|conn| {
             db::set_sticky_roles(&conn, new_user.id, sticky_roles)
         });
 
@@ -242,9 +242,9 @@ impl EventHandler for Handler {
         }
     }
 
-    fn presence_update(&self, context: Context, update: PresenceUpdateEvent) {
+    fn presence_update(&self, _context: Context, update: PresenceUpdateEvent) {
         if let Some(user) = update.presence.user {
-            let _ = db::with_db(&context, |conn| db::user_online(&conn, &user.read()));
+            let _ = db::with_db(|conn| db::user_online(&conn, &user.read()));
         }
     }
 }

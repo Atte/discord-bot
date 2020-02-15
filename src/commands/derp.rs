@@ -135,7 +135,7 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
                 .choose(&mut rand::thread_rng())
                 .map_or("", |reply| reply.as_ref()),
         )?;
-    } else if let Some(result) = db::with_db(&context, |conn| {
+    } else if let Some(result) = db::with_db(|conn| {
         let unseen = response
             .search
             .iter()

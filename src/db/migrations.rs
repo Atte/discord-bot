@@ -9,13 +9,14 @@ fn migrate_step(conn: &Connection, step: u32) -> Result<()> {
         1 => conn.execute_batch(include_str!("migrations/1.sql"))?,
         2 => conn.execute_batch(include_str!("migrations/2.sql"))?,
         3 => conn.execute_batch(include_str!("migrations/3.sql"))?,
+        4 => conn.execute_batch(include_str!("migrations/4.sql"))?,
         MIGRATION_STEPS => unreachable!(),
         _ => unreachable!(),
     }
     Ok(())
 }
 
-const MIGRATION_STEPS: u32 = 4;
+const MIGRATION_STEPS: u32 = 5;
 
 pub fn apply_migrations(conn: &Connection) -> Result<(u32, u32)> {
     let initial: u32 = conn.query_row(
