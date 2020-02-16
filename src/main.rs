@@ -3,6 +3,7 @@
 
 use lazy_static::lazy_static;
 use log::error;
+use std::time::Duration;
 
 mod config;
 mod substituting_string;
@@ -33,7 +34,8 @@ fn main() {
     {
         let conn = db::connect().expect("Error opening database for migration");
         db::apply_migrations(&conn).expect("Error migrating database");
-        conn.close().expect("Error closing database after migration");
+        conn.close()
+            .expect("Error closing database after migration");
     }
 
     let mut client = discord::create_client();
@@ -41,6 +43,9 @@ fn main() {
     let berrytube_thread = berrytube::spawn(client.data.clone(), client.shard_manager.clone());
     if let Err(ref err) = berrytube_thread {
         error!("Error spawning Berrytube thread: {}", err);
+    } else {
+        // wait a bit to reduce chance of starting without a video title
+        std::thread::sleep(Duration::from_secs(1));
     }
 
     let reddit_thread = reddit::spawn(client.cache_and_http.http.clone());

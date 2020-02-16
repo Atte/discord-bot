@@ -1,3 +1,4 @@
+use super::READ_TIMEOUT;
 use log::trace;
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
@@ -10,11 +11,21 @@ fn get_ranks<'a>(
     context: &Context,
     guild: &'a Guild,
 ) -> Result<Vec<(&'a Role, Vec<&'a Member>)>, SerenityError> {
-    let uid = context.cache.read().user.id;
+    let uid = context
+        .cache
+        .try_read_for(READ_TIMEOUT)
+        .map(|cache| cache.user.id)
+        .ok_or(SerenityError::Other("Can't lock cache"))?;
+
     let bot = guild
         .members
         .values()
-        .find(|member| member.user.read().id == uid)
+        .find(|member| {
+            member
+                .user
+                .try_read_for(READ_TIMEOUT)
+                .map_or(false, |user| user.id == uid)
+        })
         .ok_or_else(|| SerenityError::Other("Can't find bot as a guild member"))?;
     trace!(
         "Found bot as a guild member (bot has {} roles)",
@@ -68,7 +79,9 @@ fn get_ranks<'a>(
 #[only_in("guilds")]
 pub fn ranks(context: &mut Context, message: &Message, _: Args) -> CommandResult {
     let (reply, rank_text) = if let Some(guild) = message.guild(&context) {
-        let guild = guild.read();
+        let guild = guild
+            .try_read_for(READ_TIMEOUT)
+            .ok_or(SerenityError::Other("Unable to lock guild"))?;
         let ranks = get_ranks(&context, &guild)?;
         if ranks.is_empty() {
             (Some("There are no ranks on the server!".to_owned()), None)

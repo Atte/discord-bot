@@ -36,8 +36,7 @@ pub fn user_online(conn: &Connection, user: &User) -> Result<()> {
     Ok(())
 }
 
-pub fn member_online(conn: &Connection, member: &Member) -> Result<()> {
-    let user = member.user.read();
+pub fn member_online(conn: &Connection, user: &User, member: &Member) -> Result<()> {
     user_online(conn, &user)?;
 
     if let Some(ref nick) = member.nick {
@@ -86,8 +85,7 @@ pub fn user_offline(conn: &Connection, user: &User) -> Result<()> {
     Ok(())
 }
 
-pub fn member_offline(conn: &Connection, member: &Member) -> Result<()> {
-    let user = member.user.read();
+pub fn member_offline(conn: &Connection, user: &User, member: &Member) -> Result<()> {
     user_offline(conn, &user)?;
 
     if let Some(ref nick) = member.nick {

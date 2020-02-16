@@ -8,7 +8,7 @@ use serenity::{
     prelude::*,
 };
 use sse_client::EventSource;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 error_chain! {
     foreign_links {
@@ -27,6 +27,9 @@ error_chain! {
         }
     }
 }
+
+const READ_TIMEOUT: Duration = Duration::from_secs(5);
+const WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct NowPlayingKey;
 
@@ -58,15 +61,20 @@ pub fn spawn(
 
     source.add_event_listener("videoChange", move |event| {
         if let Ok(video) = serde_json::from_str::<Video>(&event.data) {
-            let previous_title = client_data.read().get::<NowPlayingKey>().cloned();
+            if let Some(previous_title) = client_data
+                .try_read_for(READ_TIMEOUT)
+                .map(|data| data.get::<NowPlayingKey>().cloned())
+            {
+                if previous_title.map_or(true, |prev| video.title != prev) {
+                    for runner in shard_manager.lock().runners.lock().values() {
+                        let messenger = ShardMessenger::new(runner.runner_tx.clone());
+                        messenger.set_activity(Some(Activity::playing(&video.title)));
+                    }
 
-            if previous_title.map_or(true, |prev| video.title != prev) {
-                for runner in shard_manager.lock().runners.lock().values() {
-                    let messenger = ShardMessenger::new(runner.runner_tx.clone());
-                    messenger.set_activity(Some(Activity::playing(&video.title)));
+                    if let Some(mut data) = client_data.try_write_for(WRITE_TIMEOUT) {
+                        data.insert::<NowPlayingKey>(video.title);
+                    }
                 }
-
-                client_data.write().insert::<NowPlayingKey>(video.title);
             }
         }
     });

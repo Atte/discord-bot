@@ -5,7 +5,10 @@ use serenity::{model::prelude::*, prelude::*, utils::Colour};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
+    time::Duration,
 };
+
+const READ_TIMEOUT: Duration = Duration::from_secs(3);
 
 pub fn get_log_channels(context: &Context, guild_id: GuildId) -> Vec<ChannelId> {
     CONFIG
@@ -31,39 +34,48 @@ pub struct Handler;
 
 impl EventHandler for Handler {
     fn ready(&self, context: Context, _: Ready) {
-        if let Some(nowplaying) = context.data.read().get::<NowPlayingKey>() {
-            context.set_presence(Some(Activity::playing(nowplaying)), OnlineStatus::Online);
-        } else {
-            context.set_presence(
-                Some(Activity::listening(&format!(
-                    "{}help",
-                    CONFIG.discord.command_prefix.as_ref() as &str
-                ))),
-                OnlineStatus::Online,
-            );
+        context.set_presence(
+            Some(Activity::listening(&format!(
+                "{}help",
+                CONFIG.discord.command_prefix.as_ref() as &str
+            ))),
+            OnlineStatus::Online,
+        );
+
+        if let Some(data) = context.data.try_read_for(READ_TIMEOUT) {
+            if let Some(nowplaying) = data.get::<NowPlayingKey>() {
+                context.set_presence(Some(Activity::playing(nowplaying)), OnlineStatus::Online);
+                return;
+            }
         }
     }
 
     fn guild_create(&self, _context: Context, guild: Guild, _is_new: bool) {
         for channel in guild.channels.values() {
-            let _ = db::with_db(|conn| db::channel_exists(&conn, &*channel.read()));
+            if let Some(channel) = channel.try_read_for(READ_TIMEOUT) {
+                let _ = db::with_db(|conn| db::channel_exists(&conn, &channel));
+            }
         }
 
         for member in guild.members.values() {
-            if guild
-                .presences
-                .get(&member.user.read().id)
-                .map_or(false, |presence| presence.status != OnlineStatus::Offline)
-            {
-                let _ = db::with_db(|conn| db::member_online(&conn, &member));
-            } else {
-                let _ = db::with_db(|conn| db::member_offline(&conn, &member));
+            if let Some(user) = member.user.try_read_for(READ_TIMEOUT) {
+                if guild
+                    .presences
+                    .get(&user.id)
+                    .map_or(false, |presence| presence.status != OnlineStatus::Offline)
+                {
+                    let _ = db::with_db(|conn| db::member_online(&conn, &user, &member));
+                } else {
+                    let _ = db::with_db(|conn| db::member_offline(&conn, &user, &member));
+                }
             }
         }
     }
 
     fn channel_create(&self, _context: Context, channel: Arc<RwLock<GuildChannel>>) {
-        let _ = db::with_db(|conn| db::channel_exists(&conn, &*channel.read()));
+        if let Some(channel) = channel.try_read_for(READ_TIMEOUT) {
+            let _ = db::with_db(|conn| db::channel_exists(&conn, &channel));
+        }
     }
 
     fn guild_members_chunk(
@@ -73,7 +85,9 @@ impl EventHandler for Handler {
         offline_members: HashMap<UserId, Member>,
     ) {
         for member in offline_members.values() {
-            let _ = db::with_db(|conn| db::member_offline(&conn, &member));
+            if let Some(user) = member.user.try_read_for(READ_TIMEOUT) {
+                let _ = db::with_db(|conn| db::member_offline(&conn, &user, &member));
+            }
         }
     }
 
@@ -84,10 +98,16 @@ impl EventHandler for Handler {
             db::cache_message(&conn, &message)
         });
 
-        let uid = context.cache.read().user.id;
-        if util::can_respond_to(&message) && message.mentions.iter().any(|user| user.id == uid) {
-            if let Some(insult) = CONFIG.bulk.insults.choose(&mut rand::thread_rng()) {
-                message.reply(&context, insult).ok();
+        if let Some(uid) = context
+            .cache
+            .try_read_for(READ_TIMEOUT)
+            .map(|cache| cache.user.id)
+        {
+            if util::can_respond_to(&message) && message.mentions.iter().any(|user| user.id == uid)
+            {
+                if let Some(insult) = CONFIG.bulk.insults.choose(&mut rand::thread_rng()) {
+                    message.reply(&context, insult).ok();
+                }
             }
         }
     }
@@ -110,11 +130,8 @@ impl EventHandler for Handler {
         }
 
         if let Ok(Channel::Guild(channel)) = channel_id.to_channel(&context) {
-            let channel = channel.read();
-            if let Ok(Some(message)) =
-                db::with_db(|conn| db::get_message(&conn, message_id))
-            {
-                for log_channel in get_log_channels(&context, channel.guild_id) {
+            if let Ok(Some(message)) = db::with_db(|conn| db::get_message(&conn, message_id)) {
+                for log_channel in get_log_channels(&context, channel.read().guild_id) {
                     if let Err(err) = log_channel.send_message(&context, |msg| {
                         msg.embed(|mut e| {
                             if let Some(embed) = message.embeds.iter().next() {
@@ -153,22 +170,26 @@ impl EventHandler for Handler {
     }
 
     fn guild_member_addition(&self, context: Context, guild_id: GuildId, mut member: Member) {
-        let _ = db::with_db(|conn| db::member_online(&conn, &member));
+        if let Some(user) = member.user.try_read_for(READ_TIMEOUT) {
+            let _ = db::with_db(|conn| db::member_online(&conn, &user, &member));
+        }
 
         for log_channel in get_log_channels(&context, guild_id) {
-            if let Err(err) = log_channel.send_message(&context, |msg| {
-                let user = member.user.read();
-                msg.embed(|e| {
-                    e.colour(Colour::FOOYOO)
-                        .description(format!("**<@{}> joined**", user.id))
-                        .author(|a| a.name(&user.tag()).icon_url(&user.face()))
-                })
-            }) {
-                warn!("Unable to add member join to log channel: {:?}", err);
+            if let Some(user) = member.user.try_read_for(READ_TIMEOUT) {
+                if let Err(err) = log_channel.send_message(&context, |msg| {
+                    msg.embed(|e| {
+                        e.colour(Colour::FOOYOO)
+                            .description(format!("**<@{}> joined**", user.id))
+                            .author(|a| a.name(&user.tag()).icon_url(&user.face()))
+                    })
+                }) {
+                    warn!("Unable to add member join to log channel: {:?}", err);
+                }
             }
         }
 
         if let Ok(roles) = db::with_db(|conn| {
+            // mandatory lock for sticky role restoration
             db::get_sticky_roles(&conn, member.user.read().id)
         }) {
             for role in roles {
@@ -205,9 +226,10 @@ impl EventHandler for Handler {
         old_member: Option<Member>,
         new_member: Member,
     ) {
-        let _ = db::with_db(|conn| db::member_online(&conn, &new_member));
-
+        // mandatory lock for sticky role updates
         let new_user = new_member.user.read();
+        let _ = db::with_db(|conn| db::member_online(&conn, &new_user, &new_member));
+
         let new_nick = new_member.nick.unwrap_or_else(|| new_user.name.clone());
         let sticky_roles: HashSet<RoleId> = new_member
             .roles
@@ -215,27 +237,26 @@ impl EventHandler for Handler {
             .filter(|id| CONFIG.discord.sticky_roles.contains(id))
             .collect();
 
-        let _ = db::with_db(|conn| {
-            db::set_sticky_roles(&conn, new_user.id, sticky_roles)
-        });
+        let _ = db::with_db(|conn| db::set_sticky_roles(&conn, new_user.id, sticky_roles));
 
         if let Some(old_member) = old_member {
-            let old_user = old_member.user.read();
-            let old_nick = old_member.nick.unwrap_or_else(|| old_user.name.clone());
+            if let Some(old_user) = old_member.user.try_read_for(READ_TIMEOUT) {
+                let old_nick = old_member.nick.unwrap_or_else(|| old_user.name.clone());
 
-            if new_nick != old_nick {
-                for log_channel in get_log_channels(&context, old_member.guild_id) {
-                    if let Err(err) = log_channel.send_message(&context, |msg| {
-                        msg.embed(|e| {
-                            e.colour(Colour::RED)
-                                .description(format!(
-                                    "**<@{}> changed their nick**\n{} \u{2192} {}",
-                                    new_user.id, old_nick, new_nick
-                                ))
-                                .author(|a| a.name(&new_user.tag()).icon_url(&new_user.face()))
-                        })
-                    }) {
-                        warn!("Unable to add nick change to log channel: {:?}", err);
+                if new_nick != old_nick {
+                    for log_channel in get_log_channels(&context, old_member.guild_id) {
+                        if let Err(err) = log_channel.send_message(&context, |msg| {
+                            msg.embed(|e| {
+                                e.colour(Colour::RED)
+                                    .description(format!(
+                                        "**<@{}> changed their nick**\n{} \u{2192} {}",
+                                        new_user.id, old_nick, new_nick
+                                    ))
+                                    .author(|a| a.name(&new_user.tag()).icon_url(&new_user.face()))
+                            })
+                        }) {
+                            warn!("Unable to add nick change to log channel: {:?}", err);
+                        }
                     }
                 }
             }
@@ -244,7 +265,9 @@ impl EventHandler for Handler {
 
     fn presence_update(&self, _context: Context, update: PresenceUpdateEvent) {
         if let Some(user) = update.presence.user {
-            let _ = db::with_db(|conn| db::user_online(&conn, &user.read()));
+            if let Some(user) = user.try_read_for(READ_TIMEOUT) {
+                let _ = db::with_db(|conn| db::user_online(&conn, &user));
+            }
         }
     }
 }

@@ -1,4 +1,6 @@
-db = "bot.db"
+[database]
+filename = "bot.db"
+log_queries = false
 
 [discord]
 command_prefix = "!"

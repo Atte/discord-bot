@@ -8,7 +8,9 @@ use serenity::{
     model::prelude::*,
     prelude::*,
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
+
+const READ_TIMEOUT: Duration = Duration::from_secs(2);
 
 mod derp;
 mod misc;

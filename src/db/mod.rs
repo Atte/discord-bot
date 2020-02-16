@@ -29,9 +29,13 @@ fn tracer(s: &str) {
 }
 
 pub fn connect() -> Result<Connection> {
-    let mut conn = Connection::open(CONFIG.db.to_string())?;
+    let mut conn = Connection::open(CONFIG.database.filename.to_string())?;
     rusqlite::vtab::array::load_module(&conn)?;
-    conn.trace(Some(tracer));
+
+    if CONFIG.database.log_queries {
+        conn.trace(Some(tracer));
+    }
+
     conn.execute_batch(
         "
         PRAGMA journal_mode = WAL;
@@ -47,13 +51,11 @@ pub fn with_db<F, T>(f: F) -> Result<T>
 where
     F: FnOnce(&Connection) -> Result<T>,
 {
-    THREAD_CONNECTION.with(|conn| {
-        match f(&conn.borrow()) {
-            Err(err) => {
-                log::error!("db error: {:?}", err);
-                Err(err)
-            }
-            result @ Ok(_) => result,
+    THREAD_CONNECTION.with(|conn| match f(&conn.borrow()) {
+        Err(err) => {
+            log::error!("db error: {:?}", err);
+            Err(err)
         }
+        result @ Ok(_) => result,
     })
 }

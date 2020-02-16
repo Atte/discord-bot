@@ -19,13 +19,19 @@ error_chain! {
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub db: SubstitutingString,
+    pub database: DatabaseConfig,
     pub berrytube: BerrytubeConfig,
     pub discord: DiscordConfig,
     pub reddit: RedditConfig,
     pub subreddits: HashMap<SubstitutingString, SubredditConfig>,
     pub bulk: BulkConfig,
     pub gib: GibConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DatabaseConfig {
+    pub filename: SubstitutingString,
+    pub log_queries: bool,
 }
 
 #[derive(Debug, Deserialize)]

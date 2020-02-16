@@ -1,3 +1,4 @@
+use super::READ_TIMEOUT;
 use crate::CONFIG;
 use lazy_static::lazy_static;
 use meval;
@@ -67,7 +68,10 @@ pub fn roll(context: &mut Context, message: &Message, args: Args) -> CommandResu
 #[description("Shows information about the bot.")]
 #[num_args(0)]
 pub fn info(context: &mut Context, message: &Message, _: Args) -> CommandResult {
-    let avatar = context.cache.read().user.avatar_url();
+    let avatar = context
+        .cache
+        .try_read_for(READ_TIMEOUT)
+        .and_then(|cache| cache.user.avatar_url());
     message.channel_id.send_message(&context, |msg| {
         msg.embed(|mut e| {
             if let Some(avatar) = avatar {
