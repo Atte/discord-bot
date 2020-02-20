@@ -11,7 +11,6 @@ repository = "https://github.com/Atte/discord-bot"
 
 [dependencies]
 base64 = "0.11"
-chrono = "0.4"
 digit_group = "0.1"
 env_logger = "0.7"
 error-chain = "0.12"
@@ -38,7 +37,7 @@ features = ["blocking", "gzip", "json"]
 
 [dependencies.rusqlite]
 version = "0.21"
-features = ["chrono", "serde_json", "url", "bundled", "array", "trace"]
+features = ["serde_json", "url", "bundled", "array", "trace"]
 
 [dependencies.websocket]
 version = "0.24"

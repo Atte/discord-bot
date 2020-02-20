@@ -1,5 +1,4 @@
 use crate::{db, CONFIG};
-use chrono::{DateTime, Utc};
 use digit_group::FormatGroup;
 use lazy_static::lazy_static;
 use log::trace;
@@ -19,28 +18,27 @@ use url::Url;
 const MAX_ARTISTS: usize = 4;
 
 #[derive(Debug, Deserialize)]
-pub struct Response {
-    search: Vec<SearchResponse>,
+pub struct ImageResponse {
+    images: Vec<Image>,
     total: usize,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SearchResponse {
+pub struct Image {
     id: u32,
-    image: String,
     #[serde(deserialize_with = "deserialize_default_from_null")]
-    tags: String,
+    tags: Vec<String>,
     #[serde(deserialize_with = "deserialize_default_from_null")]
     description: String,
     #[serde(deserialize_with = "deserialize_default_from_null")]
-    file_name: String,
-    first_seen_at: Option<DateTime<Utc>>,
-    representations: Option<RepresentationList>,
+    name: String,
+    first_seen_at: Option<String>,
+    representations: RepresentationList,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct RepresentationList {
-    tall: Option<String>,
+    tall: String,
 }
 
 #[command]
@@ -107,10 +105,10 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
         .join(",");
 
     let url = Url::parse_with_params(
-        "https://derpibooru.org/search.json",
+        "https://derpibooru.org/api/v1/json/search/images",
         &[
             ("sf", "random".to_owned()),
-            ("perpage", "50".to_owned()),
+            ("per_page", "50".to_owned()),
             ("filter_id", CONFIG.gib.filter.to_string()),
             (
                 "q",
@@ -124,9 +122,9 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
     )?;
     trace!("Search URL: {}", url);
 
-    let response: Response = reqwest::blocking::get(&url.as_ref().replace("%2B", "+"))?.json()?;
+    let response: ImageResponse = reqwest::blocking::get(url)?.json()?;
 
-    if response.search.is_empty() {
+    if response.images.is_empty() {
         message.reply(
             &context,
             CONFIG
@@ -137,26 +135,19 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
         )?;
     } else if let Some(result) = db::with_db(|conn| {
         let unseen = response
-            .search
+            .images
             .iter()
             .find(|result| !db::gib_is_seen(&conn, result.id).unwrap_or(false))
-            .or_else(|| response.search.first());
+            .or_else(|| response.images.first());
         if let Some(unseen) = unseen {
             db::gib_seen(&conn, unseen.id)?;
         }
         Ok(unseen)
     })? {
         let url = Url::parse("https://derpibooru.org/")?.join(&result.id.to_string())?;
-        let image = Url::parse("https://derpicdn.net/")?.join(
-            result
-                .representations
-                .as_ref()
-                .and_then(|reprs| reprs.tall.as_ref())
-                .unwrap_or(&result.image),
-        )?;
         let artists: Vec<_> = result
             .tags
-            .split(", ")
+            .iter()
             .filter_map(|tag| {
                 if tag.starts_with("artist:") {
                     Some(&tag[7..])
@@ -182,7 +173,7 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
         message.channel_id.send_message(&context, |msg| {
             msg.embed(|mut e| {
                 if let Some(ref timestamp) = result.first_seen_at {
-                    e = e.timestamp(timestamp);
+                    e = e.timestamp(timestamp.to_owned());
                 }
                 if !artists.is_empty() {
                     if artists.len() > MAX_ARTISTS {
@@ -201,13 +192,13 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
                     e = e.description(description);
                 }
                 e.colour(Colour::GOLD)
-                    .title(if result.file_name.is_empty() {
+                    .title(if result.name.is_empty() {
                         "<no filename>".to_owned()
                     } else {
-                        MessageBuilder::new().push_safe(&result.file_name).build()
+                        MessageBuilder::new().push_safe(&result.name).build()
                     })
                     .url(url)
-                    .image(image)
+                    .image(&result.representations.tall)
                     .footer(|f| {
                         f.text(&format!("Out of {} results", response.total.format_si('.')))
                     })

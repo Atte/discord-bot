@@ -340,7 +340,6 @@ name = "flutterbitch"
 version = "0.3.0"
 dependencies = [
  "base64 0.11.0",
- "chrono",
  "digit_group",
  "env_logger",
  "error-chain",
@@ -1390,7 +1389,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64a656821bb6317a84b257737b7934f79c0dbb7eb694710475908280ebad3e64"
 dependencies = [
  "bitflags",
- "chrono",
  "fallible-iterator",
  "fallible-streaming-iterator",
  "lazy_static",
