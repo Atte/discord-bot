@@ -45,7 +45,7 @@ fn main() {
         error!("Error spawning Berrytube thread: {}", err);
     } else {
         // wait a bit to reduce chance of starting without a video title
-        std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(Duration::from_secs(3));
     }
 
     let reddit_thread = reddit::spawn(client.cache_and_http.http.clone());

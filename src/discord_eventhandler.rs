@@ -34,6 +34,13 @@ pub struct Handler;
 
 impl EventHandler for Handler {
     fn ready(&self, context: Context, _: Ready) {
+        if let Some(data) = context.data.try_read_for(READ_TIMEOUT) {
+            if let Some(nowplaying) = data.get::<NowPlayingKey>() {
+                context.set_presence(Some(Activity::playing(nowplaying)), OnlineStatus::Online);
+                return;
+            }
+        }
+
         context.set_presence(
             Some(Activity::listening(&format!(
                 "{}help",
@@ -41,13 +48,6 @@ impl EventHandler for Handler {
             ))),
             OnlineStatus::Online,
         );
-
-        if let Some(data) = context.data.try_read_for(READ_TIMEOUT) {
-            if let Some(nowplaying) = data.get::<NowPlayingKey>() {
-                context.set_presence(Some(Activity::playing(nowplaying)), OnlineStatus::Online);
-                return;
-            }
-        }
     }
 
     fn guild_create(&self, _context: Context, guild: Guild, _is_new: bool) {
