@@ -122,7 +122,8 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
     )?;
     trace!("Search URL: {}", url);
 
-    let response: ImageResponse = reqwest::blocking::get(url)?.json()?;
+    let response: ImageResponse =
+        reqwest::blocking::get(&url.as_ref().replace("%2B", "+"))?.json()?;
 
     if response.images.is_empty() {
         message.reply(
