@@ -42,7 +42,7 @@ pub struct RepresentationList {
 }
 
 #[command]
-#[description("Gibs pics from derpibooru.")]
+#[description("Gib pics from Derpibooru")]
 #[usage("[tags\u{2026}]")]
 #[bucket("derp")]
 pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResult {

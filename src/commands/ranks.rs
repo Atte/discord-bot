@@ -1,4 +1,5 @@
 use super::READ_TIMEOUT;
+use crate::CONFIG;
 use log::trace;
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
@@ -74,7 +75,7 @@ fn get_ranks<'a>(
 }
 
 #[command]
-#[description("Lists all available ranks, as well as the current user's active ones.")]
+#[description("List all available ranks, as well as the requesting user's active ones")]
 #[num_args(0)]
 #[only_in("guilds")]
 pub fn ranks(context: &mut Context, message: &Message, _: Args) -> CommandResult {
@@ -138,7 +139,7 @@ pub fn ranks(context: &mut Context, message: &Message, _: Args) -> CommandResult
                 e.colour(Colour::BLUE)
                     .title("Available ranks")
                     .description(rank_text)
-                    .footer(|f| f.text("Use the !rank command to join/leave a rank."))
+                    .footer(|f| f.text(format!("Use the {0}join and {0}leave commands to change your ranks", CONFIG.discord.command_prefix)))
             })
         })?;
     }
@@ -148,12 +149,12 @@ pub fn ranks(context: &mut Context, message: &Message, _: Args) -> CommandResult
     Ok(())
 }
 
-#[command]
-#[description("Joins/leaves a rank.")]
-#[usage("rankname")]
-#[num_args(1)]
-#[only_in("guilds")]
-pub fn rank(context: &mut Context, message: &Message, args: Args) -> CommandResult {
+fn joinleave(
+    context: &mut Context,
+    message: &Message,
+    args: Args,
+    should_be_current: Option<bool>,
+) -> CommandResult {
     let rankname = args.message().trim();
     let response = if let Some(guild) = message.guild(&context) {
         let mut guild = guild.write();
@@ -170,7 +171,17 @@ pub fn rank(context: &mut Context, message: &Message, args: Args) -> CommandResu
         {
             if let Some(user) = guild.members.get_mut(&message.author.id) {
                 let is_current = user.roles.contains(&rank_id);
-                if is_current {
+                if should_be_current.map_or(false, |should| should && !is_current) {
+                    format!(
+                        "You aren't even in **{}**! <:lyou:350623520494977035>",
+                        rankname
+                    )
+                } else if should_be_current.map_or(false, |should| !should && is_current) {
+                    format!(
+                        "You are already in **{}**! <:lyou:350623520494977035>",
+                        rankname
+                    )
+                } else if is_current {
                     user.remove_role(&context, rank_id)?;
                     format!("You have left **{}**! <:aj05:310579190770434050>", rankname)
                 } else {
@@ -191,4 +202,32 @@ pub fn rank(context: &mut Context, message: &Message, args: Args) -> CommandResu
     };
     message.reply(&context, &response)?;
     Ok(())
+}
+
+#[command]
+#[description("Join/leave a rank")]
+#[usage("rankname")]
+#[num_args(1)]
+#[only_in("guilds")]
+#[help_available(false)]
+pub fn rank(context: &mut Context, message: &Message, args: Args) -> CommandResult {
+    joinleave(context, message, args, None)
+}
+
+#[command]
+#[description("Join a rank")]
+#[usage("rankname")]
+#[num_args(1)]
+#[only_in("guilds")]
+pub fn join(context: &mut Context, message: &Message, args: Args) -> CommandResult {
+    joinleave(context, message, args, Some(false))
+}
+
+#[command]
+#[description("Leave a rank")]
+#[usage("rankname")]
+#[num_args(1)]
+#[only_in("guilds")]
+pub fn leave(context: &mut Context, message: &Message, args: Args) -> CommandResult {
+    joinleave(context, message, args, Some(true))
 }

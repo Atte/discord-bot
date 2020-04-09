@@ -27,7 +27,7 @@ use ranks::*;
 struct Horse;
 
 #[group]
-#[commands(ranks, rank, pin)]
+#[commands(ranks, rank, join, leave, pin)]
 struct Discord;
 
 #[group]

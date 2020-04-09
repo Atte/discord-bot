@@ -8,7 +8,7 @@ use serenity::{
 };
 
 #[command]
-#[description("Manage the public pin on the current channel.")]
+#[description("Manage the public pin on the current channel")]
 #[usage("new_text\u{2026}")]
 #[only_in("guilds")]
 #[help_available(false)]

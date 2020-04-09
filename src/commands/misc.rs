@@ -12,7 +12,7 @@ use serenity::{
 };
 
 #[command]
-#[description("Replies with a pong.")]
+#[description("pong")]
 #[num_args(0)]
 pub fn ping(context: &mut Context, message: &Message, _: Args) -> CommandResult {
     message.reply(&context, "Pong! <:DIDNEYWORL:365990182610272266>")?;
@@ -20,6 +20,7 @@ pub fn ping(context: &mut Context, message: &Message, _: Args) -> CommandResult 
 }
 
 #[command]
+#[description("Cast die")]
 #[usage("1d6 + 2d20")]
 pub fn roll(context: &mut Context, message: &Message, args: Args) -> CommandResult {
     lazy_static! {
@@ -65,7 +66,7 @@ pub fn roll(context: &mut Context, message: &Message, args: Args) -> CommandResu
 }
 
 #[command]
-#[description("Shows information about the bot.")]
+#[description("Show information about the bot")]
 #[num_args(0)]
 pub fn info(context: &mut Context, message: &Message, _: Args) -> CommandResult {
     let avatar = context
