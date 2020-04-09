@@ -12,7 +12,7 @@ pub fn set_sticky_roles(
         roles
             .into_iter()
             .map(|id| Value::from(id.to_string()))
-            .collect(),
+            .collect::<Vec<_>>(),
     );
 
     conn.prepare_cached(

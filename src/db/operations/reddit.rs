@@ -10,7 +10,7 @@ pub fn reddit_seen(conn: &Connection, ids: impl IntoIterator<Item = String>) -> 
         ",
     )?
     .execute_named(named_params! {
-        ":ids": Rc::new(ids.into_iter().map(Value::from).collect()),
+        ":ids": Rc::new(ids.into_iter().map(Value::from).collect::<Vec<_>>()),
     })?;
 
     Ok(())
@@ -29,7 +29,7 @@ pub fn reddit_contains_unseen(
             ",
         )?
         .query_named(named_params! {
-            ":ids": Rc::new(ids.into_iter().map(Value::from).collect()),
+            ":ids": Rc::new(ids.into_iter().map(Value::from).collect::<Vec<_>>()),
         })?
         .next()?
         .is_some())

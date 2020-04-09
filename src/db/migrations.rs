@@ -10,7 +10,6 @@ fn migrate_step(conn: &Connection, step: u32) -> Result<()> {
         2 => conn.execute_batch(include_str!("migrations/2.sql"))?,
         3 => conn.execute_batch(include_str!("migrations/3.sql"))?,
         4 => conn.execute_batch(include_str!("migrations/4.sql"))?,
-        MIGRATION_STEPS => unreachable!(),
         _ => unreachable!(),
     }
     Ok(())

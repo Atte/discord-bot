@@ -10,7 +10,7 @@ readme = "README.md"
 repository = "https://github.com/Atte/discord-bot"
 
 [dependencies]
-base64 = "0.11"
+base64 = "0.12"
 digit_group = "0.1"
 env_logger = "0.7"
 error-chain = "0.12"
@@ -36,7 +36,7 @@ version = "0.10"
 features = ["blocking", "gzip", "json"]
 
 [dependencies.rusqlite]
-version = "0.21"
+version = "0.22"
 features = ["serde_json", "url", "bundled", "array", "trace"]
 
 [dependencies.websocket]
