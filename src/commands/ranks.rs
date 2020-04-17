@@ -139,7 +139,12 @@ pub fn ranks(context: &mut Context, message: &Message, _: Args) -> CommandResult
                 e.colour(Colour::BLUE)
                     .title("Available ranks")
                     .description(rank_text)
-                    .footer(|f| f.text(format!("Use the {0}join and {0}leave commands to change your ranks", CONFIG.discord.command_prefix)))
+                    .footer(|f| {
+                        f.text(format!(
+                            "Use the {0}join and {0}leave commands to change your ranks",
+                            CONFIG.discord.command_prefix
+                        ))
+                    })
             })
         })?;
     }
@@ -152,7 +157,7 @@ pub fn ranks(context: &mut Context, message: &Message, _: Args) -> CommandResult
 fn joinleave(
     context: &mut Context,
     message: &Message,
-    args: Args,
+    args: &Args,
     should_be_current: Option<bool>,
 ) -> CommandResult {
     let rankname = args.message().trim();
@@ -211,7 +216,7 @@ fn joinleave(
 #[only_in("guilds")]
 #[help_available(false)]
 pub fn rank(context: &mut Context, message: &Message, args: Args) -> CommandResult {
-    joinleave(context, message, args, None)
+    joinleave(context, message, &args, None)
 }
 
 #[command]
@@ -220,7 +225,7 @@ pub fn rank(context: &mut Context, message: &Message, args: Args) -> CommandResu
 #[num_args(1)]
 #[only_in("guilds")]
 pub fn join(context: &mut Context, message: &Message, args: Args) -> CommandResult {
-    joinleave(context, message, args, Some(false))
+    joinleave(context, message, &args, Some(false))
 }
 
 #[command]
@@ -229,5 +234,5 @@ pub fn join(context: &mut Context, message: &Message, args: Args) -> CommandResu
 #[num_args(1)]
 #[only_in("guilds")]
 pub fn leave(context: &mut Context, message: &Message, args: Args) -> CommandResult {
-    joinleave(context, message, args, Some(true))
+    joinleave(context, message, &args, Some(true))
 }
