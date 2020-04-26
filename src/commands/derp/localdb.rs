@@ -1,7 +1,7 @@
 use super::{Image, ImageResponse, RepresentationList};
 use crate::CONFIG;
 use log::trace;
-use postgres::Client;
+use postgres::{Client, types::ToSql};
 use std::convert::TryFrom;
 
 error_chain::error_chain! {
@@ -29,6 +29,19 @@ fn connect() -> Result<Client> {
     }
 }
 
+fn resolve_tag_aliases(client: &mut Client, tags: &(dyn ToSql + Sync)) -> Result<Vec<String>> {
+    Ok(client.query(
+        r###"
+        SELECT COALESCE(tags.name, inputs.name) AS name
+        FROM (SELECT unnest($1::text[]) AS name) AS inputs
+        LEFT JOIN tags AS input_tags ON input_tags.name = inputs.name
+        LEFT JOIN tag_aliases ON tag_aliases.tag_id = input_tags.id
+        LEFT JOIN tags ON tag_aliases.target_tag_id = tags.id
+        "###,
+        &[tags]
+    )?.into_iter().map(|row| row.get("name")).collect())
+}
+
 pub fn query(search: &str) -> Result<ImageResponse> {
     let (negative_terms, positive_terms): (Vec<String>, Vec<String>) = search
         .split(',')
@@ -41,13 +54,16 @@ pub fn query(search: &str) -> Result<ImageResponse> {
         .filter_map(|term| term.get(1..))
         .collect();
 
+    let mut client = connect()?;
+    let positive_terms = resolve_tag_aliases(&mut client, &positive_terms)?;
+    let negative_terms = resolve_tag_aliases(&mut client, &negative_terms)?;
+
     trace!(
         "Searching local db for {:?} not {:?}...",
         positive_terms,
         negative_terms
     );
 
-    let mut client = connect()?;
     let result = client.query(
         r###"
             SELECT *, COUNT(*) OVER() AS total
