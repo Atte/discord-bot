@@ -1,7 +1,8 @@
 use super::{Image, ImageResponse, RepresentationList};
 use crate::CONFIG;
-use postgres::Client;
 use log::trace;
+use postgres::Client;
+use std::convert::TryFrom;
 
 error_chain::error_chain! {
     foreign_links {
@@ -29,57 +30,40 @@ fn connect() -> Result<Client> {
 }
 
 pub fn query(search: &str) -> Result<ImageResponse> {
-    trace!("Searching local db...");
+    let (negative_terms, positive_terms): (Vec<String>, Vec<String>) = search
+        .split(',')
+        .map(|term| term.trim().replace('+', " "))
+        .filter(|term| !term.is_empty() && term != "*")
+        .partition(|term| term.starts_with('!') || term.starts_with('-'));
 
-    let terms: Vec<&str> = search.split(',').map(str::trim).collect();
-    let blacklist = &CONFIG.gib.postgres.as_ref().unwrap().filter;
+    let negative_terms: Vec<&str> = negative_terms
+        .iter()
+        .filter_map(|term| term.get(1..))
+        .collect();
+
+    trace!(
+        "Searching local db for {:?} not {:?}...",
+        positive_terms,
+        negative_terms
+    );
 
     let mut client = connect()?;
-    let images: Vec<Image> = client
-        .query(
-            r###"
-            SELECT
-                images.id,
-                MIN(images.version_path) AS path,
-                MIN(images.image_name) AS name,
-                to_char(MIN(images.created_at), 'YYYY-MM-DD"T"HH24:MI:SSOF') AS time,
-                array_agg(artist_tags.name) AS tags
-            FROM
-                images,
-                image_taggings,
-                (
-                    SELECT tags.id
-                    FROM tags
-                    WHERE tags.name = ANY($1::text[])
-                ) AS good_tags,
-                (
-                    SELECT tags.id
-                    FROM tags
-                    WHERE tags.name = ANY($2::text[])
-                ) AS bad_tags,
-                (
-                    SELECT tags.id, tags.name
-                    FROM tags
-                    WHERE tags.name LIKE 'artist:%'
-                ) AS artist_tags
-            WHERE
-                image_taggings.image_id = images.id
-                AND image_taggings.tag_id = good_tags.id
-                AND image_taggings.tag_id = bad_tags.id
-                AND image_taggings.tag_id = artist_tags.id
-            GROUP BY
-                images.id
-            HAVING
-                COUNT(DISTINCT good_tags) = array_length($1::text[], 1)
-                AND COUNT(bad_tags) = 0
-            ORDER BY
-                random()
-            LIMIT
-                50;
+    let result = client.query(
+        r###"
+            SELECT *, COUNT(*) OVER() AS total
+            FROM flutterbitch
+            WHERE tags @> $1::text[] AND NOT (tags && $2::text[])
+            ORDER BY random()
+            LIMIT 50;
         "###,
-            &[&terms, &blacklist],
-        )?
-        .into_iter()
+        &[&positive_terms, &negative_terms],
+    )?;
+
+    let mut result_iter = result.into_iter().peekable();
+    let total: i64 = result_iter
+        .peek()
+        .map_or(0, |row| row.try_get("total").unwrap_or_default());
+    let images: Vec<Image> = result_iter
         .map(|row| Image {
             id: row.get("id"),
             tags: row.try_get("tags").unwrap_or_default(),
@@ -87,13 +71,17 @@ pub fn query(search: &str) -> Result<ImageResponse> {
             name: row.try_get("name").unwrap_or_default(),
             first_seen_at: row.try_get("time").unwrap_or_default(),
             representations: RepresentationList {
-                tall: format!("{}tall.png", row.get::<_, &str>("path")),
+                tall: format!(
+                    "{}tall.{}",
+                    row.get::<_, &str>("path"),
+                    row.get::<_, &str>("filext")
+                ),
             },
         })
         .collect();
 
     Ok(ImageResponse {
-        total: 0, // TODO
+        total: usize::try_from(total).unwrap_or_default(),
         images,
     })
 }

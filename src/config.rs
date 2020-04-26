@@ -88,7 +88,6 @@ pub struct PostgresConfig {
     pub user: SubstitutingString,
     pub dbname: SubstitutingString,
     pub host: SubstitutingString,
-    pub filter: Vec<String>,
 }
 
 impl Config {

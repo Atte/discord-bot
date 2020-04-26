@@ -95,13 +95,23 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
         .split(',')
         .map(|arg| {
             let arg = arg.trim();
-            CONFIG
+            let is_negated = arg.starts_with('!') || arg.starts_with('-');
+            let unnegated = if is_negated {
+                arg.get(1..).unwrap()
+            } else {
+                arg
+            };
+            let unaliased = CONFIG
                 .gib
                 .aliases
                 .iter()
-                .find(|(_tag, aliases)| aliases.contains(arg))
-                .map_or(arg, |(tag, _aliases)| tag.as_ref())
-                .replace(" ", "+")
+                .find(|(_tag, aliases)| aliases.contains(unnegated))
+                .map_or(unnegated, |(tag, _aliases)| tag.as_ref());
+            if is_negated {
+                format!("-{}", unaliased.replace(" ", "+"))
+            } else {
+                unaliased.replace(" ", "+")
+            }
         })
         .collect::<Vec<_>>()
         .join(",");

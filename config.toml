@@ -100,6 +100,11 @@ not_found = [
     "Guess there isn't any. Too bad so sad."
 ]
 
+[gib.postgres]
+user = "$USER"
+dbname = "derpibooru"
+host = "/var/run/postgresql"
+
 [gib.aliases]
 "twilight sparkle" = ["twily", "twi", "twiggles", "sporkle", "purple smart", "ts"]
 "rarity" = ["rarara", "rararara", "rarararara", "white fancy", "rararararara"]
