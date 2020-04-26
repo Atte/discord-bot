@@ -75,6 +75,7 @@ fn get_ranks<'a>(
 }
 
 #[command]
+#[aliases("roles")]
 #[description("List all available ranks, as well as the requesting user's active ones")]
 #[num_args(0)]
 #[only_in("guilds")]
@@ -210,6 +211,7 @@ fn joinleave(
 }
 
 #[command]
+#[aliases("role")]
 #[description("Join/leave a rank")]
 #[usage("rankname")]
 #[num_args(1)]
