@@ -1,7 +1,7 @@
 use crate::{db, CONFIG};
 use digit_group::FormatGroup;
 use lazy_static::lazy_static;
-use log::trace;
+use log::{trace, warn};
 use rand::{self, seq::SliceRandom};
 use regex::Regex;
 use reqwest;
@@ -14,6 +14,8 @@ use serenity::{
     utils::{Colour, MessageBuilder},
 };
 use url::Url;
+
+mod localdb;
 
 const MAX_ARTISTS: usize = 4;
 
@@ -67,7 +69,7 @@ pub struct ImageResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct Image {
-    id: u32,
+    id: i64,
     #[serde(deserialize_with = "deserialize_default_from_null")]
     tags: Vec<String>,
     #[serde(deserialize_with = "deserialize_default_from_null")]
@@ -115,7 +117,7 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
                 if search.is_empty() {
                     "*".to_owned()
                 } else {
-                    search
+                    search.clone()
                 },
             ),
         ],
@@ -124,11 +126,21 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
 
     match reqwest::blocking::get(&url.as_ref().replace("%2B", "+")) {
         Err(_) => {
-            message.reply(&context, "Can't connect to Derpi <:thisisfine:364466172714024980>")?;
+            message.reply(
+                &context,
+                "Can't connect to Derpi <:thisisfine:364466172714024980>",
+            )?;
         }
-        Ok(response) => match response.json::<ImageResponse>() {
-            Err(_) => {
-                message.reply(&context, "Derpi responded with garbage <:rdwut:310577997633814549>")?;
+        Ok(response) => match response
+            .json::<ImageResponse>()
+            .or_else(|_| localdb::query(&search))
+        {
+            Err(err) => {
+                warn!("Derpi query failed: {}", err);
+                message.reply(
+                    &context,
+                    "Derpi responded with garbage <:rdwut:310577997633814549>",
+                )?;
             }
             Ok(response) => {
                 if response.images.is_empty() {
@@ -211,6 +223,9 @@ fn send_image(context: &Context, message: &Message, image: &Image, count: usize)
             if !description.is_empty() {
                 e = e.description(description);
             }
+            if count > 0 {
+                e = e.footer(|f| f.text(&format!("Out of {} results", count.format_si('.'))));
+            }
             e.colour(Colour::GOLD)
                 .title(if image.name.is_empty() {
                     "<no filename>".to_owned()
@@ -219,7 +234,6 @@ fn send_image(context: &Context, message: &Message, image: &Image, count: usize)
                 })
                 .url(url)
                 .image(&image.representations.tall)
-                .footer(|f| f.text(&format!("Out of {} results", count.format_si('.'))))
         })
     })?;
 

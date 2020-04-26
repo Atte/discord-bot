@@ -80,6 +80,15 @@ pub struct GibConfig {
     pub history: u32,
     pub not_found: Vec<SubstitutingString>,
     pub aliases: HashMap<String, HashSet<String>>,
+    pub postgres: Option<PostgresConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PostgresConfig {
+    pub user: SubstitutingString,
+    pub dbname: SubstitutingString,
+    pub host: SubstitutingString,
+    pub filter: Vec<String>,
 }
 
 impl Config {

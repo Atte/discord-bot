@@ -2,7 +2,7 @@ use super::Result;
 use crate::CONFIG;
 use rusqlite::{named_params, Connection};
 
-pub fn gib_seen(conn: &Connection, id: u32) -> Result<()> {
+pub fn gib_seen(conn: &Connection, id: i64) -> Result<()> {
     conn.prepare_cached(
         "
         INSERT OR REPLACE INTO gib_seen (id)
@@ -30,7 +30,7 @@ pub fn gib_seen(conn: &Connection, id: u32) -> Result<()> {
     Ok(())
 }
 
-pub fn gib_is_seen(conn: &Connection, id: u32) -> Result<bool> {
+pub fn gib_is_seen(conn: &Connection, id: i64) -> Result<bool> {
     Ok(conn
         .prepare_cached(
             "
