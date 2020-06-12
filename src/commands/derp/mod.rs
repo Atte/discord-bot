@@ -117,7 +117,7 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
         .join(",");
 
     let url = Url::parse_with_params(
-        "https://derpibooru.org/api/v1/json/search/images",
+        CONFIG.gib.endpoint.as_ref(),
         &[
             ("sf", "random".to_owned()),
             ("per_page", "50".to_owned()),
@@ -134,39 +134,40 @@ pub fn gib(context: &mut Context, message: &Message, args: Args) -> CommandResul
     )?;
     trace!("Search URL: {}", url);
 
-    match reqwest::blocking::get(&url.as_ref().replace("%2B", "+")) {
-        Err(_) => {
+    match reqwest::blocking::get(&url.as_ref().replace("%2B", "+"))
+        .and_then(reqwest::blocking::Response::json::<ImageResponse>)
+        .map_or_else(
+            |_| (true, localdb::query(&search)),
+            |resp| (false, Ok(resp)),
+        ) {
+        (is_local, Err(err)) => {
+            warn!("Derpi query failed: {}", err);
             message.reply(
                 &context,
-                "Can't connect to Derpi <:thisisfine:364466172714024980>",
+                format!(
+                    "{} <:thisisfine:364466172714024980>",
+                    if is_local {
+                        "Derpi and fallback are both broken"
+                    } else {
+                        "Derpi is broken"
+                    }
+                ),
             )?;
         }
-        Ok(response) => match response
-            .json::<ImageResponse>()
-            .or_else(|_| localdb::query(&search))
-        {
-            Err(err) => {
-                warn!("Derpi query failed: {}", err);
+        (is_local, Ok(response)) => {
+            if response.images.is_empty() {
                 message.reply(
                     &context,
-                    "Derpi responded with garbage <:rdwut:310577997633814549>",
+                    CONFIG
+                        .gib
+                        .not_found
+                        .choose(&mut rand::thread_rng())
+                        .map_or("", |reply| reply.as_ref()),
                 )?;
+            } else if let Some(image) = find_unseen(&response.images)? {
+                send_image(&context, &message, &image, response.total, is_local)?;
             }
-            Ok(response) => {
-                if response.images.is_empty() {
-                    message.reply(
-                        &context,
-                        CONFIG
-                            .gib
-                            .not_found
-                            .choose(&mut rand::thread_rng())
-                            .map_or("", |reply| reply.as_ref()),
-                    )?;
-                } else if let Some(image) = find_unseen(&response.images)? {
-                    send_image(&context, &message, &image, response.total)?;
-                }
-            }
-        },
+        }
     }
 
     Ok(())
@@ -185,7 +186,13 @@ fn find_unseen(images: &[Image]) -> db::Result<Option<&Image>> {
     })
 }
 
-fn send_image(context: &Context, message: &Message, image: &Image, count: usize) -> CommandResult {
+fn send_image(
+    context: &Context,
+    message: &Message,
+    image: &Image,
+    count: usize,
+    is_local: bool,
+) -> CommandResult {
     let url = Url::parse("https://derpibooru.org/")?.join(&image.id.to_string())?;
     let artists: Vec<_> = image
         .tags
@@ -234,7 +241,13 @@ fn send_image(context: &Context, message: &Message, image: &Image, count: usize)
                 e = e.description(description);
             }
             if count > 0 {
-                e = e.footer(|f| f.text(&format!("Out of {} results", count.format_si('.'))));
+                e = e.footer(|f| {
+                    f.text(&format!(
+                        "Out of {} results{}",
+                        count.format_si('.'),
+                        if is_local { " (fallback)" } else { "" }
+                    ))
+                });
             }
             e.colour(Colour::GOLD)
                 .title(if image.name.is_empty() {

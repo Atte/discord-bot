@@ -76,6 +76,7 @@ pub struct BulkConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct GibConfig {
+    pub endpoint: SubstitutingString,
     pub filter: u32,
     pub history: u32,
     pub not_found: Vec<SubstitutingString>,

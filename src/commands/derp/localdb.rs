@@ -1,7 +1,7 @@
 use super::{Image, ImageResponse, RepresentationList};
 use crate::CONFIG;
 use log::trace;
-use postgres::{Client, types::ToSql};
+use postgres::{types::ToSql, Client};
 use std::convert::TryFrom;
 
 error_chain::error_chain! {
@@ -30,16 +30,20 @@ fn connect() -> Result<Client> {
 }
 
 fn resolve_tag_aliases(client: &mut Client, tags: &(dyn ToSql + Sync)) -> Result<Vec<String>> {
-    Ok(client.query(
-        r###"
+    Ok(client
+        .query(
+            r###"
         SELECT COALESCE(tags.name, inputs.name) AS name
         FROM (SELECT unnest($1::text[]) AS name) AS inputs
         LEFT JOIN tags AS input_tags ON input_tags.name = inputs.name
         LEFT JOIN tag_aliases ON tag_aliases.tag_id = input_tags.id
         LEFT JOIN tags ON tag_aliases.target_tag_id = tags.id
         "###,
-        &[tags]
-    )?.into_iter().map(|row| row.get("name")).collect())
+            &[tags],
+        )?
+        .into_iter()
+        .map(|row| row.get("name"))
+        .collect())
 }
 
 pub fn query(search: &str) -> Result<ImageResponse> {

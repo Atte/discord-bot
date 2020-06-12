@@ -94,6 +94,7 @@ insults = [
 ]
 
 [gib]
+endpoint = "https://derpibooru.org/api/v1/json/search/images"
 filter = 152796
 history = 1000
 not_found = [
