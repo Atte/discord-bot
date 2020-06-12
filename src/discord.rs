@@ -18,8 +18,8 @@ pub fn create_client() -> Client {
             conf.owners(CONFIG.discord.owners.clone())
                 .prefix(CONFIG.discord.command_prefix.as_ref())
         })
-        .before(|_context, message, cmd_name| {
-            if commands::is_allowed(message, cmd_name) {
+        .before(|context, message, cmd_name| {
+            if commands::is_allowed(&context, message, cmd_name) {
                 info!(
                     "Running command {} for @{} ({})",
                     cmd_name,
@@ -51,7 +51,7 @@ pub fn create_client() -> Client {
             }
         })
         .unrecognised_command(|context, message, _cmd_name| {
-            if !can_respond_to(&message) {
+            if !can_respond_to(&context, &message) {
                 return;
             }
             message
@@ -69,7 +69,7 @@ pub fn create_client() -> Client {
                 .ok();
         })
         .on_dispatch_error(|context, message, error| {
-            if !can_respond_to(&message) {
+            if !can_respond_to(&context, &message) {
                 return;
             }
             let reason = match error {

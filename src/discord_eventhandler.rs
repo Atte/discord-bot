@@ -103,7 +103,8 @@ impl EventHandler for Handler {
             .try_read_for(READ_TIMEOUT)
             .map(|cache| cache.user.id)
         {
-            if util::can_respond_to(&message) && message.mentions.iter().any(|user| user.id == uid)
+            if util::can_respond_to(&context, &message)
+                && message.mentions.iter().any(|user| user.id == uid)
             {
                 if let Some(insult) = CONFIG.bulk.insults.choose(&mut rand::thread_rng()) {
                     message.reply(&context, insult).ok();

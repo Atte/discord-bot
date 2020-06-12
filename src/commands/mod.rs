@@ -51,9 +51,9 @@ fn help_command(
     help_commands::with_embeds(context, msg, args, help_options, groups, owners)
 }
 
-pub fn is_allowed(message: &Message, cmd: &str) -> bool {
+pub fn is_allowed(context: &Context, message: &Message, cmd: &str) -> bool {
     match cmd {
         "pin" => CONFIG.discord.pin_channels.contains(&message.channel_id),
-        _ => can_respond_to(&message),
+        _ => can_respond_to(&context, &message),
     }
 }
