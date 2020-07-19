@@ -37,11 +37,11 @@ version = "0.10"
 features = ["blocking", "gzip", "json"]
 
 [dependencies.rusqlite]
-version = "0.22"
+version = "0.23"
 features = ["serde_json", "url", "bundled", "array", "trace"]
 
 [dependencies.websocket]
-version = "0.24"
+version = "0.26"
 default-features = false
 features = ["sync", "sync-ssl"]
 

@@ -18,6 +18,7 @@ channel_blacklist = []
 channel_whitelist = [
     324598323489013770, # test
     409178792938962964, # BT
+    722906800508239872, # BT DnD
 ]
 pin_channels = [
     449210490699251742, # test
@@ -35,7 +36,7 @@ enabled = true
 origin = "https://socket.berrytube.tv"
 
 [reddit]
-enabled = true
+enabled = false
 client_id = "8dPf_HbyOJaJJw"
 client_secret = "$REDDIT_SECRET"
 username = "FlutterBitchBot"
