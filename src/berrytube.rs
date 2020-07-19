@@ -38,13 +38,20 @@ impl TypeMapKey for NowPlayingKey {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum VideoID {
+    Numeric(isize),
+    Text(String),
+}
+
+#[derive(Debug, Deserialize)]
 struct Video {
-    id: String,
-    length: isize,
+    //id: VideoID,
+    //length: isize,
     title: String,
-    #[serde(rename = "type")]
-    videotype: String,
-    volat: bool,
+    //#[serde(rename = "type")]
+    //videotype: String,
+    //volat: bool,
 }
 
 pub fn spawn(
