@@ -1,7 +1,6 @@
 use super::READ_TIMEOUT;
 use crate::CONFIG;
 use lazy_static::lazy_static;
-use meval;
 use rand::{self, Rng};
 use regex::{Captures, Regex};
 use serenity::{

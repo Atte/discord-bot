@@ -4,7 +4,6 @@ use lazy_static::lazy_static;
 use log::{trace, warn};
 use rand::{self, seq::SliceRandom};
 use regex::Regex;
-use reqwest;
 use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_default_from_null;
 use serenity::{

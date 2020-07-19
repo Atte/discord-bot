@@ -1,3 +1,5 @@
+#![allow(clippy::wildcard_imports)]
+
 use crate::{util::can_respond_to, CONFIG};
 use serenity::{
     framework::standard::{

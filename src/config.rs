@@ -8,7 +8,6 @@ use std::{
     io::Read,
     path::Path,
 };
-use toml;
 
 error_chain! {
     foreign_links {
