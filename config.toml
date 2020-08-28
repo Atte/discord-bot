@@ -1,20 +1,18 @@
 [discord]
 command_prefix = "?"
-deleted_msg_cache = 2048
-long_msg_threshold = 512
 token = "$DISCORD_TOKEN"
 owners = [
     119122043923988483, # Atte
 ]
-log_channels = [
-    439066300518760448, # test
-    409294723572957185, # BT
-]
-channel_blacklist = []
-channel_whitelist = [
+blocked_users = []
+command_channels = [
     324598323489013770, # test
     409178792938962964, # BT
     722906800508239872, # BT DnD
+]
+log_channels = [
+    439066300518760448, # test
+    409294723572957185, # BT
 ]
 pin_channels = [
     449210490699251742, # test

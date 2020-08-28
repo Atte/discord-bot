@@ -1,8 +1,9 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-pub use stable_eyre::{eyre, Report};
+pub use stable_eyre::{eyre, Result};
 
+mod util;
 mod substituting_string;
 pub use substituting_string::SubstitutingString;
 
@@ -11,7 +12,7 @@ mod config;
 mod discord;
 
 #[tokio::main]
-async fn main() -> Result<(), Report> {
+async fn main() -> Result<()> {
     env_logger::from_env(env_logger::Env::default().default_filter_or("info")).init();
     stable_eyre::install()?;
 
@@ -21,6 +22,7 @@ async fn main() -> Result<(), Report> {
     .await?;
 
     let mut discord = discord::Discord::new(&config.discord).await?;
+    // TODO: pass discord.client.data to now-playing handler for setting InitialActivityKey
     discord.run().await?;
 
     Ok(())

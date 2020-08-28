@@ -1,6 +1,7 @@
-use crate::{eyre::Result, SubstitutingString};
+use crate::{Result, SubstitutingString};
 use serde::Deserialize;
-use std::path::Path;
+use serenity::model::id::{ChannelId, RoleId, UserId};
+use std::{collections::HashSet, path::Path};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -11,9 +12,16 @@ pub struct Config {
 pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
     pub token: SubstitutingString,
+    pub owners: HashSet<UserId>,
+    pub blocked_users: HashSet<UserId>,
+    pub command_channels: HashSet<ChannelId>,
+    pub log_channels: HashSet<ChannelId>,
+    pub pin_channels: HashSet<ChannelId>,
+    pub sticky_roles: HashSet<RoleId>,
 }
 
 impl Config {
+    #[inline]
     pub fn from_str(source: &str) -> Result<Config> {
         Ok(toml::from_str(source)?)
     }
