@@ -1,7 +1,3 @@
-[database]
-filename = "bot.db"
-log_queries = false
-
 [discord]
 command_prefix = "!"
 deleted_msg_cache = 2048
@@ -12,17 +8,17 @@ owners = [
 ]
 log_channels = [
     439066300518760448, # test
-    409294723572957185, # BT
+    #409294723572957185, # BT
 ]
 channel_blacklist = []
 channel_whitelist = [
     324598323489013770, # test
-    409178792938962964, # BT
-    722906800508239872, # BT DnD
+    #409178792938962964, # BT
+    #722906800508239872, # BT DnD
 ]
 pin_channels = [
     449210490699251742, # test
-    432712024578064385, # BT
+    #432712024578064385, # BT
 ]
 sticky_roles = [
     543786595812376609, # sticky test
@@ -30,95 +26,3 @@ sticky_roles = [
     369808034698100747, # Block politics
     409178686957420554, # Muted
 ]
-
-[berrytube]
-enabled = true
-origin = "https://socket.berrytube.tv"
-
-[reddit]
-enabled = false
-client_id = "8dPf_HbyOJaJJw"
-client_secret = "$REDDIT_SECRET"
-username = "FlutterBitchBot"
-password = "$REDDIT_PASSWORD"
-check_interval = 5 # minutes
-
-[subreddits.BerryTubeLounge]
-notify_channels = [
-    #324598323489013770, # test
-    350075683827089408, # BT
-]
-
-[bulk]
-insults = [
-    "If laughter is the best medicine, your face must be curing the world.",
-    "If I had a face like yours, I'd sue my parents.",
-    "Your birth certificate is an apology letter from the condom factory.",
-    "I guess you prove that even god makes mistakes sometimes.",
-    "I'm jealous of people that don't know you!",
-    "You're so ugly, when your mom dropped you off at school she got a fine for littering.",
-    "If I wanted to kill myself I'd climb your ego and jump to your IQ.",
-    "You must have been born on a highway because that's where most accidents happen.",
-    "I don't know what makes you so stupid, but it really works.",
-    "Roses are red violets are blue, God made me pretty, what happened to you?",
-    "Calling you an idiot would be an insult to all the stupid people.",
-    "Some babies were dropped on their heads but you were clearly thrown at a wall.",
-    "Why don't you go play in traffic.",
-    "Please shut your mouth when you're talking to me.",
-    "They say opposites attract. I hope you meet someone who is good-looking, intelligent, and cultured.",
-    "Stop trying to be a smart ass, you're just an ass.",
-    "The last time I saw something like you, I flushed it.",
-    "I'm busy now. Can I ignore you some other time?",
-    "If ugly were a crime, you'd get a life sentence.",
-    "Why don't you slip into something more comfortable\u2026 like a coma.",
-    "Shock me, say something intelligent.",
-    "Keep rolling your eyes, perhaps you'll find a brain back there.",
-    "You are not as bad as people say, you are much, much worse.",
-    "I don't know what your problem is, but I'll bet it's hard to pronounce.",
-    "You're the reason the gene pool needs a lifeguard.",
-    "Sure, I've seen people like you before - but I had to pay an admission.",
-    "Have you been shopping lately? They're selling lives, you should go get one.",
-    "You're like Monday mornings, nobody likes you.",
-    "Of course I talk like an idiot, how else would you understand me?",
-    "I'd like to see things from your point of view but I can't seem to get my head that far up my ass.",
-    "Don't you need a license to be that ugly?",
-    "If you really spoke your mind, you'd be speechless.",
-    "Stupidity is not a crime so you are free to go.",
-    "So, a thought crossed your mind? Must have been a long and lonely journey.",
-    "Every time I'm next to you, I get a fierce desire to be alone.",
-    "Keep talking, someday you'll say something intelligent!",
-    "How did you get here? Did someone leave your cage open?",
-    "Pardon me, but you've obviously mistaken me for someone who gives a damn.",
-    "Wipe your mouth, there's still a tiny bit of bullshit around your lips.",
-    "Don't you have a terribly empty feeling - in your skull?",
-    "Are you always this stupid or is today a special occasion?"
-]
-
-[gib]
-endpoint = "https://derpibooru.org/api/v1/json/search/images"
-filter = 152796
-history = 1000
-not_found = [
-    "Guess there isn't any. Too bad so sad."
-]
-
-[gib.postgres]
-user = "$USER"
-dbname = "derpibooru"
-host = "/var/run/postgresql"
-
-[gib.aliases]
-"twilight sparkle" = ["twily", "twi", "twiggles", "sporkle", "purple smart", "ts"]
-"rarity" = ["rarara", "rararara", "rarararara", "white fancy", "rararararara"]
-"pinkie pie" = ["ponka", "pinkie", "ponk", "panko", "pinka poe", "panko pie", "ponka pank", "ponka ponk", "pankie ponk", "pinko", "pinko panko", "pinka ponk", "pp"]
-"applejack" = ["appul", "aj"]
-"rainbow dash" = ["dash", "dashie", "bluefast", "rd"]
-"fluttershy" = ["flutters", "yellow quiet", "fs"]
-"princess celestia" = ["tia", "celly", "sunbutt"]
-"princess luna" = ["moonbutt", "luna"]
-"sunset shimmer" = ["sunny shimsham", "shim sham", "shimmy", "sunset", "ss"]
-"starlight glimmer" = ["glim glam", "glimmy", "glimmers", "sg"]
-"lyra heartstrings" = ["lyra"]
-"bon bon" = ["bonbon", "bon"]
-"octavia melody" = ["octavia", "octy", "tavi"]
-"vinyl scratch" = ["vinyl"]
