@@ -10,6 +10,9 @@ pub struct SubstitutingString {
 }
 
 impl SubstitutingString {
+    /// # Errors
+    ///
+    /// Returns `Err` if `raw` contains a reference to an environment variable that doesn't exist.
     pub fn try_new(raw: String) -> Result<Self, ::std::env::VarError> {
         lazy_static! {
             static ref VARIABLE_RE: Regex =
