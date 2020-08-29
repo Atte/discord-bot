@@ -15,7 +15,7 @@ pub struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, ctx: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, #[allow(unused_variables)] ready: Ready) {
         let activity = {
             let data = ctx.data.read().await;
             data.get::<InitialActivityKey>().cloned()

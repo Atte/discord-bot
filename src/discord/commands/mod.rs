@@ -9,17 +9,30 @@ use serenity::{
 };
 use std::collections::HashSet;
 
+mod ranks;
+use ranks::{JOIN_COMMAND, LEAVE_COMMAND, RANKS_COMMAND, RANK_COMMAND};
+
+mod roll;
+use roll::ROLL_COMMAND;
+
 #[group]
-#[commands(ping)]
+#[only_in(guilds)]
+#[commands(join, leave, rank, ranks)]
+pub struct Ranks;
+
+#[group]
+#[commands(roll, ping)]
 pub struct Misc;
 
 #[command]
+#[num_args(0)]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(ctx, "Pong!").await?;
     Ok(())
 }
 
 #[help]
+#[strikethrough_commands_tip_in_guild("")]
 async fn help_command(
     context: &Context,
     msg: &Message,

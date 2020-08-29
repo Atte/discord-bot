@@ -1,11 +1,11 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-pub use stable_eyre::{eyre, Result};
+use stable_eyre::{eyre, Result};
 
-mod util;
 mod substituting_string;
-pub use substituting_string::SubstitutingString;
+mod util;
+use substituting_string::SubstitutingString;
 
 //mod serialization;
 mod config;
@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    let mut discord = discord::Discord::new(&config.discord).await?;
+    let mut discord = discord::Discord::new(config.discord).await?;
     // TODO: pass discord.client.data to now-playing handler for setting InitialActivityKey
     discord.run().await?;
 
