@@ -38,11 +38,12 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
             Ok(chunk) => buffer.extend(chunk),
         }
 
+        // split incomplete line off manually in case it ends with incomplete unicode
         if let Some(index) = buffer.iter().rposition(|c| c == &b'\n') {
             let remainder = buffer.split_off(index);
             let lines: Vec<Result<String>> = buffer
                 .lines()
-                .map(|line| line.wrap_err("Line decode error"))
+                .map(|line| line.wrap_err("line decode error"))
                 .collect();
             buffer = remainder;
             futures::stream::iter(lines)

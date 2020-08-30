@@ -1,12 +1,18 @@
-use super::InitialActivityKey;
+use super::{
+    log_channel::{self, Person},
+    ActivityKey,
+};
 use crate::util::ellipsis_string;
-use log::info;
+use log::error;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
     model::{
+        channel::Channel,
         gateway::{Activity, Ready},
-        id::{ChannelId, MessageId},
+        guild::Member,
+        id::{ChannelId, GuildId, MessageId},
+        user::User,
     },
 };
 
@@ -17,16 +23,26 @@ impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, #[allow(unused_variables)] ready: Ready) {
         if let Some(activity) = {
             let data = ctx.data.read().await;
-            data.get::<InitialActivityKey>()
-                .map(|a| ellipsis_string(a, 128))
+            data.get::<ActivityKey>().map(|a| ellipsis_string(a, 128))
         } {
             ctx.set_activity(Activity::playing(&activity)).await;
         }
     }
 
     async fn message_delete(&self, ctx: Context, channel_id: ChannelId, message_id: MessageId) {
-        if let Some(msg) = ctx.cache.message(channel_id, message_id).await {
-            info!("Message deleted: {:?}", msg);
+        match channel_id.to_channel(&ctx).await {
+            Ok(Channel::Guild(channel)) => {
+                if let Some(message) = ctx.cache.message(channel_id, message_id).await {
+                    if let Err(err) = log_channel::message_deleted(&ctx, &channel, message).await {
+                        error!("Unable to log message deletion: {}", err);
+                    }
+                }
+            }
+            Ok(_) => {} // ignore deletions outside guilds
+            Err(err) => error!(
+                "Unable to log message deletion due to channel lookup failure: {}",
+                err
+            ),
         }
     }
 
@@ -36,10 +52,63 @@ impl EventHandler for Handler {
         channel_id: ChannelId,
         messages_ids: Vec<MessageId>,
     ) {
-        for message_id in messages_ids {
-            if let Some(msg) = ctx.cache.message(channel_id, message_id).await {
-                info!("Message deleted: {:?}", msg);
+        match channel_id.to_channel(&ctx).await {
+            Ok(Channel::Guild(channel)) => {
+                for message_id in messages_ids {
+                    if let Some(message) = ctx.cache.message(channel_id, message_id).await {
+                        if let Err(err) =
+                            log_channel::message_deleted(&ctx, &channel, message).await
+                        {
+                            error!("Unable to log message deletion: {}", err);
+                        }
+                    }
+                }
             }
+            Ok(_) => {} // ignore deletions outside guilds
+            Err(err) => error!(
+                "Unable to log message deletion due to channel lookup failure: {}",
+                err
+            ),
+        }
+    }
+
+    async fn guild_member_addition(
+        &self,
+        ctx: Context,
+        #[allow(unused_variables)] guild_id: GuildId,
+        member: Member,
+    ) {
+        if let Err(err) = log_channel::member_added(&ctx, &member).await {
+            error!("Unable to log member addition: {}", err);
+        }
+    }
+
+    async fn guild_member_removal(
+        &self,
+        ctx: Context,
+        guild_id: GuildId,
+        user: User,
+        member: Option<Member>,
+    ) {
+        if let Err(err) = log_channel::member_removed(
+            &ctx,
+            guild_id,
+            member.map_or_else(|| Person::User(user), Person::Member),
+        )
+        .await
+        {
+            error!("Unable to log member removal: {}", err);
+        }
+    }
+
+    async fn guild_member_update(
+        &self,
+        ctx: Context,
+        old_member: Option<Member>,
+        new_member: Member,
+    ) {
+        if let Err(err) = log_channel::member_updated(&ctx, old_member, &new_member).await {
+            error!("Unable to log member update: {}", err);
         }
     }
 }

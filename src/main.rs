@@ -2,7 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 use stable_eyre::{eyre, Result};
-use log::error;
+use log::{error, warn, info};
 use tokio::time::{delay_for, Duration};
 
 mod substituting_string;
@@ -25,17 +25,29 @@ async fn main() -> Result<()> {
     .await?;
 
     let mut discord = discord::Discord::try_new(config.discord).await?;
-    let mut berrytube = berrytube::Berrytube::new(discord.client.shard_manager.clone(), discord.client.data.clone());
-    
-    tokio::spawn(async move {
-        loop {
-            if let Err(report) = berrytube.run().await {
-                error!("Berrytube error: {}", report);
-            }
-            delay_for(Duration::from_secs(10)).await;
-        }
-    });
-    discord.run().await?;
 
-    Ok(())
+    if config.berrytube.enabled {
+        let berrytube = berrytube::Berrytube::try_new(&config.berrytube, discord.client.shard_manager.clone(), discord.client.data.clone())?;
+        tokio::spawn(async move {
+            loop {
+                if let Err(report) = berrytube.run().await {
+                    error!("Berrytube error: {}", report);
+                } else {
+                    warn!("Berrytube ended!");
+                }
+                delay_for(Duration::from_secs(10)).await;
+            }
+        });
+    } else {
+        info!("Berrytube is disabled in config");
+    }
+
+    loop {
+        if let Err(report) = discord.run().await {
+            error!("Discord error: {}", report);
+        } else {
+            warn!("Discord ended!");
+        }
+        delay_for(Duration::from_secs(60)).await;
+    }
 }

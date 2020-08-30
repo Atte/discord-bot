@@ -20,3 +20,7 @@ sticky_roles = [
     369808034698100747, # Block politics
     409178686957420554, # Muted
 ]
+
+[berrytube]
+enabled = true
+url = "https://socket.berrytube.tv/sse"

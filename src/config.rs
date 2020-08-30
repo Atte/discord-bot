@@ -6,6 +6,7 @@ use std::{collections::HashSet, path::Path};
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub discord: DiscordConfig,
+    pub berrytube: BerrytubeConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -16,8 +17,13 @@ pub struct DiscordConfig {
     pub blocked_users: HashSet<UserId>,
     pub command_channels: HashSet<ChannelId>,
     pub log_channels: HashSet<ChannelId>,
-    pub pin_channels: HashSet<ChannelId>,
     pub sticky_roles: HashSet<RoleId>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BerrytubeConfig {
+    pub enabled: bool,
+    pub url: SubstitutingString,
 }
 
 impl Config {

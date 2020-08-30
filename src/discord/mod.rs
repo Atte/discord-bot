@@ -5,14 +5,15 @@ use serenity::{
     prelude::TypeMapKey,
 };
 
+mod log_channel;
 mod commands;
 mod event_handler;
 
 const MAXIMUM_REPLY_LENGTH: usize = 2000 - 32 - 10; // max length - nick length - safety margin
 
-pub struct InitialActivityKey;
+pub struct ActivityKey;
 
-impl TypeMapKey for InitialActivityKey {
+impl TypeMapKey for ActivityKey {
     type Value = String;
 }
 
@@ -54,7 +55,7 @@ impl Discord {
         let client = Client::new(&config.token)
             .event_handler(event_handler::Handler)
             .framework(framework)
-            .type_map_insert::<InitialActivityKey>(String::new())
+            .type_map_insert::<ActivityKey>(String::new())
             .type_map_insert::<DiscordConfigKey>(config)
             .await?;
 
