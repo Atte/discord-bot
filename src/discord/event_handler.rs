@@ -7,7 +7,6 @@ use serenity::{
     model::{
         gateway::{Activity, Ready},
         id::{ChannelId, MessageId},
-        user::OnlineStatus,
     },
 };
 
@@ -16,15 +15,13 @@ pub struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, #[allow(unused_variables)] ready: Ready) {
-        let activity = {
+        if let Some(activity) = {
             let data = ctx.data.read().await;
-            data.get::<InitialActivityKey>().cloned()
-        };
-        ctx.set_presence(
-            activity.map(|a| Activity::playing(&ellipsis_string(a, 128))),
-            OnlineStatus::Online,
-        )
-        .await;
+            data.get::<InitialActivityKey>()
+                .map(|a| ellipsis_string(a, 128))
+        } {
+            ctx.set_activity(Activity::playing(&activity)).await;
+        }
     }
 
     async fn message_delete(&self, ctx: Context, channel_id: ChannelId, message_id: MessageId) {

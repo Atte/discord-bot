@@ -10,7 +10,7 @@ mod event_handler;
 
 const MAXIMUM_REPLY_LENGTH: usize = 2000 - 32 - 10; // max length - nick length - safety margin
 
-struct InitialActivityKey;
+pub struct InitialActivityKey;
 
 impl TypeMapKey for InitialActivityKey {
     type Value = String;
@@ -32,11 +32,11 @@ impl DiscordConfigKey {
 }
 
 pub struct Discord {
-    client: Client,
+    pub client: Client,
 }
 
 impl Discord {
-    pub async fn new(config: DiscordConfig) -> Result<Discord> {
+    pub async fn try_new(config: DiscordConfig) -> Result<Self> {
         let framework = StandardFramework::new()
             .configure(|c| {
                 c.prefix(config.command_prefix.as_ref())
@@ -60,7 +60,7 @@ impl Discord {
 
         client.cache_and_http.cache.set_max_messages(1024).await;
 
-        Ok(Discord { client })
+        Ok(Self { client })
     }
 
     pub async fn run(&mut self) -> Result<()> {

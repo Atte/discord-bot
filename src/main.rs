@@ -2,6 +2,8 @@
 #![allow(clippy::module_name_repetitions)]
 
 use stable_eyre::{eyre, Result};
+use log::error;
+use tokio::time::{delay_for, Duration};
 
 mod substituting_string;
 mod util;
@@ -10,6 +12,7 @@ use substituting_string::SubstitutingString;
 //mod serialization;
 mod config;
 mod discord;
+mod berrytube;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -21,8 +24,17 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    let mut discord = discord::Discord::new(config.discord).await?;
-    // TODO: pass discord.client.data to now-playing handler for setting InitialActivityKey
+    let mut discord = discord::Discord::try_new(config.discord).await?;
+    let mut berrytube = berrytube::Berrytube::new(discord.client.shard_manager.clone(), discord.client.data.clone());
+    
+    tokio::spawn(async move {
+        loop {
+            if let Err(report) = berrytube.run().await {
+                error!("Berrytube error: {}", report);
+            }
+            delay_for(Duration::from_secs(10)).await;
+        }
+    });
     discord.run().await?;
 
     Ok(())

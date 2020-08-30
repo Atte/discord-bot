@@ -1,7 +1,8 @@
-pub fn ellipsis_string(s: String, len: usize) -> String {
+pub fn ellipsis_string(s: impl AsRef<str>, len: usize) -> String {
+    let s = s.as_ref();
     if s.chars().count() > len {
         format!("{}\u{2026}", s.chars().take(len - 1).collect::<String>())
     } else {
-        s
+        s.to_owned()
     }
 }
