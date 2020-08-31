@@ -1,8 +1,8 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
+use log::{error, info, warn};
 use stable_eyre::{eyre, Result};
-use log::{error, warn, info};
 use tokio::time::{delay_for, Duration};
 
 mod substituting_string;
@@ -10,9 +10,9 @@ mod util;
 use substituting_string::SubstitutingString;
 
 //mod serialization;
+mod berrytube;
 mod config;
 mod discord;
-mod berrytube;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -27,7 +27,11 @@ async fn main() -> Result<()> {
     let mut discord = discord::Discord::try_new(config.discord).await?;
 
     if config.berrytube.enabled {
-        let berrytube = berrytube::Berrytube::try_new(&config.berrytube, discord.client.shard_manager.clone(), discord.client.data.clone())?;
+        let berrytube = berrytube::Berrytube::try_new(
+            &config.berrytube,
+            discord.client.shard_manager.clone(),
+            discord.client.data.clone(),
+        )?;
         tokio::spawn(async move {
             loop {
                 if let Err(report) = berrytube.run().await {

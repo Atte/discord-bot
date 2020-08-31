@@ -1,7 +1,4 @@
-use super::{
-    log_channel::{self, Person},
-    ActivityKey,
-};
+use super::{log_channel, ActivityKey, MAX_ACTIVITY_LENGTH};
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
@@ -18,12 +15,15 @@ use serenity::{
 
 pub struct Handler;
 
+// #[async_trait] seems to mess with unused parameter detection,
+// so need to use #[allow(unused_variables)] instead of underscore prefix
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, #[allow(unused_variables)] ready: Ready) {
         if let Some(activity) = {
             let data = ctx.data.read().await;
-            data.get::<ActivityKey>().map(|a| ellipsis_string(a, 128))
+            data.get::<ActivityKey>()
+                .map(|a| ellipsis_string(a, MAX_ACTIVITY_LENGTH))
         } {
             ctx.set_activity(Activity::playing(&activity)).await;
         }
@@ -72,13 +72,8 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_member_addition(
-        &self,
-        ctx: Context,
-        #[allow(unused_variables)] guild_id: GuildId,
-        member: Member,
-    ) {
-        if let Err(err) = log_channel::member_added(&ctx, &member).await {
+    async fn guild_member_addition(&self, ctx: Context, guild_id: GuildId, member: Member) {
+        if let Err(err) = log_channel::member_added(&ctx, guild_id, &member.user).await {
             error!("Unable to log member addition: {}", err);
         }
     }
@@ -88,15 +83,9 @@ impl EventHandler for Handler {
         ctx: Context,
         guild_id: GuildId,
         user: User,
-        member: Option<Member>,
+        #[allow(unused_variables)] member: Option<Member>,
     ) {
-        if let Err(err) = log_channel::member_removed(
-            &ctx,
-            guild_id,
-            member.map_or_else(|| Person::User(user), Person::Member),
-        )
-        .await
-        {
+        if let Err(err) = log_channel::member_removed(&ctx, guild_id, &user).await {
             error!("Unable to log member removal: {}", err);
         }
     }
@@ -107,7 +96,8 @@ impl EventHandler for Handler {
         old_member: Option<Member>,
         new_member: Member,
     ) {
-        if let Err(err) = log_channel::member_updated(&ctx, old_member, &new_member).await {
+        if let Err(err) = log_channel::member_updated(&ctx, old_member.as_ref(), &new_member).await
+        {
             error!("Unable to log member update: {}", err);
         }
     }

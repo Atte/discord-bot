@@ -1,4 +1,7 @@
-use crate::{config::BerrytubeConfig, discord::ActivityKey, Result};
+use crate::{
+    config::BerrytubeConfig, discord::ActivityKey, discord::MAX_ACTIVITY_LENGTH,
+    util::ellipsis_string, Result,
+};
 use futures::StreamExt;
 use reqwest::Url;
 use serde::Deserialize;
@@ -73,7 +76,10 @@ impl Berrytube {
         for runner in shard_manager.runners.lock().await.values() {
             runner
                 .runner_tx
-                .set_activity(Some(Activity::playing(title)));
+                .set_activity(Some(Activity::playing(&ellipsis_string(
+                    title,
+                    MAX_ACTIVITY_LENGTH,
+                ))));
         }
     }
 }

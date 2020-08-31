@@ -1,4 +1,4 @@
-use super::super::{DiscordConfigKey, MAXIMUM_REPLY_LENGTH};
+use super::super::{DiscordConfigKey, MAX_EMBED_DESC_LENGTH, MAX_REPLY_LENGTH};
 use crate::{eyre::eyre, util::ellipsis_string, Result};
 use itertools::Itertools;
 use serenity::{
@@ -228,7 +228,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
             }
             writeln!(&mut tw)?;
         }
-        ellipsis_string(String::from_utf8(tw.into_inner()?)?, MAXIMUM_REPLY_LENGTH)
+        String::from_utf8(tw.into_inner()?)?
     };
 
     let prefix = DiscordConfigKey::get(ctx).await.command_prefix;
@@ -243,11 +243,12 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
                             prefix
                         ))
                     })
-                    .description(
+                    .description(ellipsis_string(
                         MessageBuilder::new()
                             .push_codeblock_safe(rank_list, None)
                             .build(),
-                    )
+                        MAX_EMBED_DESC_LENGTH,
+                    ))
             })
         })
         .await?;
@@ -261,7 +262,10 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
                 prefix
             )
         } else {
-            format!("Your ranks are: {}", user_ranks.names().join(", "))
+            ellipsis_string(
+                format!("Your ranks are: {}", user_ranks.names().join(", ")),
+                MAX_REPLY_LENGTH,
+            )
         },
     )
     .await?;

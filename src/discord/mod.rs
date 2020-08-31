@@ -5,11 +5,15 @@ use serenity::{
     prelude::TypeMapKey,
 };
 
-mod log_channel;
 mod commands;
 mod event_handler;
+mod log_channel;
 
-const MAXIMUM_REPLY_LENGTH: usize = 2000 - 32 - 10; // max length - nick length - safety margin
+pub const MAX_MESSAGE_LENGTH: usize = 2000;
+pub const MAX_EMBED_DESC_LENGTH: usize = 2048;
+pub const MAX_NICK_LENGTH: usize = 32;
+pub const MAX_ACTIVITY_LENGTH: usize = 128;
+pub const MAX_REPLY_LENGTH: usize = MAX_MESSAGE_LENGTH - MAX_NICK_LENGTH - 5; // extra space for 
 
 pub struct ActivityKey;
 

@@ -1,4 +1,4 @@
-use super::super::MAXIMUM_REPLY_LENGTH;
+use super::super::MAX_REPLY_LENGTH;
 use lazy_static::lazy_static;
 use rand::{distributions::Uniform, thread_rng, Rng};
 use regex::{Captures, Regex};
@@ -43,14 +43,14 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 .push(" = ")
                 .push_bold_safe(result)
                 .build();
-            if response.len() > MAXIMUM_REPLY_LENGTH || input == original_input {
+            if response.len() > MAX_REPLY_LENGTH || input == original_input {
                 response = MessageBuilder::new()
                     .push_safe(original_input)
                     .push(" = ")
                     .push_bold_safe(result)
                     .build();
             }
-            if response.len() > MAXIMUM_REPLY_LENGTH {
+            if response.len() > MAX_REPLY_LENGTH {
                 response = MessageBuilder::new()
                     .push_italic("(input too long to repeat)")
                     .push(" = ")
