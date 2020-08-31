@@ -23,6 +23,7 @@ impl SseEvent {
     }
 }
 
+// https://html.spec.whatwg.org/multipage/server-sent-events.html
 pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = Result<SseEvent>>> {
     let client = Client::builder()
         .user_agent("discord-bot")
@@ -59,26 +60,40 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
             match line {
                 Err(err) => futures::stream::iter(vec![Err(Report::new(err))]),
                 Ok(Err(err)) => futures::stream::iter(vec![Err(err)]),
+                // events are delimited by empty lines
                 Ok(Ok(line)) if line.is_empty() => {
                     let mut event = SseEvent::new();
                     for line in &line_buffer {
                         let (name, value) =
                             if let Some(index) = line.bytes().position(|c| c == b':') {
-                                (&line[..index], line[index + 1..].trim().to_owned())
+                                let value = &line[index + 1..];
+                                (
+                                    &line[..index],
+                                    String::from(if value.starts_with(' ') {
+                                        &value[1..]
+                                    } else {
+                                        value
+                                    }),
+                                )
                             } else {
                                 (line.as_ref(), String::new())
                             };
                         match name {
+                            "id" => {
+                                if value != "\0" {
+                                    event.id = Some(value);
+                                }
+                            }
                             "event" => event.event = Some(value),
+                            "retry" => event.retry = value.parse().ok().or(event.retry),
                             "data" => {
-                                if let Some(existing) = event.data {
-                                    event.data = Some(format!("{}\n{}", existing, value));
+                                if let Some(ref mut existing) = event.data {
+                                    existing.push('\n');
+                                    existing.push_str(&value);
                                 } else {
                                     event.data = Some(value);
                                 }
                             }
-                            "id" => event.id = Some(value),
-                            "retry" => event.retry = value.parse().ok(),
                             _ => {} // spec says to ignore unknown fields
                         }
                     }
@@ -86,6 +101,7 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
                     futures::stream::iter(vec![Ok(event)])
                 }
                 Ok(Ok(line)) => {
+                    // don't bother storing comments
                     if !line.starts_with(':') {
                         line_buffer.push(line);
                     }

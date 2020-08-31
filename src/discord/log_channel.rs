@@ -6,18 +6,24 @@ use serenity::{
     model::{
         channel::{Channel, GuildChannel, Message},
         guild::Member,
-        id::GuildId,
+        id::{ChannelId, GuildId},
         user::User,
     },
     utils::{Colour, MessageBuilder},
 };
+use std::collections::HashSet;
+
+async fn get_log_channel_ids(ctx: &Context) -> HashSet<ChannelId> {
+    DiscordConfigKey::get(&ctx).await.log_channels
+}
 
 async fn send_log(
     ctx: &Context,
     guild_id: GuildId,
     create_embed: impl Fn(&mut CreateEmbed),
 ) -> Result<()> {
-    for channel_id in DiscordConfigKey::get(&ctx).await.log_channels {
+    let mut result = Ok(());
+    for channel_id in get_log_channel_ids(&ctx).await {
         match channel_id.to_channel(&ctx).await {
             Ok(Channel::Guild(channel)) if channel.guild_id == guild_id => {
                 channel_id
@@ -30,10 +36,10 @@ async fn send_log(
                     .await?;
             }
             Ok(_) => {} // ignore deletions outside guilds, and in irrelevant guilds
-            Err(err) => return Err(Report::new(err)),
+            Err(err) => result = Err(Report::new(err)),
         }
     }
-    Ok(())
+    result
 }
 
 pub async fn message_deleted(
@@ -41,7 +47,10 @@ pub async fn message_deleted(
     channel: &GuildChannel,
     message: Message,
 ) -> Result<()> {
-    let content = message.content_safe(&ctx).await;
+    // don't log deletions of logs
+    if get_log_channel_ids(&ctx).await.contains(&channel.id) {
+        return Ok(());
+    }
     send_log(&ctx, channel.guild_id, |embed| {
         embed.color(Colour::RED);
         embed.author(|author| {
@@ -49,7 +58,7 @@ pub async fn message_deleted(
                 .name(message.author.tag())
                 .icon_url(message.author.face())
         });
-        embed.title(ellipsis_string(
+        embed.description(ellipsis_string(
             MessageBuilder::new()
                 .push_bold_line(
                     MessageBuilder::new()
@@ -57,14 +66,14 @@ pub async fn message_deleted(
                         .mention(&message.author)
                         .push(" on ")
                         .mention(channel)
-                        .push(" was deleted (by them or by an admin)")
+                        .push(" was deleted")
                         .build(),
                 )
                 .push(&message.content)
                 .build(),
             MAX_EMBED_DESC_LENGTH,
         ));
-        embed.description(&content);
+        embed.footer(|footer| footer.text("Originally posted"));
         embed.timestamp(&message.timestamp);
     })
     .await?;
@@ -75,7 +84,7 @@ pub async fn member_added(ctx: &Context, guild_id: GuildId, user: &User) -> Resu
     send_log(&ctx, guild_id, |embed| {
         embed.color(Colour::RED);
         embed.author(|author| author.name(user.tag()).icon_url(user.face()));
-        embed.title(
+        embed.description(
             MessageBuilder::new()
                 .push_bold(MessageBuilder::new().mention(user).push(" joined").build())
                 .build(),
@@ -89,7 +98,7 @@ pub async fn member_removed(ctx: &Context, guild_id: GuildId, user: &User) -> Re
     send_log(&ctx, guild_id, |embed| {
         embed.color(Colour::RED);
         embed.author(|author| author.name(user.tag()).icon_url(user.face()));
-        embed.title(
+        embed.description(
             MessageBuilder::new()
                 .push_bold(
                     MessageBuilder::new()

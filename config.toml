@@ -7,18 +7,18 @@ owners = [
 blocked_users = []
 command_channels = [
     324598323489013770, # test
-    409178792938962964, # BT
-    722906800508239872, # BT DnD
+    #409178792938962964, # BT
+    #722906800508239872, # BT DnD
 ]
 log_channels = [
     439066300518760448, # test
-    409294723572957185, # BT
+    #409294723572957185, # BT
 ]
 sticky_roles = [
     543786595812376609, # sticky test
-    276991279135457280, # Block NSFW
-    369808034698100747, # Block politics
-    409178686957420554, # Muted
+    #276991279135457280, # Block NSFW
+    #369808034698100747, # Block politics
+    #409178686957420554, # Muted
 ]
 
 [berrytube]
