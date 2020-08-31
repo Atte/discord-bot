@@ -255,6 +255,7 @@ dependencies = [
  "regex",
  "reqwest",
  "serde",
+ "serde-aux",
  "serde_derive",
  "serde_json",
  "serenity",
@@ -1236,6 +1237,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e54c9a88f2da7238af84b5101443f0c0d0a3bbdc455e34a5c9497b1903ed55d5"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde-aux"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae50f53d4b01e854319c1f5b854cd59471f054ea7e554988850d3f36ca1dc852"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_derive",
+ "serde_json",
 ]
 
 [[package]]

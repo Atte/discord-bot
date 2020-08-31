@@ -1,4 +1,7 @@
-use super::super::{DiscordConfigKey, MAX_EMBED_DESC_LENGTH, MAX_REPLY_LENGTH};
+use super::super::{
+    limits::{EMBED_DESC_LENGTH, REPLY_LENGTH},
+    DiscordConfigKey,
+};
 use crate::{eyre::eyre, util::ellipsis_string, Result};
 use itertools::Itertools;
 use serenity::{
@@ -193,6 +196,7 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 #[command]
+#[aliases(role)]
 #[min_args(1)]
 #[delimiters(',')]
 async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
@@ -213,6 +217,7 @@ async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 #[command]
+#[aliases(roles)]
 #[num_args(0)]
 async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
     let ranks = Ranks::from_message(&ctx, &msg).await?;
@@ -247,7 +252,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
                         MessageBuilder::new()
                             .push_codeblock_safe(rank_list, None)
                             .build(),
-                        MAX_EMBED_DESC_LENGTH,
+                        EMBED_DESC_LENGTH,
                     ))
             })
         })
@@ -264,7 +269,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
         } else {
             ellipsis_string(
                 format!("Your ranks are: {}", user_ranks.names().join(", ")),
-                MAX_REPLY_LENGTH,
+                REPLY_LENGTH,
             )
         },
     )

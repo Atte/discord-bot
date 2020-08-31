@@ -20,6 +20,7 @@ sticky_roles = [
     #369808034698100747, # Block politics
     #409178686957420554, # Muted
 ]
+gib_endpoint = "https://derpibooru.org/api/v1/json/search/images?sf=random&per_page=1&filter_id=152796"
 
 [berrytube]
 enabled = true

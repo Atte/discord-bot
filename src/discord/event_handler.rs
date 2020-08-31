@@ -1,4 +1,4 @@
-use super::{log_channel, ActivityKey, MAX_ACTIVITY_LENGTH};
+use super::{limits::ACTIVITY_LENGTH, log_channel, ActivityKey};
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
@@ -23,7 +23,7 @@ impl EventHandler for Handler {
         if let Some(activity) = {
             let data = ctx.data.read().await;
             data.get::<ActivityKey>()
-                .map(|a| ellipsis_string(a, MAX_ACTIVITY_LENGTH))
+                .map(|a| ellipsis_string(a, ACTIVITY_LENGTH))
         } {
             ctx.set_activity(Activity::playing(&activity)).await;
         }

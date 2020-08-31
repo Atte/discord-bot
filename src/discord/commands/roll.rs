@@ -1,4 +1,5 @@
-use super::super::MAX_REPLY_LENGTH;
+use super::super::limits::REPLY_LENGTH;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use rand::{distributions::Uniform, thread_rng, Rng};
 use regex::{Captures, Regex};
@@ -25,12 +26,11 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 .and_then(|m| m.as_str().parse::<usize>().ok())
                 .unwrap_or(6_usize),
         );
-        let rolls: Vec<String> = (0..caps
+        let mut rolls = (0..caps
             .get(0)
             .and_then(|m| m.as_str().parse::<usize>().ok())
             .unwrap_or(1_usize))
-            .map(|_| thread_rng().sample(distribution).to_string())
-            .collect();
+            .map(|_| thread_rng().sample(distribution).to_string());
         format!("({})", rolls.join(" + "))
     });
 
@@ -43,14 +43,14 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 .push(" = ")
                 .push_bold_safe(result)
                 .build();
-            if response.len() > MAX_REPLY_LENGTH || input == original_input {
+            if response.len() > REPLY_LENGTH || input == original_input {
                 response = MessageBuilder::new()
                     .push_safe(original_input)
                     .push(" = ")
                     .push_bold_safe(result)
                     .build();
             }
-            if response.len() > MAX_REPLY_LENGTH {
+            if response.len() > REPLY_LENGTH {
                 response = MessageBuilder::new()
                     .push_italic("(input too long to repeat)")
                     .push(" = ")

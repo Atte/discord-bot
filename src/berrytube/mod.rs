@@ -1,5 +1,5 @@
 use crate::{
-    config::BerrytubeConfig, discord::ActivityKey, discord::MAX_ACTIVITY_LENGTH,
+    config::BerrytubeConfig, discord::limits::ACTIVITY_LENGTH, discord::ActivityKey,
     util::ellipsis_string, Result,
 };
 use futures::StreamExt;
@@ -78,7 +78,7 @@ impl Berrytube {
                 .runner_tx
                 .set_activity(Some(Activity::playing(&ellipsis_string(
                     title,
-                    MAX_ACTIVITY_LENGTH,
+                    ACTIVITY_LENGTH,
                 ))));
         }
     }

@@ -1,4 +1,4 @@
-use super::{DiscordConfigKey, MAX_EMBED_DESC_LENGTH};
+use super::{limits::EMBED_DESC_LENGTH, DiscordConfigKey};
 use crate::{eyre::Report, util::ellipsis_string, Result};
 use serenity::{
     builder::CreateEmbed,
@@ -6,16 +6,11 @@ use serenity::{
     model::{
         channel::{Channel, GuildChannel, Message},
         guild::Member,
-        id::{ChannelId, GuildId},
+        id::GuildId,
         user::User,
     },
     utils::{Colour, MessageBuilder},
 };
-use std::collections::HashSet;
-
-async fn get_log_channel_ids(ctx: &Context) -> HashSet<ChannelId> {
-    DiscordConfigKey::get(&ctx).await.log_channels
-}
 
 async fn send_log(
     ctx: &Context,
@@ -23,7 +18,7 @@ async fn send_log(
     create_embed: impl Fn(&mut CreateEmbed),
 ) -> Result<()> {
     let mut result = Ok(());
-    for channel_id in get_log_channel_ids(&ctx).await {
+    for channel_id in DiscordConfigKey::get(&ctx).await.log_channels {
         match channel_id.to_channel(&ctx).await {
             Ok(Channel::Guild(channel)) if channel.guild_id == guild_id => {
                 channel_id
@@ -48,7 +43,11 @@ pub async fn message_deleted(
     message: Message,
 ) -> Result<()> {
     // don't log deletions of logs
-    if get_log_channel_ids(&ctx).await.contains(&channel.id) {
+    if DiscordConfigKey::get(&ctx)
+        .await
+        .log_channels
+        .contains(&channel.id)
+    {
         return Ok(());
     }
     send_log(&ctx, channel.guild_id, |embed| {
@@ -71,7 +70,7 @@ pub async fn message_deleted(
                 )
                 .push(&message.content)
                 .build(),
-            MAX_EMBED_DESC_LENGTH,
+            EMBED_DESC_LENGTH,
         ));
         embed.footer(|footer| footer.text("Originally posted"));
         embed.timestamp(&message.timestamp);

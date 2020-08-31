@@ -69,29 +69,29 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
                                 let value = &line[index + 1..];
                                 (
                                     &line[..index],
-                                    String::from(if value.starts_with(' ') {
+                                    if value.starts_with(' ') {
                                         &value[1..]
                                     } else {
                                         value
-                                    }),
+                                    },
                                 )
                             } else {
-                                (line.as_ref(), String::new())
+                                (line.as_ref(), "")
                             };
                         match name {
                             "id" => {
                                 if value != "\0" {
-                                    event.id = Some(value);
+                                    event.id = Some(String::from(value));
                                 }
                             }
-                            "event" => event.event = Some(value),
+                            "event" => event.event = Some(String::from(value)),
                             "retry" => event.retry = value.parse().ok().or(event.retry),
                             "data" => {
                                 if let Some(ref mut existing) = event.data {
                                     existing.push('\n');
-                                    existing.push_str(&value);
+                                    existing.push_str(value);
                                 } else {
-                                    event.data = Some(value);
+                                    event.data = Some(String::from(value));
                                 }
                             }
                             _ => {} // spec says to ignore unknown fields

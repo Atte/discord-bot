@@ -15,6 +15,14 @@ use ranks::{JOIN_COMMAND, LEAVE_COMMAND, RANKS_COMMAND, RANK_COMMAND};
 mod roll;
 use roll::ROLL_COMMAND;
 
+mod gib;
+use gib::GIB_COMMAND;
+
+#[group]
+#[only_in(guilds)]
+#[commands(gib)]
+pub struct Horse;
+
 #[group]
 #[only_in(guilds)]
 #[commands(join, leave, rank, ranks)]
