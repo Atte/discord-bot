@@ -5,8 +5,15 @@ use std::{collections::HashSet, path::Path};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
+    pub mongodb: MongodbConfig,
     pub discord: DiscordConfig,
     pub berrytube: BerrytubeConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MongodbConfig {
+    pub uri: SubstitutingString,
+    pub database: SubstitutingString,
 }
 
 #[derive(Debug, Clone, Deserialize)]

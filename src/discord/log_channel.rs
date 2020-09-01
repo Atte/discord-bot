@@ -1,4 +1,4 @@
-use super::{limits::EMBED_DESC_LENGTH, DiscordConfigKey};
+use super::{get_data, limits::EMBED_DESC_LENGTH, DiscordConfigKey};
 use crate::{eyre::Report, util::ellipsis_string, Result};
 use serenity::{
     builder::CreateEmbed,
@@ -18,7 +18,7 @@ async fn send_log(
     create_embed: impl Fn(&mut CreateEmbed),
 ) -> Result<()> {
     let mut result = Ok(());
-    for channel_id in DiscordConfigKey::get(&ctx).await.log_channels {
+    for channel_id in get_data::<DiscordConfigKey>(&ctx).await?.log_channels {
         match channel_id.to_channel(&ctx).await {
             Ok(Channel::Guild(channel)) if channel.guild_id == guild_id => {
                 channel_id
@@ -43,8 +43,8 @@ pub async fn message_deleted(
     message: Message,
 ) -> Result<()> {
     // don't log deletions of logs
-    if DiscordConfigKey::get(&ctx)
-        .await
+    if get_data::<DiscordConfigKey>(&ctx)
+        .await?
         .log_channels
         .contains(&channel.id)
     {

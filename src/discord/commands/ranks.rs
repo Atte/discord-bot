@@ -1,4 +1,5 @@
 use super::super::{
+    get_data,
     limits::{EMBED_DESC_LENGTH, REPLY_LENGTH},
     DiscordConfigKey,
 };
@@ -236,7 +237,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
         String::from_utf8(tw.into_inner()?)?
     };
 
-    let prefix = DiscordConfigKey::get(ctx).await.command_prefix;
+    let prefix = get_data::<DiscordConfigKey>(&ctx).await?.command_prefix;
     msg.channel_id
         .send_message(&ctx, |message| {
             message.embed(|embed| {

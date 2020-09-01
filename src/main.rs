@@ -24,7 +24,10 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    let mut discord = discord::Discord::try_new(config.discord).await?;
+    let client = mongodb::Client::with_uri_str(config.mongodb.uri.as_ref()).await?;
+    let db = client.database(config.mongodb.database.as_ref());
+
+    let mut discord = discord::Discord::try_new(config.discord, db).await?;
 
     if config.berrytube.enabled {
         let berrytube = berrytube::Berrytube::try_new(

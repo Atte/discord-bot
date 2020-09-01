@@ -1,4 +1,4 @@
-use crate::{config::DiscordConfig, Result};
+use crate::{config::DiscordConfig, eyre::eyre, Result};
 use serenity::{
     client::{Client, Context},
     framework::StandardFramework,
@@ -22,13 +22,21 @@ impl TypeMapKey for DiscordConfigKey {
     type Value = DiscordConfig;
 }
 
-impl DiscordConfigKey {
-    async fn get(ctx: &Context) -> DiscordConfig {
-        let data = ctx.data.read().await;
-        data.get::<Self>()
-            .expect("DiscordConfig not in Context")
-            .clone()
-    }
+struct DbKey;
+
+impl TypeMapKey for DbKey {
+    type Value = mongodb::Database;
+}
+
+pub async fn get_data<T>(ctx: &Context) -> Result<T::Value>
+where
+    T: TypeMapKey,
+    T::Value: Clone,
+{
+    let data = ctx.data.read().await;
+    data.get::<T>()
+        .cloned()
+        .ok_or_else(|| eyre!("get_data called with missing TypeMapKey"))
 }
 
 pub struct Discord {
@@ -36,7 +44,7 @@ pub struct Discord {
 }
 
 impl Discord {
-    pub async fn try_new(config: DiscordConfig) -> Result<Self> {
+    pub async fn try_new(config: DiscordConfig, db: mongodb::Database) -> Result<Self> {
         let framework = StandardFramework::new()
             .configure(|c| {
                 c.prefix(config.command_prefix.as_ref())
@@ -57,6 +65,7 @@ impl Discord {
             .framework(framework)
             .type_map_insert::<ActivityKey>(String::new())
             .type_map_insert::<DiscordConfigKey>(config)
+            .type_map_insert::<DbKey>(db)
             .await?;
 
         client.cache_and_http.cache.set_max_messages(1024).await;
