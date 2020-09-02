@@ -6,6 +6,7 @@ use serenity::{
 };
 
 mod commands;
+mod dispatch_error_hook;
 mod event_handler;
 pub mod limits;
 mod log_channel;
@@ -63,6 +64,7 @@ impl Discord {
                     .allowed_channels(config.command_channels.clone())
                     .case_insensitivity(true)
             })
+            .on_dispatch_error(dispatch_error_hook::dispatch_error_hook)
             .bucket("derpibooru", |b| b.delay(1).time_span(10).limit(5))
             .await
             .group(&commands::HORSE_GROUP)

@@ -17,19 +17,20 @@ use serenity::{
 #[min_args(1)]
 async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r#"([1-9][0-9]*)?d([1-9][0-9]*)"#).unwrap();
+        static ref RE: Regex =
+            Regex::new(r#"(?P<rolls>[1-9][0-9]*)?d(?P<sides>[1-9][0-9]*)"#).unwrap();
     }
 
     let original_input = args.message().trim();
     let input = RE.replace_all(&original_input, |caps: &Captures| {
         let distribution = Uniform::new(
             1_usize,
-            caps.get(1)
+            caps.name("sides")
                 .and_then(|m| m.as_str().parse::<usize>().ok())
                 .unwrap_or(6_usize),
         );
         let mut rolls = (0..caps
-            .get(0)
+            .name("rolls")
             .and_then(|m| m.as_str().parse::<usize>().ok())
             .unwrap_or(1_usize))
             .map(|_| thread_rng().sample(distribution).to_string());
@@ -40,7 +41,7 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         Ok(result) => {
             let mut response = MessageBuilder::new()
                 .push_safe(original_input)
-                .push(" = ")
+                .push(" \u{2192} ")
                 .push_safe(&input)
                 .push(" = ")
                 .push_bold_safe(result)
