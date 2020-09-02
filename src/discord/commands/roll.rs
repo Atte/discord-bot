@@ -12,6 +12,8 @@ use serenity::{
 
 #[command]
 #[aliases(calc)]
+#[description("Cast die and/or do math")]
+#[usage("1d6 + 2d20")]
 #[min_args(1)]
 async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     lazy_static! {

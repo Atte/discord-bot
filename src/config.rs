@@ -25,7 +25,13 @@ pub struct DiscordConfig {
     pub command_channels: HashSet<ChannelId>,
     pub log_channels: HashSet<ChannelId>,
     pub sticky_roles: HashSet<RoleId>,
-    pub gib_endpoint: SubstitutingString,
+    pub gib: GibConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GibConfig {
+    pub endpoint: SubstitutingString,
+    pub user_agent: SubstitutingString,
 }
 
 #[derive(Debug, Clone, Deserialize)]

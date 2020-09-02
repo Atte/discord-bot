@@ -39,6 +39,16 @@ where
         .ok_or_else(|| eyre!("get_data called with missing TypeMapKey"))
 }
 
+pub async fn get_data_or_insert_with<T, F>(ctx: &Context, f: F) -> T::Value
+where
+    T: TypeMapKey,
+    T::Value: Clone,
+    F: FnOnce() -> T::Value,
+{
+    let mut data = ctx.data.write().await;
+    data.entry::<T>().or_insert_with(f).clone()
+}
+
 pub struct Discord {
     pub client: Client,
 }
@@ -53,7 +63,7 @@ impl Discord {
                     .allowed_channels(config.command_channels.clone())
                     .case_insensitivity(true)
             })
-            .bucket("derpi", |b| b.delay(1).time_span(10).limit(5))
+            .bucket("derpibooru", |b| b.delay(1).time_span(10).limit(5))
             .await
             .group(&commands::HORSE_GROUP)
             .group(&commands::RANKS_GROUP)

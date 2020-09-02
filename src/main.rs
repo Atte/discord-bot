@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-use log::{error, info, warn};
+use log::{error, info, warn, LevelFilter};
 use stable_eyre::{eyre, Result};
 use tokio::time::{delay_for, Duration};
 
@@ -16,7 +16,10 @@ mod discord;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    env_logger::from_env(
+        env_logger::Env::default().default_filter_or(LevelFilter::Debug.to_string()),
+    )
+    .init();
     stable_eyre::install()?;
 
     let config = config::Config::from_file(
@@ -24,8 +27,8 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    let client = mongodb::Client::with_uri_str(config.mongodb.uri.as_ref()).await?;
-    let db = client.database(config.mongodb.database.as_ref());
+    let mongo_client = mongodb::Client::with_uri_str(config.mongodb.uri.as_ref()).await?;
+    let db = mongo_client.database(config.mongodb.database.as_ref());
 
     let mut discord = discord::Discord::try_new(config.discord, db).await?;
 

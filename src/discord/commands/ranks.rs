@@ -155,6 +155,7 @@ async fn handle_joinleave(
 }
 
 #[command]
+#[description("Join a rank")]
 #[min_args(1)]
 #[delimiters(',')]
 async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
@@ -175,6 +176,7 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 #[command]
+#[description("Leave a rank")]
 #[min_args(1)]
 #[delimiters(',')]
 async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
@@ -198,6 +200,7 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[aliases(role)]
+#[description("Join/leave a rank")]
 #[min_args(1)]
 #[delimiters(',')]
 async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
@@ -219,6 +222,7 @@ async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[aliases(roles)]
+#[description("List all available ranks, and which ones you currently have")]
 #[num_args(0)]
 async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
     let ranks = Ranks::from_message(&ctx, &msg).await?;

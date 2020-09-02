@@ -1,16 +1,13 @@
 use super::super::{
-    get_data,
-    limits::{EMBED_AUTHOR_LENGTH, EMBED_TITLE_LENGTH},
-    DbKey, DiscordConfigKey,
+    get_data, get_data_or_insert_with, limits::EMBED_FIELD_VALUE_LENGTH, DbKey, DiscordConfigKey,
 };
 use crate::util::{ellipsis_string, separate_thousands};
 use chrono::Utc;
 use futures::StreamExt;
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use mongodb::{
-    bson::doc,
-    options::{FindOptions, ReplaceOptions},
+    bson::{doc, to_bson},
+    options::FindOptions,
 };
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
@@ -19,16 +16,9 @@ use serenity::{
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
+    prelude::TypeMapKey,
 };
 use std::time::Duration;
-
-lazy_static! {
-    static ref CLIENT: Client = Client::builder()
-        .user_agent("discord-bot (by Atte)")
-        .connect_timeout(Duration::from_secs(10))
-        .build()
-        .expect("Unable to create reqwest Client!");
-}
 
 #[derive(Debug, Clone, Deserialize)]
 struct SearchResponse {
@@ -39,8 +29,6 @@ struct SearchResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Image {
     id: i64,
-    #[serde(deserialize_with = "deserialize_default_from_null")]
-    name: String,
     #[serde(deserialize_with = "deserialize_default_from_null")]
     tags: Vec<String>,
     source_url: Option<String>,
@@ -53,20 +41,37 @@ struct Representations {
     tall: String,
 }
 
+struct ClientKey;
+
+impl TypeMapKey for ClientKey {
+    type Value = Result<Client, String>;
+}
+
 #[command]
+#[description("Gib pics from Derpibooru")]
+#[usage("[tags\u{2026}]")]
+#[bucket(derpibooru)]
 async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let config = get_data::<DiscordConfigKey>(&ctx).await?;
-    let db = get_data::<DbKey>(&ctx).await?;
-    let collection = db.collection("gib_seen");
+    let collection = get_data::<DbKey>(&ctx).await?.collection("gib-seen");
+    let client = get_data_or_insert_with::<ClientKey, _>(&ctx, || {
+        Client::builder()
+            .user_agent(config.gib.user_agent.to_string())
+            .connect_timeout(Duration::from_secs(10))
+            .build()
+            // simplify error to a `String` to make it `impl Clone`
+            .map_err(|err| format!("Unable to create reqwest::Client: {}", err))
+    })
+    .await?;
 
     let mut query = args.message().trim();
     if query.is_empty() {
         query = "*";
     }
 
-    let response: SearchResponse = CLIENT
+    let response: SearchResponse = client
         .get(Url::parse_with_params(
-            config.gib_endpoint.as_ref(),
+            config.gib.endpoint.as_ref(),
             &[("q", query)],
         )?)
         .send()
@@ -80,7 +85,6 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             doc! { "image.id": { "$in": &image_ids } },
             FindOptions::builder()
                 .projection(doc! { "image.id": 1 })
-                .sort(doc! { "time": 1 })
                 .build(),
         )
         .await?
@@ -108,42 +112,37 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         msg.channel_id
             .send_message(&ctx, |message| {
                 message.embed(|embed| {
+                    embed.field("Post", format!("https://derpibooru.org/{}", image.id), true);
                     if !artists.is_empty() {
-                        embed.author(|author| {
-                            author.name(ellipsis_string(artists, EMBED_AUTHOR_LENGTH))
-                        });
+                        embed.field(
+                            if artists.contains(", ") {
+                                "Artists"
+                            } else {
+                                "Artist"
+                            },
+                            ellipsis_string(artists, EMBED_FIELD_VALUE_LENGTH),
+                            true,
+                        );
+                    }
+                    if let Some(ref source_url) = image.source_url {
+                        if source_url.len() <= EMBED_FIELD_VALUE_LENGTH {
+                            embed.field("Source", source_url, false);
+                        }
                     }
                     if let Some(ref timestamp) = image.first_seen_at {
                         embed.timestamp::<&str>(timestamp);
                     }
-                    embed
-                        .title(if image.name.is_empty() {
-                            String::from("(no title)")
-                        } else {
-                            ellipsis_string(&image.name, EMBED_TITLE_LENGTH)
-                        })
-                        .url(
-                            image
-                                .source_url
-                                .clone()
-                                .unwrap_or_else(|| format!("https://derpibooru.org/{}", image.id)),
-                        )
-                        .image(&image.representations.tall)
-                        .footer(|footer| {
-                            footer.text(format!(
-                                "{} results",
-                                separate_thousands(response.total.to_string())
-                            ))
-                        })
+                    embed.image(&image.representations.tall).footer(|footer| {
+                        footer.text(format!(
+                            "{} results",
+                            separate_thousands(response.total.to_string())
+                        ))
+                    })
                 })
             })
             .await?;
         collection
-            .replace_one(
-                doc! { "image.id": image.id },
-                doc! { "image": image, "time": Utc::now() },
-                ReplaceOptions::builder().upsert(true).build(),
-            )
+            .insert_one(doc! { "image": to_bson(image)?, "time": Utc::now() }, None)
             .await?;
     } else {
         msg.reply(&ctx, "No results").await?;

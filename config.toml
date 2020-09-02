@@ -1,6 +1,6 @@
 [mongodb]
 uri = "$MONGO_URL"
-database = "discord_bot"
+database = "discord-bot"
 
 [discord]
 command_prefix = "?"
@@ -24,7 +24,10 @@ sticky_roles = [
     #369808034698100747, # Block politics
     #409178686957420554, # Muted
 ]
-gib_endpoint = "https://derpibooru.org/api/v1/json/search/images?sf=random&filter_id=152796"
+
+[discord.gib]
+endpoint = "https://derpibooru.org/api/v1/json/search/images?sf=random&filter_id=152796"
+user_agent = "$GIB_USER_AGENT"
 
 [berrytube]
 enabled = true
