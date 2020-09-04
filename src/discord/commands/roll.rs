@@ -17,12 +17,13 @@ use serenity::{
 #[min_args(1)]
 async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     lazy_static! {
-        static ref RE: Regex =
+        static ref DICE_RE: Regex =
             Regex::new(r#"(?P<rolls>[1-9][0-9]*)?d(?P<sides>[1-9][0-9]*)"#).unwrap();
+        static ref SIMPLE_RE: Regex = Regex::new(r#"^\(?\d+\)?$"#).unwrap();
     }
 
     let original_input = args.message().trim();
-    let input = RE.replace_all(&original_input, |caps: &Captures| {
+    let input = DICE_RE.replace_all(&original_input, |caps: &Captures| {
         let distribution = Uniform::new(
             1_usize,
             caps.name("sides")
@@ -39,13 +40,21 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     match meval::eval_str(&input) {
         Ok(result) => {
-            let mut response = MessageBuilder::new()
-                .push_safe(original_input)
-                .push(" \u{2192} ")
-                .push_safe(&input)
-                .push(" = ")
-                .push_bold_safe(result)
-                .build();
+            let mut response = if SIMPLE_RE.is_match(&input) {
+                MessageBuilder::new()
+                    .push_safe(original_input)
+                    .push(" \u{2192} ")
+                    .push_bold_safe(result)
+                    .build()
+            } else {
+                MessageBuilder::new()
+                    .push_safe(original_input)
+                    .push(" \u{2192} ")
+                    .push_safe(&input)
+                    .push(" = ")
+                    .push_bold_safe(result)
+                    .build()
+            };
             if response.len() > REPLY_LENGTH || input == original_input {
                 response = MessageBuilder::new()
                     .push_safe(original_input)
