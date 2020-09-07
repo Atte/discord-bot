@@ -12,7 +12,6 @@ use serenity::{
     framework::standard::{macros::hook, DispatchError},
     model::channel::{Channel, Message},
 };
-use std::{convert::TryInto, time::Duration};
 
 async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
     lazy_static! {
@@ -59,21 +58,23 @@ async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                     "id": channel.id,
                 },
                 doc! {
-                    "name": channel.name,
-                    { "$addToSet": {
+                    "$set": {
+                        "name": channel.name,
+                        "last_message": now,
+                    },
+                    "$addToSet": {
                         "names": channel.name,
-                    } },
-                    "last_message": now,
-                    { "$setOnInsert": {
+                    },
+                    "$setOnInsert": {
                         "first_message": now,
-                    } },
-                    { "$inc": {
+                    },
+                    "$inc": {
                         "message_count": 1,
                         "user_mention_count": user_mentions.len(),
                         "channel_mention_count": channel_mentions.len(),
                         "role_mention_count": role_mentions.len(),
                         "emoji_count": emojis.len(),
-                    } },
+                    },
                 },
                 UpdateOptions::builder().upsert(true).build(),
             ),
@@ -83,22 +84,24 @@ async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                     "id": msg.author.id,
                 },
                 doc! {
-                    "name": msg.author.name,
-                    "discriminator": msg.author.discriminator,
-                    { "$addToSet": {
+                    "$set": {
+                        "name": msg.author.name,
+                        "discriminator": msg.author.discriminator,
+                        "last_message": now,
+                    },
+                    "$addToSet": {
                         "nicks": nick,
-                    } },
-                    "last_message": now,
-                    { "$setOnInsert": {
+                    },
+                    "$setOnInsert": {
                         "first_message": now,
-                    } },
-                    { "$inc": {
+                    },
+                    "$inc": {
                         "message_count": 1,
                         "user_mention_count": user_mentions.len(),
                         "channel_mention_count": channel_mentions.len(),
                         "role_mention_count": role_mentions.len(),
                         "emoji_count": emojis.len(),
-                    } },
+                    },
                 },
                 UpdateOptions::builder().upsert(true).build(),
             ),
@@ -110,14 +113,16 @@ async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                     "id": id,
                 },
                 doc! {
-                    "name": name,
-                    "last_message": now,
-                    { "$setOnInsert": {
+                    "$set": {
+                        "name": name,
+                        "last_message": now,
+                    },
+                    "$setOnInsert": {
                         "first_message": now,
-                    } },
-                    { "$inc": {
+                    },
+                    "$inc": {
                         "use_count": 1,
-                    } },
+                    },
                 },
                 UpdateOptions::builder().upsert(true).build(),
             );
@@ -150,7 +155,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
                     &ctx,
                     format!(
                         "Ratelimited! Wait {} before trying again.",
-                        format_duration(Duration::from_secs(wait.try_into().unwrap_or(0)))
+                        format_duration(wait)
                     ),
                 )
                 .await;
