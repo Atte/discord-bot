@@ -47,13 +47,15 @@ impl TypeMapKey for ClientKey {
     type Value = Result<Client, String>;
 }
 
+const COLLECTION_NAME: &str = "gib-seen";
+
 #[command]
 #[description("Gib pics from Derpibooru")]
 #[usage("[tags\u{2026}]")]
 #[bucket(derpibooru)]
 async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let config = get_data::<DiscordConfigKey>(&ctx).await?;
-    let collection = get_data::<DbKey>(&ctx).await?.collection("gib-seen");
+    let collection = get_data::<DbKey>(&ctx).await?.collection(COLLECTION_NAME);
     let client = get_data_or_insert_with::<ClientKey, _>(&ctx, || {
         Client::builder()
             .user_agent(config.gib.user_agent.to_string())

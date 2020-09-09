@@ -6,6 +6,8 @@ use serenity::{
 };
 
 mod commands;
+mod stats;
+mod sticky_roles;
 mod event_handler;
 mod hooks;
 pub mod limits;

@@ -1,4 +1,4 @@
-use super::{limits::ACTIVITY_LENGTH, log_channel, ActivityKey};
+use super::{sticky_roles, limits::ACTIVITY_LENGTH, log_channel, ActivityKey};
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
@@ -76,6 +76,9 @@ impl EventHandler for Handler {
         if let Err(err) = log_channel::member_added(&ctx, guild_id, &member.user).await {
             error!("Unable to log member addition: {}", err);
         }
+        if let Err(err) = sticky_roles::apply_stickies(&ctx, &member).await {
+            error!("Unable to apply stickies: {}", err);
+        }
     }
 
     async fn guild_member_removal(
@@ -99,6 +102,9 @@ impl EventHandler for Handler {
         if let Err(err) = log_channel::member_updated(&ctx, old_member.as_ref(), &new_member).await
         {
             error!("Unable to log member update: {}", err);
+        }
+        if let Err(err) = sticky_roles::save_stickies(&ctx, &new_member).await {
+            error!("Unable to save stickies: {}", err);
         }
     }
 }
