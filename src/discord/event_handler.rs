@@ -1,4 +1,4 @@
-use super::{sticky_roles, limits::ACTIVITY_LENGTH, log_channel, ActivityKey};
+use super::{limits::ACTIVITY_LENGTH, log_channel, sticky_roles, ActivityKey};
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{

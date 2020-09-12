@@ -15,6 +15,7 @@ use serenity::{
 
 const COLLECTION_NAME: &str = "stats";
 
+#[allow(clippy::too_many_lines)]
 pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
     lazy_static! {
         static ref USER_MENTION_RE: Regex =
@@ -54,42 +55,44 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
             })
             .collect();
         let collection = database.collection(COLLECTION_NAME);
-        join!(
-            collection.update_one(
+        collection
+            .update_one(
                 doc! {
                     "type": "channel",
-                    "id": channel.id,
+                    "id": channel.id.0,
                 },
                 doc! {
                     "$set": {
-                        "name": channel.name,
+                        "name": &channel.name,
                         "last_message": now,
                     },
                     "$addToSet": {
-                        "names": channel.name,
+                        "names": &channel.name,
                     },
                     "$setOnInsert": {
                         "first_message": now,
                     },
                     "$inc": {
                         "message_count": 1,
-                        "user_mention_count": user_mentions.len(),
-                        "channel_mention_count": channel_mentions.len(),
-                        "role_mention_count": role_mentions.len(),
-                        "emoji_count": emojis.len(),
+                        "user_mention_count": user_mentions.len() as u64,
+                        "channel_mention_count": channel_mentions.len() as u64,
+                        "role_mention_count": role_mentions.len() as u64,
+                        "emoji_count": emojis.len() as u64,
                     },
                 },
                 UpdateOptions::builder().upsert(true).build(),
-            ),
-            collection.update_one(
+            )
+            .await?;
+        collection
+            .update_one(
                 doc! {
                     "type": "user",
-                    "id": msg.author.id,
+                    "id": msg.author.id.0,
                 },
                 doc! {
                     "$set": {
-                        "name": msg.author.name,
-                        "discriminator": msg.author.discriminator,
+                        "name": &msg.author.name,
+                        "discriminator": i32::from(msg.author.discriminator),
                         "last_message": now,
                     },
                     "$addToSet": {
@@ -100,35 +103,37 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                     },
                     "$inc": {
                         "message_count": 1,
-                        "user_mention_count": user_mentions.len(),
-                        "channel_mention_count": channel_mentions.len(),
-                        "role_mention_count": role_mentions.len(),
-                        "emoji_count": emojis.len(),
+                        "user_mention_count": user_mentions.len() as u64,
+                        "channel_mention_count": channel_mentions.len() as u64,
+                        "role_mention_count": role_mentions.len() as u64,
+                        "emoji_count": emojis.len() as u64,
                     },
                 },
                 UpdateOptions::builder().upsert(true).build(),
-            ),
-        );
+            )
+            .await?;
         for (id, name) in emojis {
-            collection.update_one(
-                doc! {
-                    "type": "emoji",
-                    "id": id,
-                },
-                doc! {
-                    "$set": {
-                        "name": name,
-                        "last_message": now,
+            collection
+                .update_one(
+                    doc! {
+                        "type": "emoji",
+                        "id": id.0,
                     },
-                    "$setOnInsert": {
-                        "first_message": now,
+                    doc! {
+                        "$set": {
+                            "name": name,
+                            "last_message": now,
+                        },
+                        "$setOnInsert": {
+                            "first_message": now,
+                        },
+                        "$inc": {
+                            "use_count": 1,
+                        },
                     },
-                    "$inc": {
-                        "use_count": 1,
-                    },
-                },
-                UpdateOptions::builder().upsert(true).build(),
-            );
+                    UpdateOptions::builder().upsert(true).build(),
+                )
+                .await?;
         }
     }
     Ok(())

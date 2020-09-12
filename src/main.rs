@@ -1,6 +1,6 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 
 use log::{error, info, warn, LevelFilter};
 use stable_eyre::{eyre, Result};

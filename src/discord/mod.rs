@@ -6,12 +6,12 @@ use serenity::{
 };
 
 mod commands;
-mod stats;
-mod sticky_roles;
 mod event_handler;
 mod hooks;
 pub mod limits;
 mod log_channel;
+mod stats;
+mod sticky_roles;
 
 pub struct ActivityKey;
 
@@ -69,8 +69,6 @@ impl Discord {
             .normal_message(hooks::normal_message)
             .unrecognised_command(hooks::unrecognised_command)
             .on_dispatch_error(hooks::dispatch_error)
-            .bucket("derpibooru", |b| b.delay(1).time_span(10).limit(5))
-            .await
             .group(&commands::HORSE_GROUP)
             .group(&commands::RANKS_GROUP)
             .group(&commands::MISC_GROUP)

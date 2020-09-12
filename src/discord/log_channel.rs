@@ -117,30 +117,35 @@ pub async fn member_updated(
     old_member: Option<&Member>,
     new_member: &Member,
 ) -> Result<()> {
-    send_log(&ctx, new_member.guild_id, |embed| {
-        embed.color(Colour::RED);
-        embed.author(|author| {
-            author
-                .name(new_member.user.tag())
-                .icon_url(new_member.user.face())
-        });
-        embed.description(
-            MessageBuilder::new()
-                .push_bold_line(
-                    MessageBuilder::new()
-                        .mention(new_member)
-                        .push("'s nickname was changed (by them or by an admin)")
-                        .build(),
-                )
-                .push_safe(old_member.map_or_else(
-                    || String::from("(unknown)"),
-                    |member| member.display_name().to_string(),
-                ))
-                .push(" \u{2192} ") // right arrow
-                .push_safe(new_member.display_name())
-                .build(),
-        );
-    })
-    .await?;
+    let old_name = old_member.map_or_else(
+        || String::from("(unknown)"),
+        |member| member.display_name().to_string(),
+    );
+    let new_name = new_member.display_name().to_string();
+
+    if old_name != new_name {
+        send_log(&ctx, new_member.guild_id, |embed| {
+            embed.color(Colour::RED);
+            embed.author(|author| {
+                author
+                    .name(new_member.user.tag())
+                    .icon_url(new_member.user.face())
+            });
+            embed.description(
+                MessageBuilder::new()
+                    .push_bold_line(
+                        MessageBuilder::new()
+                            .mention(new_member)
+                            .push("'s nickname was changed (by them or by an admin)")
+                            .build(),
+                    )
+                    .push_safe(&old_name)
+                    .push(" \u{2192} ") // right arrow
+                    .push_safe(&new_name)
+                    .build(),
+            );
+        })
+        .await?;
+    }
     Ok(())
 }

@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use std::time::Duration;
 
 pub fn ellipsis_string(s: impl AsRef<str>, len: usize) -> String {
     let s = s.as_ref();
@@ -30,6 +31,33 @@ pub fn separate_thousands(s: impl AsRef<str>) -> String {
         prefix.push_str(&rest);
         prefix
     }
+}
+
+pub fn format_duration(duration: &Duration) -> String {
+    let hours = duration.as_secs() / 60 / 60;
+    let mins = (duration.as_secs() / 60) % 60;
+    let secs = duration.as_secs() % 60;
+
+    let mut out = String::new();
+    if hours > 0 {
+        out.push_str(&hours.to_string());
+        out.push_str(" hours");
+    }
+    if mins > 0 {
+        if !out.is_empty() {
+            out.push_str(", ");
+        }
+        out.push_str(&mins.to_string());
+        out.push_str(" minutes");
+    }
+    if secs > 0 {
+        if !out.is_empty() {
+            out.push_str(", ");
+        }
+        out.push_str(&secs.to_string());
+        out.push_str(" seconds");
+    }
+    out
 }
 
 #[cfg(test)]

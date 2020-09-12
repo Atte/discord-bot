@@ -52,7 +52,6 @@ const COLLECTION_NAME: &str = "gib-seen";
 #[command]
 #[description("Gib pics from Derpibooru")]
 #[usage("[tags\u{2026}]")]
-#[bucket(derpibooru)]
 async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let config = get_data::<DiscordConfigKey>(&ctx).await?;
     let collection = get_data::<DbKey>(&ctx).await?.collection(COLLECTION_NAME);

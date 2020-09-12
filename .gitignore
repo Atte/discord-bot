@@ -1,3 +1,4 @@
 /target
 /.envrc
 **/*.rs.bk
+/run.sh
