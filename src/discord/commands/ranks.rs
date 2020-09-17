@@ -15,7 +15,7 @@ use serenity::{
     },
     utils::MessageBuilder,
 };
-use std::{collections::HashSet, io::Write};
+use std::{cmp::Ordering, collections::HashSet, io::Write};
 use tabwriter::TabWriter;
 
 #[derive(Debug, Clone)]
@@ -24,11 +24,41 @@ struct Rank {
     members: Vec<Member>,
 }
 
+impl PartialEq for Rank {
+    #[inline]
+    fn eq(&self, other: &Rank) -> bool {
+        self.role.eq(&other.role)
+    }
+}
+
+impl Eq for Rank {}
+
+impl PartialOrd for Rank {
+    #[inline]
+    fn partial_cmp(&self, other: &Rank) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl Ord for Rank {
+    fn cmp(&self, other: &Rank) -> Ordering {
+        self.role
+            .name
+            .to_lowercase()
+            .cmp(&other.role.name.to_lowercase())
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Ranks(Vec<Rank>);
 
 impl Ranks {
-    async fn from_guild(ctx: &Context, guild_id: impl Into<GuildId>) -> Result<Ranks> {
+    fn new(mut ranks: Vec<Rank>) -> Self {
+        ranks.sort_unstable();
+        Self(ranks)
+    }
+
+    async fn from_guild(ctx: &Context, guild_id: impl Into<GuildId>) -> Result<Self> {
         let guild = guild_id
             .into()
             .to_guild_cached(&ctx)
@@ -43,7 +73,7 @@ impl Ranks {
             .into_iter()
             .find(|role| role.managed)
             .ok_or_else(|| eyre!("Managed Role for Member not found!"))?;
-        Ok(Ranks(
+        Ok(Self::new(
             guild
                 .roles
                 .values()
@@ -62,8 +92,8 @@ impl Ranks {
         ))
     }
 
-    async fn from_message(ctx: &Context, msg: &Message) -> Result<Ranks> {
-        Ranks::from_guild(
+    async fn from_message(ctx: &Context, msg: &Message) -> Result<Self> {
+        Self::from_guild(
             &ctx,
             msg.guild_id
                 .ok_or_else(|| eyre!("No guild_id on Message!"))?,
@@ -76,9 +106,9 @@ impl Ranks {
         self.0.is_empty()
     }
 
-    fn of_user(&self, user: impl Into<UserId>) -> Ranks {
+    fn of_user(&self, user: impl Into<UserId>) -> Self {
         let user_id = user.into();
-        Ranks(
+        Self::new(
             self.0
                 .iter()
                 .filter(|rank| rank.members.iter().any(|member| member.user.id == user_id))
@@ -96,19 +126,14 @@ impl Ranks {
     }
 
     fn names(&self) -> Vec<String> {
-        let mut names: Vec<String> = self.0.iter().map(|rank| rank.role.name.clone()).collect();
-        names.sort_unstable();
-        names
+        self.0.iter().map(|rank| rank.role.name.clone()).collect()
     }
 
     fn member_counts(&self) -> Vec<(String, usize)> {
-        let mut member_counts: Vec<(String, usize)> = self
-            .0
+        self.0
             .iter()
             .map(|rank| (rank.role.name.clone(), rank.members.len()))
-            .collect();
-        member_counts.sort_unstable_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-        member_counts
+            .collect()
     }
 }
 

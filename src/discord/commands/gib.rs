@@ -1,7 +1,7 @@
 use super::super::{
     get_data, get_data_or_insert_with, limits::EMBED_FIELD_VALUE_LENGTH, DbKey, DiscordConfigKey,
 };
-use crate::util::{ellipsis_string, separate_thousands};
+use crate::util::{ellipsis_string, separate_thousands_unsigned};
 use chrono::Utc;
 use futures::StreamExt;
 use itertools::Itertools;
@@ -125,18 +125,20 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                             true,
                         );
                     }
+                    /*
                     if let Some(ref source_url) = image.source_url {
                         if source_url.len() <= EMBED_FIELD_VALUE_LENGTH {
                             embed.field("Source", source_url, false);
                         }
                     }
+                    */
                     if let Some(ref timestamp) = image.first_seen_at {
                         embed.timestamp::<&str>(timestamp);
                     }
                     embed.image(&image.representations.tall).footer(|footer| {
                         footer.text(format!(
                             "{} results",
-                            separate_thousands(response.total.to_string())
+                            separate_thousands_unsigned(response.total)
                         ))
                     })
                 })

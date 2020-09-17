@@ -1,4 +1,5 @@
 use super::super::limits::REPLY_LENGTH;
+use crate::util::separate_thousands_floating;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use rand::{distributions::Uniform, thread_rng, Rng};
@@ -28,23 +29,27 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             1_usize,
             caps.name("sides")
                 .and_then(|m| m.as_str().parse::<usize>().ok())
-                .unwrap_or(6_usize),
+                .unwrap_or(6_usize)
+                + 1_usize,
         );
-        let mut rolls = (0..caps
-            .name("rolls")
-            .and_then(|m| m.as_str().parse::<usize>().ok())
-            .unwrap_or(1_usize))
+        let mut rolls = (0..std::cmp::min(
+            100_usize,
+            caps.name("rolls")
+                .and_then(|m| m.as_str().parse::<usize>().ok())
+                .unwrap_or(1_usize),
+        ))
             .map(|_| thread_rng().sample(distribution).to_string());
         format!("({})", rolls.join(" + "))
     });
 
     match meval::eval_str(&input) {
         Ok(result) => {
+            let result = separate_thousands_floating(result);
             let mut response = if SIMPLE_RE.is_match(&input) {
                 MessageBuilder::new()
                     .push_safe(original_input)
                     .push(" \u{2192} ")
-                    .push_bold_safe(result)
+                    .push_bold_safe(&result)
                     .build()
             } else {
                 MessageBuilder::new()
@@ -52,21 +57,21 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                     .push(" \u{2192} ")
                     .push_safe(&input)
                     .push(" = ")
-                    .push_bold_safe(result)
+                    .push_bold_safe(&result)
                     .build()
             };
             if response.len() > REPLY_LENGTH || input == original_input {
                 response = MessageBuilder::new()
                     .push_safe(original_input)
                     .push(" = ")
-                    .push_bold_safe(result)
+                    .push_bold_safe(&result)
                     .build();
             }
             if response.len() > REPLY_LENGTH {
                 response = MessageBuilder::new()
                     .push_italic("(input too long to repeat)")
                     .push(" = ")
-                    .push_bold_safe(result)
+                    .push_bold_safe(&result)
                     .build();
             }
             msg.reply(ctx, response).await?
