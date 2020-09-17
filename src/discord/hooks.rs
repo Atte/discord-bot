@@ -10,7 +10,7 @@ use serenity::{
 #[hook]
 pub async fn normal_message(ctx: &Context, msg: &Message) {
     if let Err(err) = update_stats(&ctx, &msg).await {
-        error!("Error in log_message: {:?}", err);
+        error!("Error in update_stats for normal_message: {:?}", err);
     }
 }
 

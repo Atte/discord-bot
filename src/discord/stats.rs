@@ -1,7 +1,6 @@
 use super::{get_data, DbKey};
-use crate::Result;
+use crate::{eyre::bail, Result};
 use chrono::Utc;
-use futures::join;
 use lazy_static::lazy_static;
 use mongodb::{bson::doc, options::UpdateOptions};
 use regex::Regex;
@@ -28,113 +27,124 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
             .expect("Invalid regex for EMOJI_RE");
     }
 
-    if let (Some(Channel::Guild(channel)), Some(nick), Ok(database)) = join!(
-        msg.channel(&ctx),
-        msg.author_nick(&ctx),
-        get_data::<DbKey>(&ctx),
-    ) {
-        let now = Utc::now();
-        let user_mentions: Vec<UserId> = USER_MENTION_RE
-            .captures_iter(&msg.content)
-            .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
-            .collect();
-        let channel_mentions: Vec<ChannelId> = CHANNEL_MENTION_RE
-            .captures_iter(&msg.content)
-            .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
-            .collect();
-        let role_mentions: Vec<RoleId> = ROLE_MENTION_RE
-            .captures_iter(&msg.content)
-            .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
-            .collect();
-        let emojis: Vec<(EmojiId, &str)> = EMOJI_RE
-            .captures_iter(&msg.content)
-            .filter_map(|cap| {
-                cap.name("id")
-                    .and_then(|c| c.as_str().parse::<u64>().map(EmojiId).ok())
-                    .zip(cap.name("name").map(|c| c.as_str()))
-            })
-            .collect();
-        let collection = database.collection(COLLECTION_NAME);
+    let channel = match msg.channel(&ctx).await {
+        Some(Channel::Guild(inner)) => inner,
+        Some(_) => bail!("Not a guild channel"),
+        None => bail!("Channel not in cache"),
+    };
+
+    let nick = msg
+        .author_nick(&ctx)
+        .await
+        .unwrap_or_else(|| msg.author.name.clone());
+
+    let user_mentions: Vec<UserId> = USER_MENTION_RE
+        .captures_iter(&msg.content)
+        .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
+        .collect();
+    let channel_mentions: Vec<ChannelId> = CHANNEL_MENTION_RE
+        .captures_iter(&msg.content)
+        .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
+        .collect();
+    let role_mentions: Vec<RoleId> = ROLE_MENTION_RE
+        .captures_iter(&msg.content)
+        .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
+        .collect();
+    let emojis: Vec<(EmojiId, &str)> = EMOJI_RE
+        .captures_iter(&msg.content)
+        .filter_map(|cap| {
+            cap.name("id")
+                .and_then(|c| c.as_str().parse::<u64>().map(EmojiId).ok())
+                .zip(cap.name("name").map(|c| c.as_str()))
+        })
+        .collect();
+
+    let now = Utc::now();
+    let collection = get_data::<DbKey>(&ctx).await?.collection(COLLECTION_NAME);
+
+    collection
+        .update_one(
+            doc! {
+                "type": "channel",
+                "id": channel.id.0,
+            },
+            doc! {
+                "$set": {
+                    "name": &channel.name,
+                    "last_message": now,
+                },
+                "$addToSet": {
+                    "names": &channel.name,
+                },
+                "$setOnInsert": {
+                    "first_message": now,
+                },
+                "$inc": {
+                    "message_count": 1,
+                    "user_mention_count": user_mentions.len() as u64,
+                    "channel_mention_count": channel_mentions.len() as u64,
+                    "role_mention_count": role_mentions.len() as u64,
+                    "emoji_count": emojis.len() as u64,
+                },
+            },
+            UpdateOptions::builder().upsert(true).build(),
+        )
+        .await?;
+
+    collection
+        .update_one(
+            doc! {
+                "type": "user",
+                "id": msg.author.id.0,
+            },
+            doc! {
+                "$set": {
+                    "name": &msg.author.name,
+                    "discriminator": i32::from(msg.author.discriminator),
+                    "nick": &nick,
+                    "last_message": now,
+                },
+                "$addToSet": {
+                    "nicks": nick,
+                },
+                "$setOnInsert": {
+                    "first_message": now,
+                },
+                "$inc": {
+                    "message_count": 1,
+                    "user_mention_count": user_mentions.len() as u64,
+                    "channel_mention_count": channel_mentions.len() as u64,
+                    "role_mention_count": role_mentions.len() as u64,
+                    "emoji_count": emojis.len() as u64,
+                },
+            },
+            UpdateOptions::builder().upsert(true).build(),
+        )
+        .await?;
+
+    for (EmojiId(id), name) in emojis {
         collection
             .update_one(
                 doc! {
-                    "type": "channel",
-                    "id": channel.id.0,
+                    "type": "emoji",
+                    "id": id,
                 },
                 doc! {
                     "$set": {
-                        "name": &channel.name,
+                        "name": name,
                         "last_message": now,
-                    },
-                    "$addToSet": {
-                        "names": &channel.name,
                     },
                     "$setOnInsert": {
                         "first_message": now,
                     },
                     "$inc": {
-                        "message_count": 1,
-                        "user_mention_count": user_mentions.len() as u64,
-                        "channel_mention_count": channel_mentions.len() as u64,
-                        "role_mention_count": role_mentions.len() as u64,
-                        "emoji_count": emojis.len() as u64,
+                        "use_count": 1,
                     },
                 },
                 UpdateOptions::builder().upsert(true).build(),
             )
             .await?;
-        collection
-            .update_one(
-                doc! {
-                    "type": "user",
-                    "id": msg.author.id.0,
-                },
-                doc! {
-                    "$set": {
-                        "name": &msg.author.name,
-                        "discriminator": i32::from(msg.author.discriminator),
-                        "last_message": now,
-                    },
-                    "$addToSet": {
-                        "nicks": nick,
-                    },
-                    "$setOnInsert": {
-                        "first_message": now,
-                    },
-                    "$inc": {
-                        "message_count": 1,
-                        "user_mention_count": user_mentions.len() as u64,
-                        "channel_mention_count": channel_mentions.len() as u64,
-                        "role_mention_count": role_mentions.len() as u64,
-                        "emoji_count": emojis.len() as u64,
-                    },
-                },
-                UpdateOptions::builder().upsert(true).build(),
-            )
-            .await?;
-        for (id, name) in emojis {
-            collection
-                .update_one(
-                    doc! {
-                        "type": "emoji",
-                        "id": id.0,
-                    },
-                    doc! {
-                        "$set": {
-                            "name": name,
-                            "last_message": now,
-                        },
-                        "$setOnInsert": {
-                            "first_message": now,
-                        },
-                        "$inc": {
-                            "use_count": 1,
-                        },
-                    },
-                    UpdateOptions::builder().upsert(true).build(),
-                )
-                .await?;
-        }
     }
+
     Ok(())
 }

@@ -18,7 +18,7 @@ mod discord;
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::from_env(
-        env_logger::Env::default().default_filter_or(LevelFilter::Debug.to_string()),
+        env_logger::Env::default().default_filter_or(LevelFilter::Info.to_string()),
     )
     .init();
     stable_eyre::install()?;
