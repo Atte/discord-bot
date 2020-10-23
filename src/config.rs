@@ -32,6 +32,7 @@ pub struct DiscordConfig {
 pub struct GibConfig {
     pub endpoint: SubstitutingString,
     pub user_agent: SubstitutingString,
+    pub shy_artists: HashSet<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

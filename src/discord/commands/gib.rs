@@ -80,7 +80,25 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .json()
         .await?;
 
-    let image_ids: Vec<i64> = response.images.iter().map(|image| image.id).collect();
+    // drop images where the only artist is a shy one
+    let images: Vec<&Image> = response
+        .images
+        .iter()
+        .filter(|image| {
+            let mut artists = image
+                .tags
+                .iter()
+                .filter_map(|tag| tag.strip_prefix("artist:"));
+            artists.by_ref().count() == 1
+                && config
+                    .gib
+                    .shy_artists
+                    // unwrap is safe: length is checked above
+                    .contains(artists.next().unwrap())
+        })
+        .collect();
+
+    let image_ids: Vec<i64> = images.iter().map(|image| image.id).collect();
     let seen_ids: Vec<i64> = collection
         .find(
             doc! { "image.id": { "$in": &image_ids } },
@@ -102,8 +120,8 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if let Some(image) = fresh_ids
         .first()
         .or_else(|| seen_ids.first())
-        .and_then(|id| response.images.iter().find(|image| &image.id == id))
-        .or_else(|| response.images.first())
+        .and_then(|id| images.iter().find(|image| &image.id == id))
+        .or_else(|| images.first())
     {
         let artists = image
             .tags
