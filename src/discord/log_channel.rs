@@ -50,6 +50,16 @@ pub async fn message_deleted(
     {
         return Ok(());
     }
+
+    // don't log halloween stuff
+    #[allow(clippy::unreadable_literal)]
+    if message.author.id == 755580145078632508
+        || message.content == "h!treat"
+        || message.content == "h!trick"
+    {
+        return Ok(());
+    }
+
     send_log(&ctx, channel.guild_id, |embed| {
         embed.color(Colour::RED);
         embed.author(|author| {
