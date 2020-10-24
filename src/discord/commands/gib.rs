@@ -80,21 +80,16 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .json()
         .await?;
 
-    // drop images where the only artist is a shy one
     let images: Vec<&Image> = response
         .images
         .iter()
+        // drop images where all artist are shy
         .filter(|image| {
-            let mut artists = image
+            image
                 .tags
                 .iter()
-                .filter_map(|tag| tag.strip_prefix("artist:"));
-            artists.by_ref().count() == 1
-                && config
-                    .gib
-                    .shy_artists
-                    // unwrap is safe: length is checked above
-                    .contains(artists.next().unwrap())
+                .filter_map(|tag| tag.strip_prefix("artist:"))
+                .all(|artist| config.gib.shy_artists.contains(artist))
         })
         .collect();
 
