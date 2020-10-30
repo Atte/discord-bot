@@ -92,12 +92,6 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
                 )
                 .await;
         }
-        DispatchError::IgnoredBot => {
-            warn!("Ignored command dispatch for bot");
-        }
-        DispatchError::WebhookAuthor => {
-            warn!("Ignored command dispatch for webhook");
-        }
         err => {
             error!("Dispatch error: {:?}", err);
         }

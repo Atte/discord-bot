@@ -2,7 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![recursion_limit = "512"]
 
-use log::{error, info, warn, LevelFilter};
+use log::{error, info, warn};
 use stable_eyre::{eyre, Result};
 use tokio::time::{delay_for, Duration};
 
@@ -17,10 +17,7 @@ mod discord;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::from_env(
-        env_logger::Env::default().default_filter_or(LevelFilter::Debug.to_string()),
-    )
-    .init();
+    env_logger::init();
     stable_eyre::install()?;
 
     let config = config::Config::from_file(

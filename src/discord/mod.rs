@@ -74,7 +74,7 @@ impl Discord {
             .group(&commands::MISC_GROUP)
             .help(&commands::HELP_COMMAND);
 
-        let client = Client::new(&config.token)
+        let client = Client::builder(&config.token)
             .event_handler(event_handler::Handler)
             .framework(framework)
             .type_map_insert::<ActivityKey>(String::new())
