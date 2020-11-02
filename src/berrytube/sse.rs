@@ -40,17 +40,18 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
         }
 
         // split incomplete line off manually in case it ends with incomplete unicode
-        if let Some(index) = buffer.iter().rposition(|c| c == &b'\n') {
-            let remainder = buffer.split_off(index);
-            let lines: Vec<Result<String>> = buffer
-                .lines()
-                .map(|line| line.wrap_err("line decode error"))
-                .collect();
-            buffer = remainder;
-            futures::stream::iter(lines)
-        } else {
-            futures::stream::iter(Vec::new())
-        }
+        buffer.iter().rposition(|c| c == &b'\n').map_or_else(
+            || futures::stream::iter(Vec::new()),
+            |index| {
+                let remainder = buffer.split_off(index);
+                let lines: Vec<Result<String>> = buffer
+                    .lines()
+                    .map(|line| line.wrap_err("line decode error"))
+                    .collect();
+                buffer = remainder;
+                futures::stream::iter(lines)
+            },
+        )
     });
 
     let mut line_buffer: Vec<String> = Vec::new();
@@ -64,8 +65,9 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
                 Ok(Ok(line)) if line.is_empty() => {
                     let mut event = SseEvent::new();
                     for line in &line_buffer {
-                        let (name, value) =
-                            if let Some(index) = line.bytes().position(|c| c == b':') {
+                        let (name, value) = line.bytes().position(|c| c == b':').map_or_else(
+                            || (line.as_ref(), ""),
+                            |index| {
                                 let value = &line[index + 1..];
                                 (
                                     &line[..index],
@@ -75,9 +77,8 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
                                         value
                                     },
                                 )
-                            } else {
-                                (line.as_ref(), "")
-                            };
+                            },
+                        );
                         match name {
                             "id" => {
                                 if value != "\0" {
