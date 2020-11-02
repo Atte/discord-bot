@@ -85,7 +85,7 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .iter()
         // drop images where all artist are shy
         .filter(|image| {
-            image
+            !image
                 .tags
                 .iter()
                 .filter_map(|tag| tag.strip_prefix("artist:"))
