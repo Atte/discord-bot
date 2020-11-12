@@ -66,7 +66,7 @@ pub fn separate_thousands_floating(n: f64) -> String {
     }
 }
 
-pub fn format_duration(duration: &Duration) -> String {
+pub fn format_duration_long(duration: &Duration) -> String {
     let hours = duration.as_secs() / 60 / 60;
     let mins = (duration.as_secs() / 60) % 60;
     let secs = duration.as_secs() % 60;
@@ -90,6 +90,19 @@ pub fn format_duration(duration: &Duration) -> String {
         out.push_str(&secs.to_string());
         out.push_str(" seconds");
     }
+    out
+}
+
+pub fn format_duration_short(duration: &Duration) -> String {
+    let hours = duration.as_secs() / 60 / 60;
+    let mins = (duration.as_secs() / 60) % 60;
+    let secs = duration.as_secs() % 60;
+
+    let mut out = String::new();
+    if hours > 0 {
+        out.push_str(&format!("{:02}:", hours));
+    }
+    out.push_str(&format!("{:02}:{:02}", mins, secs));
     out
 }
 

@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
     let mut discord = discord::Discord::try_new(config.discord, db).await?;
 
     if config.berrytube.enabled {
-        let berrytube = berrytube::Berrytube::try_new(
+        let mut berrytube = berrytube::Berrytube::try_new(
             &config.berrytube,
             discord.client.shard_manager.clone(),
             discord.client.data.clone(),

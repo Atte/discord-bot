@@ -32,4 +32,4 @@ shy_artists = []
 
 [berrytube]
 enabled = true
-url = "https://socket.berrytube.tv/sse"
+url = "https://socket.berrytube.tv/sse?events=videoChange,videoStatus"

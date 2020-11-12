@@ -1,5 +1,5 @@
 use super::stats::update_stats;
-use crate::util::format_duration;
+use crate::util::format_duration_long;
 use log::{error, warn};
 use serenity::{
     client::Context,
@@ -31,7 +31,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
                     &ctx,
                     format!(
                         "Ratelimited! Wait {} before trying again.",
-                        format_duration(&wait)
+                        format_duration_long(&wait)
                     ),
                 )
                 .await;
