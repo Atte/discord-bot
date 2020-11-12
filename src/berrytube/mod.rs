@@ -25,7 +25,7 @@ struct VideoChangeEvent {
     length: i64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 struct VideoStatusEvent {
     time: i64,
 }
@@ -65,19 +65,20 @@ impl Berrytube {
                     debug!("BT event: {:?}", event);
                     if event == "videoChange" {
                         if let Ok(video_change) = serde_json::from_str::<VideoChangeEvent>(&data) {
+                            // videoChange might come after videoStatus when receiving the backlog
                             if self.latest_change.is_some() {
                                 self.latest_status = None;
                             }
                             self.latest_change = Some(video_change);
                             if let Err(err) = self.update_title().await {
-                                warn!("Error updating BT title: {}", err);
+                                warn!("Error updating BT title after videoChange: {}", err);
                             }
                         }
                     } else if event == "videoStatus" {
                         if let Ok(video_status) = serde_json::from_str::<VideoStatusEvent>(&data) {
                             self.latest_status = Some(video_status);
                             if let Err(err) = self.update_title().await {
-                                warn!("Error updating BT title: {}", err);
+                                warn!("Error updating BT title after videoStatus: {}", err);
                             }
                         }
                     }
@@ -90,11 +91,15 @@ impl Berrytube {
     }
 
     async fn update_title(&self) -> Result<()> {
-        match (self.latest_change.as_ref(), self.latest_status.as_ref()) {
-            (Some(change), Some(status)) if status.time > 0 => {
+        match (self.latest_change.as_ref(), self.latest_status) {
+            (Some(change), status) => {
                 let time_string = format!(
                     " ({}/{})",
-                    format_duration_short(&Duration::from_secs(status.time.try_into()?)),
+                    match status {
+                        Some(VideoStatusEvent { time }) if time > 0 =>
+                            format_duration_short(&Duration::from_secs(time.try_into()?)),
+                        _ => "00:00".to_owned(),
+                    },
                     if change.length > 0 {
                         format_duration_short(&Duration::from_secs(change.length.try_into()?))
                     } else {
@@ -107,10 +112,6 @@ impl Berrytube {
                     time_string
                 ))
                 .await;
-            }
-            (Some(change), _) => {
-                self.set_title(ellipsis_string(&change.title, ACTIVITY_LENGTH))
-                    .await;
             }
             _ => {
                 self.set_title("").await;
@@ -134,9 +135,11 @@ impl Berrytube {
 
         let shard_manager = self.shard_manager.lock().await;
         for runner in shard_manager.runners.lock().await.values() {
-            runner
-                .runner_tx
-                .set_activity(Some(Activity::playing(&title)));
+            runner.runner_tx.set_activity(if title.is_empty() {
+                None
+            } else {
+                Some(Activity::playing(&title))
+            });
         }
     }
 }
