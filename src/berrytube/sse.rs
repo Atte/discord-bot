@@ -71,11 +71,7 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
                                 let value = &line[index + 1..];
                                 (
                                     &line[..index],
-                                    if value.starts_with(' ') {
-                                        &value[1..]
-                                    } else {
-                                        value
-                                    },
+                                    value.strip_prefix(' ').unwrap_or(value),
                                 )
                             },
                         );
