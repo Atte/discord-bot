@@ -83,14 +83,17 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let images: Vec<&Image> = response
         .images
         .iter()
+        /*
         // drop images where all artist are shy
         .filter(|image| {
-            !image
+            let mut artists = image
                 .tags
                 .iter()
-                .filter_map(|tag| tag.strip_prefix("artist:"))
-                .all(|artist| config.gib.shy_artists.contains(artist))
+                .filter_map(|tag| tag.strip_prefix("artist:"));
+            artists.by_ref().count() == 0
+                || artists.any(|artist| !config.gib.shy_artists.contains(artist))
         })
+        */
         .collect();
 
     let image_ids: Vec<i64> = images.iter().map(|image| image.id).collect();
