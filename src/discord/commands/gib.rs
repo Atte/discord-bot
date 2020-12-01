@@ -7,7 +7,7 @@ use futures::StreamExt;
 use itertools::Itertools;
 use mongodb::{
     bson::{doc, to_bson},
-    options::FindOptions,
+    options::{FindOptions, UpdateOptions},
 };
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
@@ -99,13 +99,20 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let image_ids: Vec<i64> = images.iter().map(|image| image.id).collect();
     let seen_ids: Vec<i64> = collection
         .find(
-            doc! { "image.id": { "$in": &image_ids } },
+            doc! { "image.id": { "$in": image_ids.as_slice() } },
             FindOptions::builder()
                 .projection(doc! { "image.id": 1 })
+                .sort(doc! { "time": 1 })
                 .build(),
         )
         .await?
-        .filter_map(|doc| async move { doc.ok().and_then(|image| image.get_i64("image.id").ok()) })
+        .filter_map(|doc| async move {
+            doc.ok().and_then(|doc| {
+                doc.get_document("image")
+                    .and_then(|image| image.get_i64("id"))
+                    .ok()
+            })
+        })
         .collect()
         .await;
     let fresh_ids: Vec<i64> = image_ids
@@ -161,7 +168,11 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             })
             .await?;
         collection
-            .insert_one(doc! { "image": to_bson(image)?, "time": Utc::now() }, None)
+            .update_one(
+                doc! { "image.id": image.id },
+                doc! { "image": to_bson(image)?, "time": Utc::now() },
+                UpdateOptions::builder().upsert(true).build()
+            )
             .await?;
     } else {
         msg.reply(&ctx, "No results").await?;

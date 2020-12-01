@@ -69,10 +69,7 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
                             || (line.as_ref(), ""),
                             |index| {
                                 let value = &line[index + 1..];
-                                (
-                                    &line[..index],
-                                    value.strip_prefix(' ').unwrap_or(value),
-                                )
+                                (&line[..index], value.strip_prefix(' ').unwrap_or(value))
                             },
                         );
                         match name {

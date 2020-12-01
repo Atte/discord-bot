@@ -2,9 +2,9 @@
 #![allow(clippy::module_name_repetitions)]
 #![recursion_limit = "512"]
 
-use std::time::Duration;
 use log::{error, info, warn};
 use stable_eyre::{eyre, Result};
+use std::time::Duration;
 use tokio::time::delay_for;
 
 mod substituting_string;
