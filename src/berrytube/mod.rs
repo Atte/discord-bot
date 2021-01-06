@@ -93,19 +93,19 @@ impl Berrytube {
     async fn update_title(&self) -> Result<()> {
         match (self.latest_change.as_ref(), self.latest_status) {
             (Some(change), status) => {
-                let time_string = format!(
-                    " ({}/{})",
-                    match status {
-                        Some(VideoStatusEvent { time }) if time > 0 =>
-                            format_duration_short(&Duration::from_secs(time.try_into()?)),
-                        _ => "00:00".to_owned(),
-                    },
-                    if change.length > 0 {
-                        format_duration_short(&Duration::from_secs(change.length.try_into()?))
-                    } else {
-                        "live".to_owned()
-                    }
-                );
+                let time_string = if change.length > 0 {
+                    format!(
+                        " ({}/{})",
+                        match status {
+                            Some(VideoStatusEvent { time }) if time > 0 =>
+                                format_duration_short(&Duration::from_secs(time.try_into()?)),
+                            _ => "00:00".to_owned(),
+                        },
+                        format_duration_short(&Duration::from_secs(change.length.try_into()?)),
+                    )
+                } else {
+                    String::new()
+                };
                 self.set_title(format!(
                     "{}{}",
                     ellipsis_string(&change.title, ACTIVITY_LENGTH - time_string.len()),
