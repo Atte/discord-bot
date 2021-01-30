@@ -5,7 +5,7 @@ use crate::{
     util::{ellipsis_string, format_duration_short},
     Result,
 };
-use futures::StreamExt;
+use futures::{pin_mut, StreamExt};
 use log::{trace, warn};
 use reqwest::Url;
 use serde::Deserialize;
@@ -54,7 +54,8 @@ impl Berrytube {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        let mut stream = stream_sse_events(self.url.clone()).await?;
+        let stream = stream_sse_events(self.url.clone()).await?;
+        pin_mut!(stream);
         loop {
             match stream.next().await {
                 Some(Ok(SseEvent {

@@ -171,7 +171,7 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             .update_one(
                 doc! { "image.id": image.id },
                 doc! { "image": to_bson(image)?, "time": Utc::now() },
-                UpdateOptions::builder().upsert(true).build()
+                UpdateOptions::builder().upsert(true).build(),
             )
             .await?;
     } else {

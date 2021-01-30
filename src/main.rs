@@ -5,7 +5,7 @@
 use log::{error, info, warn};
 use stable_eyre::{eyre, Result};
 use std::time::Duration;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 mod substituting_string;
 mod util;
@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
                 } else {
                     warn!("Berrytube ended!");
                 }
-                delay_for(Duration::from_secs(10)).await;
+                sleep(Duration::from_secs(10)).await;
             }
         });
     } else {
@@ -57,6 +57,6 @@ async fn main() -> Result<()> {
         } else {
             warn!("Discord ended!");
         }
-        delay_for(Duration::from_secs(60)).await;
+        sleep(Duration::from_secs(60)).await;
     }
 }

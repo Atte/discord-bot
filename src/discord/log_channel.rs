@@ -4,9 +4,9 @@ use serenity::{
     builder::CreateEmbed,
     client::Context,
     model::{
-        channel::{Channel, GuildChannel, Message},
+        channel::{Channel, Message},
         guild::Member,
-        id::GuildId,
+        id::{ChannelId, GuildId},
         user::User,
     },
     utils::{Colour, MessageBuilder},
@@ -39,14 +39,15 @@ async fn send_log(
 
 pub async fn message_deleted(
     ctx: &Context,
-    channel: &GuildChannel,
+    channel_id: ChannelId,
+    guild_id: GuildId,
     message: Message,
 ) -> Result<()> {
     // don't log deletions of logs
     if get_data::<DiscordConfigKey>(&ctx)
         .await?
         .log_channels
-        .contains(&channel.id)
+        .contains(&channel_id)
     {
         return Ok(());
     }
@@ -60,7 +61,7 @@ pub async fn message_deleted(
         return Ok(());
     }
 
-    send_log(&ctx, channel.guild_id, |embed| {
+    send_log(&ctx, guild_id, |embed| {
         embed.color(Colour::RED);
         embed.author(|author| {
             author
@@ -74,7 +75,7 @@ pub async fn message_deleted(
                         .push("Message sent by ")
                         .mention(&message.author)
                         .push(" on ")
-                        .mention(channel)
+                        .mention(&channel_id)
                         .push(" was deleted")
                         .build(),
                 )

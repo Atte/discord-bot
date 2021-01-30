@@ -2,7 +2,7 @@ use crate::eyre::{Report, Result, WrapErr};
 use futures::{Stream, StreamExt};
 use reqwest::{Client, IntoUrl};
 use std::{io::BufRead, time::Duration};
-use tokio::stream::StreamExt as TokioStreamExt;
+use tokio_stream::StreamExt as TokioStreamExt;
 
 #[derive(Debug, Clone)]
 pub struct SseEvent {
@@ -59,9 +59,11 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
         .timeout(Duration::from_secs(30))
         .flat_map(move |line| {
             match line {
+                // timeout
                 Err(err) => futures::stream::iter(vec![Err(Report::new(err))]),
+                // some othjer error
                 Ok(Err(err)) => futures::stream::iter(vec![Err(err)]),
-                // events are delimited by empty lines
+                // empty line (event delimiter)
                 Ok(Ok(line)) if line.is_empty() => {
                     let mut event = SseEvent::new();
                     for line in &line_buffer {
@@ -94,6 +96,7 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
                     line_buffer.clear();
                     futures::stream::iter(vec![Ok(event)])
                 }
+                // event content
                 Ok(Ok(line)) => {
                     // don't bother storing comments
                     if !line.starts_with(':') {

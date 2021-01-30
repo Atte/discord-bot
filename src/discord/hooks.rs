@@ -31,7 +31,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
                     &ctx,
                     format!(
                         "Ratelimited! Wait {} before trying again.",
-                        format_duration_long(&wait)
+                        format_duration_long(&wait.rate_limit)
                     ),
                 )
                 .await;
