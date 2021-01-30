@@ -1,12 +1,16 @@
 use crate::{Result, SubstitutingString};
 use serde::Deserialize;
 use serenity::model::id::{ChannelId, RoleId, UserId};
-use std::{collections::HashSet, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub mongodb: MongodbConfig,
     pub discord: DiscordConfig,
+    pub cron: CronConfig,
     pub berrytube: BerrytubeConfig,
 }
 
@@ -33,6 +37,12 @@ pub struct GibConfig {
     pub endpoint: SubstitutingString,
     pub user_agent: SubstitutingString,
     pub shy_artists: HashSet<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CronConfig {
+    pub rate: u64,
+    pub delete_old_messages: HashMap<ChannelId, i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

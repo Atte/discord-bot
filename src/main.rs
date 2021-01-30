@@ -14,6 +14,7 @@ use substituting_string::SubstitutingString;
 //mod serialization;
 mod berrytube;
 mod config;
+mod cron;
 mod discord;
 
 #[tokio::main]
@@ -30,6 +31,19 @@ async fn main() -> Result<()> {
     let db = mongo_client.database(config.mongodb.database.as_ref());
 
     let mut discord = discord::Discord::try_new(config.discord, db).await?;
+
+    let cron_rate = config.cron.rate;
+    if cron_rate > 0 {
+        let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.http.clone());
+        tokio::spawn(async move {
+            loop {
+                if let Err(report) = cron.run().await {
+                    error!("Cron error: {}", report);
+                }
+                sleep(Duration::from_secs(cron_rate)).await;
+            }
+        });
+    }
 
     if config.berrytube.enabled {
         let mut berrytube = berrytube::Berrytube::try_new(
