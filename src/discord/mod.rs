@@ -1,6 +1,6 @@
 use crate::{config::DiscordConfig, eyre::eyre, Result};
 use serenity::{
-    client::{Client, Context},
+    client::{bridge::gateway::GatewayIntents, Client, Context},
     framework::StandardFramework,
     prelude::TypeMapKey,
 };
@@ -75,6 +75,7 @@ impl Discord {
             .help(&commands::HELP_COMMAND);
 
         let client = Client::builder(&config.token)
+            .intents(GatewayIntents::all())
             .event_handler(event_handler::Handler)
             .framework(framework)
             .type_map_insert::<ActivityKey>(String::new())

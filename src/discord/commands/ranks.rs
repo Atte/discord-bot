@@ -226,6 +226,7 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command]
 #[aliases(role)]
 #[description("Join/leave a rank")]
+#[help_available(false)]
 #[min_args(1)]
 #[delimiters(',')]
 async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
