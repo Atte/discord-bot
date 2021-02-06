@@ -1,0 +1,6 @@
+source-dir: .
+binary-path: ./target/debug/
+output-path: ./target/debug/lcov.info
+output-type: lcov
+ignore-not-existing: true
+branch: true
