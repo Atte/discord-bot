@@ -358,6 +358,7 @@ dependencies = [
  "bytes 1.0.1",
  "chrono",
  "env_logger",
+ "eyre",
  "futures",
  "itertools",
  "lazy_static",

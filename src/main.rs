@@ -2,8 +2,12 @@
 #![allow(clippy::module_name_repetitions)]
 #![recursion_limit = "512"]
 
-use log::{error, info, warn};
+#[cfg(not(feature = "nightly"))]
 use stable_eyre::{eyre, Result};
+#[cfg(feature = "nightly")]
+use eyre::{self, Result};
+
+use log::{error, info, warn};
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -20,6 +24,7 @@ mod discord;
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
+    #[cfg(not(feature = "nightly"))]
     stable_eyre::install()?;
 
     let config = config::Config::from_file(

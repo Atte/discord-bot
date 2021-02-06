@@ -1,3 +1,5 @@
+name: build
+
 on:
   push:
     branches: [ master ]
@@ -11,16 +13,27 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1.0.6
       with:
-        toolchain: stable
+        toolchain: nightly  # coverage requires unstable features
         profile: minimal
+        components: llvm-tools-preview
         default: true
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          ~/.cargo/bin/grcov
+        key: ${{ runner.os }}-cargo
+    - uses: actions/cache@v2
+      with:
+        path: target
+        key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
     - uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --all-features --no-fail-fast
+        args: --no-fail-fast --no-default-features --features nightly
       env:
         CARGO_TERM_COLOR: always
-        RUSTC_BOOTSTRAP: '1'
         CARGO_INCREMENTAL: '0'
         RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests -Zinstrument-coverage'
         RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests -Zinstrument-coverage'
