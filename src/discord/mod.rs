@@ -69,6 +69,7 @@ impl Discord {
             .normal_message(hooks::normal_message)
             .unrecognised_command(hooks::unrecognised_command)
             .on_dispatch_error(hooks::dispatch_error)
+            .after(hooks::after)
             .group(&commands::HORSE_GROUP)
             .group(&commands::RANKS_GROUP)
             .group(&commands::MISC_GROUP)

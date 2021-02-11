@@ -50,6 +50,7 @@ impl TypeMapKey for ClientKey {
 const COLLECTION_NAME: &str = "gib-seen";
 
 #[command]
+#[aliases(give, derpi, derpibooru)]
 #[description("Gib pics from Derpibooru")]
 #[usage("[tags\u{2026}]")]
 async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {

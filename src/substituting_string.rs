@@ -149,3 +149,34 @@ impl<'de> de::Deserialize<'de> for SubstitutingString {
         deserializer.deserialize_str(SubstitutingStringVisitor)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SubstitutingString;
+    use std::{
+        env::{set_var, VarError},
+        sync::Once,
+    };
+
+    static INIT: Once = Once::new();
+
+    fn init(raw: impl Into<String>) -> Result<SubstitutingString, VarError> {
+        INIT.call_once(|| {
+            set_var("FOO", "bar");
+        });
+        SubstitutingString::try_new(raw.into())
+    }
+
+    #[test]
+    fn substitution() -> Result<(), VarError> {
+        assert_eq!(init("$FOO")?.to_string(), "bar");
+        assert_eq!(init("some $FOO words")?.to_string(), "some bar words");
+        assert_eq!(init("curlies ${FOO}")?.to_string(), "curlies bar");
+        Ok(())
+    }
+
+    #[test]
+    fn missing_variable() {
+        assert!(init("$BAR").is_err());
+    }
+}

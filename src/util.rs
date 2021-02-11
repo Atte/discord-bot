@@ -153,14 +153,20 @@ mod tests {
     fn separate_thousands_floating() {
         assert_eq!(super::separate_thousands_floating(f64::NAN), "NaN");
         assert_eq!(super::separate_thousands_floating(f64::INFINITY), "inf");
-        assert_eq!(super::separate_thousands_floating(f64::NEG_INFINITY), "-inf");
+        assert_eq!(
+            super::separate_thousands_floating(f64::NEG_INFINITY),
+            "-inf"
+        );
 
         assert_eq!(super::separate_thousands_floating(0.0), "0");
         assert_eq!(super::separate_thousands_floating(-0.0), "0");
         assert_eq!(super::separate_thousands_floating(1.0), "1");
         assert_eq!(super::separate_thousands_floating(-1.0), "-1");
 
-        assert_eq!(super::separate_thousands_floating(-0.011_718_75), "-0.011 718 75");
+        assert_eq!(
+            super::separate_thousands_floating(-0.011_718_75),
+            "-0.011 718 75"
+        );
     }
 
     #[test]
@@ -168,11 +174,17 @@ mod tests {
         use super::Duration;
 
         let duration = Duration::from_secs(4 * 60 + 20);
-        assert_eq!(super::format_duration_long(&duration), "4 minutes, 20 seconds");
+        assert_eq!(
+            super::format_duration_long(&duration),
+            "4 minutes, 20 seconds"
+        );
         assert_eq!(super::format_duration_short(&duration), "4:20");
 
         let duration = Duration::from_secs(7 * 60 * 60 + 4 * 60 + 20);
-        assert_eq!(super::format_duration_long(&duration), "7 hours, 4 minutes, 20 seconds");
+        assert_eq!(
+            super::format_duration_long(&duration),
+            "7 hours, 4 minutes, 20 seconds"
+        );
         assert_eq!(super::format_duration_short(&duration), "7:04:20");
 
         let duration = Duration::from_secs(4 * 60);

@@ -1,7 +1,7 @@
 discord-bot
 ===========
 
-![build](https://github.com/Atte/discord-bot/workflows/build/badge.svg)
+[![build](https://github.com/Atte/discord-bot/workflows/build/badge.svg)](https://github.com/Atte/discord-bot/actions)
 [![codecov](https://codecov.io/gh/Atte/discord-bot/branch/master/graph/badge.svg?token=YWH961SA18)](https://codecov.io/gh/Atte/discord-bot)
 
 Building on nightly

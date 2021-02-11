@@ -12,7 +12,7 @@ use serenity::{
 };
 
 #[command]
-#[aliases(calc)]
+#[aliases(calc, calculate, calculator)]
 #[description("Cast die and/or do math")]
 #[usage("1d6 + 2d20")]
 #[min_args(1)]

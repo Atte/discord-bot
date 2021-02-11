@@ -1,8 +1,9 @@
-use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use std::{fmt, marker::PhantomData, str::FromStr};
 use void::Void;
 
 // https://serde.rs/string-or-struct.html
+#[allow(dead_code)]
 pub fn string_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
     T: Deserialize<'de> + FromStr<Err = Void>,
@@ -45,4 +46,32 @@ where
     }
 
     deserializer.deserialize_any(StringOrStruct(PhantomData))
+}
+
+pub fn first_entry<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    struct FirstEntry<T>(PhantomData<fn() -> T>);
+
+    impl<'de, T> Visitor<'de> for FirstEntry<T>
+    where
+        T: Deserialize<'de>,
+    {
+        type Value = Option<T>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("sequence")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Option<T>, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            seq.next_element::<T>()
+        }
+    }
+
+    deserializer.deserialize_any(FirstEntry(PhantomData))
 }

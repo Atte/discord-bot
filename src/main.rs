@@ -2,10 +2,10 @@
 #![allow(clippy::module_name_repetitions)]
 #![recursion_limit = "512"]
 
-#[cfg(not(feature = "nightly"))]
-use stable_eyre::{eyre, Result};
 #[cfg(feature = "nightly")]
 use eyre::{self, Result};
+#[cfg(not(feature = "nightly"))]
+use stable_eyre::{eyre, Result};
 
 use log::{error, info, warn};
 use std::time::Duration;
@@ -15,11 +15,11 @@ mod substituting_string;
 mod util;
 use substituting_string::SubstitutingString;
 
-//mod serialization;
 mod berrytube;
 mod config;
 mod cron;
 mod discord;
+mod serialization;
 
 #[tokio::main]
 async fn main() -> Result<()> {

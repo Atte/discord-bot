@@ -1,9 +1,9 @@
-use super::{stats::update_stats, DiscordConfigKey, get_data};
+use super::{get_data, stats::update_stats, DiscordConfigKey};
 use crate::util::format_duration_long;
 use log::{error, warn};
 use serenity::{
     client::Context,
-    framework::standard::{macros::hook, DispatchError},
+    framework::standard::{macros::hook, CommandError, DispatchError},
     model::channel::Message,
 };
 
@@ -99,5 +99,13 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
         err => {
             error!("Dispatch error: {:?}", err);
         }
+    }
+}
+
+#[hook]
+pub async fn after(ctx: &Context, msg: &Message, command: &str, error: Result<(), CommandError>) {
+    if let Err(err) = error {
+        println!("Error during {}: {}", command, err);
+        let _ = msg.reply(&ctx, "Something went horribly wrong!").await;
     }
 }

@@ -30,6 +30,16 @@ tokio-stream = "0.1"
 toml = "0.5"
 void = "1.0"
 
+[dependencies.plotters]
+version = "0.3.0"
+default_features = false
+features = ["bitmap_backend", "datetime", "candlestick"]
+
+[dependencies.image]
+version = "0.23.13"
+default_features = false
+features = ["png"]
+
 [dependencies.chrono]
 version = "0.4"
 features = ["serde"]
