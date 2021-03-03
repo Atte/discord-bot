@@ -64,20 +64,21 @@ impl Ranks {
             .to_guild_cached(&ctx)
             .await
             .ok_or_else(|| eyre!("Guild not found!"))?;
-        let bot_role = guild
+        let cutoff_position = guild
             .member(&ctx, ctx.cache.current_user_id().await)
             .await?
             .roles(&ctx)
             .await
-            .ok_or_else(|| eyre!("Roles for Member not found!"))?
+            .ok_or_else(|| eyre!("Roles for bot not found!"))?
             .into_iter()
-            .find(|role| role.managed)
-            .ok_or_else(|| eyre!("Managed Role for Member not found!"))?;
+            .map(|role| role.position)
+            .min()
+            .ok_or_else(|| eyre!("Empty roles for bot!"))?;
         Ok(Self::new(
             guild
                 .roles
                 .values()
-                .filter(|role| role.position < bot_role.position && !role.name.starts_with('@'))
+                .filter(|role| role.position < cutoff_position && !role.name.starts_with('@'))
                 .cloned()
                 .map(|role| Rank {
                     members: guild
