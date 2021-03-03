@@ -87,12 +87,15 @@ async fn get_history(
     client: &Client,
     symbol: impl AsRef<str>,
 ) -> CommandResult<Option<HistoryResponseChartResult>> {
+    // https://github.com/ranaroussi/yfinance/blob/master/yfinance/base.py#L81
     let mut url = Url::parse_with_params(
         "https://query1.finance.yahoo.com/v8/finance/chart/",
         &[
+            // 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd
             ("range", "1mo"),
-            ("interval", "15m"),
-            ("includePrePost", "false"),
+            // 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+            ("interval", "1h"),
+            ("includePrePost", "true"),
         ],
     )?;
     // the URL is hardcoded and thus can always be a base: the unwrap is safe
@@ -144,13 +147,13 @@ fn draw_history_chart(
     let min_price = history
         .low
         .iter()
-        .min_by_key(|val| val.floor() as i64)
+        .min_by_key(|val| (*val * 100.0) as i64)
         .unwrap();
     #[allow(clippy::cast_possible_truncation)]
     let max_price = history
         .high
         .iter()
-        .max_by_key(|val| val.ceil() as i64)
+        .max_by_key(|val| (*val * 100.0) as i64)
         .unwrap();
 
     /*
@@ -169,7 +172,7 @@ fn draw_history_chart(
             .y_label_area_size(64)
             .build_cartesian_2d(
                 (first_timestamp - Duration::days(1))..(last_timestamp + Duration::days(1)),
-                (min_price * 0.9)..(max_price * 1.1),
+                (min_price * 0.99)..(max_price * 1.01),
             )?
             /*.set_secondary_coord(
                 (first_timestamp - Duration::days(1))..(last_timestamp + Duration::days(1)),
@@ -204,8 +207,8 @@ fn draw_history_chart(
         chart.draw_secondary_series(timestamps.iter().enumerate().map(|(i, timestamp)| {
             let mut bar = Rectangle::new(
                 [
-                    (*timestamp, 0),
-                    (*timestamp + Duration::days(1), history.volume[i]),
+                    (*timestamp, history.volume[i]),
+                    (*timestamp + Duration::days(1), 0),
                 ],
                 &RGBColor(125, 125, 125),
             );

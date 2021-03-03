@@ -18,8 +18,8 @@ use roll::ROLL_COMMAND;
 mod gib;
 use gib::GIB_COMMAND;
 
-mod stocks;
-use stocks::STOCK_COMMAND;
+//mod stocks;
+//use stocks::STOCK_COMMAND;
 
 #[group]
 #[only_in(guilds)]
@@ -32,7 +32,8 @@ pub struct Horse;
 pub struct Ranks;
 
 #[group]
-#[commands(roll, ping, stock)]
+//#[commands(roll, ping, stock)]
+#[commands(roll, ping)]
 pub struct Misc;
 
 #[command]
