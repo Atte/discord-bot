@@ -6,7 +6,7 @@ use chrono::Utc;
 use futures::StreamExt;
 use itertools::Itertools;
 use mongodb::{
-    bson::{doc, to_bson},
+    bson::{doc, to_bson, Document},
     options::{FindOptions, UpdateOptions},
 };
 use reqwest::{Client, Url};
@@ -55,7 +55,9 @@ const COLLECTION_NAME: &str = "gib-seen";
 #[usage("[tags\u{2026}]")]
 async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let config = get_data::<DiscordConfigKey>(&ctx).await?;
-    let collection = get_data::<DbKey>(&ctx).await?.collection(COLLECTION_NAME);
+    let collection = get_data::<DbKey>(&ctx)
+        .await?
+        .collection::<Document>(COLLECTION_NAME);
     let client = get_data_or_insert_with::<ClientKey, _>(&ctx, || {
         Client::builder()
             .user_agent(config.gib.user_agent.to_string())

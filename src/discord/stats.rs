@@ -2,7 +2,10 @@ use super::{get_data, DbKey};
 use crate::{eyre::bail, Result};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use mongodb::{bson::doc, options::UpdateOptions};
+use mongodb::{
+    bson::{doc, Document},
+    options::UpdateOptions,
+};
 use regex::Regex;
 use serenity::{
     client::Context,
@@ -60,7 +63,9 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
         .collect();
 
     let now = Utc::now();
-    let collection = get_data::<DbKey>(&ctx).await?.collection(COLLECTION_NAME);
+    let collection = get_data::<DbKey>(&ctx)
+        .await?
+        .collection::<Document>(COLLECTION_NAME);
 
     collection
         .update_one(

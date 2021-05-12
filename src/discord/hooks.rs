@@ -18,7 +18,7 @@ pub async fn normal_message(ctx: &Context, msg: &Message) {
 pub async fn unrecognised_command(ctx: &Context, msg: &Message, _command_name: &str) {
     if let Ok(config) = get_data::<DiscordConfigKey>(&ctx).await {
         if config.command_channels.contains(&msg.channel_id) {
-            let _ = msg.reply(&ctx, "That's not a command!").await;
+            let _result = msg.reply(&ctx, "That's not a command!").await;
         }
     }
 }
@@ -30,7 +30,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
             warn!("Custom check failed: {} ({:?})", desc, reason);
         }
         DispatchError::Ratelimited(wait) => {
-            let _ = msg
+            let _result = msg
                 .reply(
                     &ctx,
                     format!(
@@ -71,7 +71,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
             );
         }
         DispatchError::NotEnoughArguments { min, given } => {
-            let _ = msg
+            let _result = msg
                 .reply(
                     &ctx,
                     format!(
@@ -84,7 +84,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
                 .await;
         }
         DispatchError::TooManyArguments { max, given } => {
-            let _ = msg
+            let _result = msg
                 .reply(
                     &ctx,
                     format!(
@@ -106,6 +106,6 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
 pub async fn after(ctx: &Context, msg: &Message, command: &str, error: Result<(), CommandError>) {
     if let Err(err) = error {
         println!("Error during {}: {}", command, err);
-        let _ = msg.reply(&ctx, "Something went horribly wrong!").await;
+        let _result = msg.reply(&ctx, "Something went horribly wrong!").await;
     }
 }

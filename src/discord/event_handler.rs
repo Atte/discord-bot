@@ -18,7 +18,7 @@ pub struct Handler;
 // so need to use #[allow(unused_variables)] instead of underscore prefix
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, ctx: Context, #[allow(unused_variables)] ready: Ready) {
+    async fn ready(&self, ctx: Context, _ready: Ready) {
         if let Some(activity) = {
             let data = ctx.data.read().await;
             data.get::<ActivityKey>()
@@ -80,7 +80,7 @@ impl EventHandler for Handler {
         ctx: Context,
         guild_id: GuildId,
         user: User,
-        #[allow(unused_variables)] member: Option<Member>,
+        _member: Option<Member>,
     ) {
         if let Err(err) = log_channel::member_removed(&ctx, guild_id, &user).await {
             error!("Unable to log member removal: {}", err);

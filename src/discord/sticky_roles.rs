@@ -2,7 +2,7 @@ use super::{get_data, DbKey};
 use crate::Result;
 use log::info;
 use mongodb::{
-    bson::doc,
+    bson::{doc, Document},
     options::{FindOneOptions, UpdateOptions},
 };
 use serenity::{
@@ -13,7 +13,9 @@ use serenity::{
 const COLLECTION_NAME: &str = "sticky-roles";
 
 pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
-    let collection = get_data::<DbKey>(&ctx).await?.collection(COLLECTION_NAME);
+    let collection = get_data::<DbKey>(&ctx)
+        .await?
+        .collection::<Document>(COLLECTION_NAME);
     collection
         .update_one(
             doc! {
@@ -32,7 +34,9 @@ pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
 }
 
 pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<()> {
-    let collection = get_data::<DbKey>(&ctx).await?.collection(COLLECTION_NAME);
+    let collection = get_data::<DbKey>(&ctx)
+        .await?
+        .collection::<Document>(COLLECTION_NAME);
     if let Some(entry) = collection
         .find_one(
             doc! {
