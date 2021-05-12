@@ -173,7 +173,7 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         collection
             .update_one(
                 doc! { "image.id": image.id },
-                doc! { "image": to_bson(image)?, "time": Utc::now() },
+                doc! { "$set": { "image": to_bson(image)?, "time": Utc::now() } },
                 UpdateOptions::builder().upsert(true).build(),
             )
             .await?;
