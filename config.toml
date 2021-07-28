@@ -17,6 +17,7 @@ command_channels = [
 log_channels = [
     439066300518760448, # test
     409294723572957185, # BT
+    842082195018481684, # BTCon 2021
 ]
 sticky_roles = [
     543786595812376609, # sticky test

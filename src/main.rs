@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    let mongo_client = mongodb::Client::with_uri_str(config.mongodb.uri.as_ref()).await?;
+    let mongo_client = mongodb::Client::with_uri_str(config.mongodb.uri).await?;
     let db = mongo_client.database(config.mongodb.database.as_ref());
 
     let mut discord = discord::Discord::try_new(config.discord, db).await?;
