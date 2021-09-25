@@ -36,7 +36,7 @@ impl Eq for Rank {}
 impl PartialOrd for Rank {
     #[inline]
     fn partial_cmp(&self, other: &Rank) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -95,7 +95,7 @@ impl Ranks {
 
     async fn from_message(ctx: &Context, msg: &Message) -> Result<Self> {
         Self::from_guild(
-            &ctx,
+            ctx,
             msg.guild_id
                 .ok_or_else(|| eyre!("No guild_id on Message!"))?,
         )
@@ -148,7 +148,7 @@ async fn handle_joinleave(
     let guild_id = msg
         .guild_id
         .ok_or_else(|| eyre!("No guild_id on Message!"))?;
-    let ranks = Ranks::from_guild(&ctx, guild_id).await?;
+    let ranks = Ranks::from_guild(ctx, guild_id).await?;
     let mut user_role_ids: HashSet<RoleId> = msg
         .member
         .as_ref()
@@ -186,8 +186,8 @@ async fn handle_joinleave(
 #[delimiters(',')]
 async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     handle_joinleave(
-        &ctx,
-        &msg,
+        ctx,
+        msg,
         args,
         |rank, response| {
             response.push("Joined ").push_line_safe(&rank.role.name);
@@ -207,8 +207,8 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[delimiters(',')]
 async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     handle_joinleave(
-        &ctx,
-        &msg,
+        ctx,
+        msg,
         args,
         |rank, response| {
             response
@@ -232,8 +232,8 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[delimiters(',')]
 async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     handle_joinleave(
-        &ctx,
-        &msg,
+        ctx,
+        msg,
         args,
         |rank, response| {
             response.push("Joined ").push_line_safe(&rank.role.name);
@@ -252,7 +252,7 @@ async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[description("List all available ranks, and which ones you currently have")]
 #[num_args(0)]
 async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
-    let ranks = Ranks::from_message(&ctx, &msg).await?;
+    let ranks = Ranks::from_message(ctx, msg).await?;
 
     let rank_list = {
         let mut tw = TabWriter::new(Vec::new());
@@ -268,7 +268,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
         String::from_utf8(tw.into_inner()?)?
     };
 
-    let prefix = get_data::<DiscordConfigKey>(&ctx).await?.command_prefix;
+    let prefix = get_data::<DiscordConfigKey>(ctx).await?.command_prefix;
     msg.channel_id
         .send_message(&ctx, |message| {
             message.embed(|embed| {

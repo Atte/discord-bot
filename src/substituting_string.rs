@@ -49,7 +49,7 @@ where
 {
     #[inline]
     fn eq(&self, other: &T) -> bool {
-        self.resolved.eq(&other)
+        self.resolved.eq(other)
     }
 }
 
@@ -75,7 +75,7 @@ impl hash::Hash for SubstitutingString {
     where
         H: hash::Hasher,
     {
-        self.resolved.hash(&mut state)
+        self.resolved.hash(&mut state);
     }
 }
 

@@ -54,11 +54,11 @@ const COLLECTION_NAME: &str = "gib-seen";
 #[description("Gib pics from Derpibooru")]
 #[usage("[tags\u{2026}]")]
 async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let config = get_data::<DiscordConfigKey>(&ctx).await?;
-    let collection = get_data::<DbKey>(&ctx)
+    let config = get_data::<DiscordConfigKey>(ctx).await?;
+    let collection = get_data::<DbKey>(ctx)
         .await?
         .collection::<Document>(COLLECTION_NAME);
-    let client = get_data_or_insert_with::<ClientKey, _>(&ctx, || {
+    let client = get_data_or_insert_with::<ClientKey, _>(ctx, || {
         Client::builder()
             .user_agent(config.gib.user_agent.to_string())
             .connect_timeout(Duration::from_secs(10))

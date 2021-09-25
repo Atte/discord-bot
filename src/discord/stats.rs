@@ -63,7 +63,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
         .collect();
 
     let now = Utc::now();
-    let collection = get_data::<DbKey>(&ctx)
+    let collection = get_data::<DbKey>(ctx)
         .await?
         .collection::<Document>(COLLECTION_NAME);
 

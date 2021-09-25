@@ -48,6 +48,7 @@ where
     deserializer.deserialize_any(StringOrStruct(PhantomData))
 }
 
+#[allow(dead_code)]
 pub fn first_entry<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     T: Deserialize<'de>,

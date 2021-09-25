@@ -13,7 +13,7 @@ use serenity::{
 const COLLECTION_NAME: &str = "sticky-roles";
 
 pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
-    let collection = get_data::<DbKey>(&ctx)
+    let collection = get_data::<DbKey>(ctx)
         .await?
         .collection::<Document>(COLLECTION_NAME);
     collection
@@ -24,7 +24,7 @@ pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
             },
             doc! {
                 "$set": {
-                    "role_ids": member.roles.iter().map(|role| role.to_string()).collect::<Vec<_>>(),
+                    "role_ids": member.roles.iter().map(ToString::to_string).collect::<Vec<_>>(),
                 },
             },
             UpdateOptions::builder().upsert(true).build(),
@@ -34,7 +34,7 @@ pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
 }
 
 pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<()> {
-    let collection = get_data::<DbKey>(&ctx)
+    let collection = get_data::<DbKey>(ctx)
         .await?
         .collection::<Document>(COLLECTION_NAME);
     if let Some(entry) = collection
@@ -55,7 +55,7 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<()> {
             .iter()
             .filter_map(|i| i.as_str().and_then(|s| s.parse().ok()).map(RoleId))
             .collect();
-        info!("Restoring sticky roles: {:?}", role_ids);
+        info!("Restoring roles: {:?}", role_ids);
 
         let mut user_role_ids: Vec<RoleId> = member.roles.clone();
         user_role_ids.extend(role_ids);

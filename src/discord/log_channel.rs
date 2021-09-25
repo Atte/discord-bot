@@ -18,7 +18,7 @@ async fn send_log(
     create_embed: impl Fn(&mut CreateEmbed),
 ) -> Result<()> {
     let mut result = Ok(());
-    for channel_id in get_data::<DiscordConfigKey>(&ctx).await?.log_channels {
+    for channel_id in get_data::<DiscordConfigKey>(ctx).await?.log_channels {
         match channel_id.to_channel(&ctx).await {
             Ok(Channel::Guild(channel)) if channel.guild_id == guild_id => {
                 channel_id
@@ -44,7 +44,7 @@ pub async fn message_deleted(
     message: Message,
 ) -> Result<()> {
     // don't log deletions of logs
-    if get_data::<DiscordConfigKey>(&ctx)
+    if get_data::<DiscordConfigKey>(ctx)
         .await?
         .log_channels
         .contains(&channel_id)
@@ -61,7 +61,7 @@ pub async fn message_deleted(
         return Ok(());
     }
 
-    send_log(&ctx, guild_id, |embed| {
+    send_log(ctx, guild_id, |embed| {
         embed.color(Colour::RED);
         embed.author(|author| {
             author
@@ -91,7 +91,7 @@ pub async fn message_deleted(
 }
 
 pub async fn member_added(ctx: &Context, guild_id: GuildId, user: &User) -> Result<()> {
-    send_log(&ctx, guild_id, |embed| {
+    send_log(ctx, guild_id, |embed| {
         embed.color(Colour::RED);
         embed.author(|author| author.name(user.tag()).icon_url(user.face()));
         embed.description(
@@ -105,7 +105,7 @@ pub async fn member_added(ctx: &Context, guild_id: GuildId, user: &User) -> Resu
 }
 
 pub async fn member_removed(ctx: &Context, guild_id: GuildId, user: &User) -> Result<()> {
-    send_log(&ctx, guild_id, |embed| {
+    send_log(ctx, guild_id, |embed| {
         embed.color(Colour::RED);
         embed.author(|author| author.name(user.tag()).icon_url(user.face()));
         embed.description(
@@ -135,7 +135,7 @@ pub async fn member_updated(
     let new_name = new_member.display_name().to_string();
 
     if old_name != new_name {
-        send_log(&ctx, new_member.guild_id, |embed| {
+        send_log(ctx, new_member.guild_id, |embed| {
             embed.color(Colour::RED);
             embed.author(|author| {
                 author

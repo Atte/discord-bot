@@ -1,6 +1,6 @@
 use crate::{Result, SubstitutingString};
 use serde::Deserialize;
-use serenity::model::id::{ChannelId, RoleId, UserId};
+use serenity::model::id::{ChannelId, UserId};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,

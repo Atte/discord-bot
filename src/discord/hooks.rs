@@ -9,14 +9,14 @@ use serenity::{
 
 #[hook]
 pub async fn normal_message(ctx: &Context, msg: &Message) {
-    if let Err(err) = update_stats(&ctx, &msg).await {
+    if let Err(err) = update_stats(ctx, msg).await {
         error!("Error in update_stats for normal_message: {:?}", err);
     }
 }
 
 #[hook]
 pub async fn unrecognised_command(ctx: &Context, msg: &Message, _command_name: &str) {
-    if let Ok(config) = get_data::<DiscordConfigKey>(&ctx).await {
+    if let Ok(config) = get_data::<DiscordConfigKey>(ctx).await {
         if config.command_channels.contains(&msg.channel_id) {
             let _result = msg.reply(&ctx, "That's not a command!").await;
         }
