@@ -1,6 +1,6 @@
 [mongodb]
 uri = "$MONGO_URL"
-database = "discord-bot"
+database = "$MONGO_DATABASE"
 
 [discord]
 command_prefix = "$COMMAND_PREFIX"
@@ -18,12 +18,6 @@ log_channels = [
     439066300518760448, # test
     409294723572957185, # BT
     842082195018481684, # BTCon 2021
-]
-sticky_roles = [
-    543786595812376609, # sticky test
-    276991279135457280, # Block NSFW
-    369808034698100747, # Block politics
-    409178686957420554, # Muted
 ]
 
 [discord.gib]

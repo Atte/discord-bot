@@ -19,12 +19,12 @@ pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
     collection
         .update_one(
             doc! {
-                "user_id": member.user.id.0,
-                "guild_id": member.guild_id.0,
+                "user_id": member.user.id.to_string(),
+                "guild_id": member.guild_id.to_string(),
             },
             doc! {
                 "$set": {
-                    "role_ids": member.roles.iter().map(|role| role.0).collect::<Vec<u64>>(),
+                    "role_ids": member.roles.iter().map(|role| role.to_string()).collect::<Vec<_>>(),
                 },
             },
             UpdateOptions::builder().upsert(true).build(),
@@ -40,8 +40,8 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<()> {
     if let Some(entry) = collection
         .find_one(
             doc! {
-                "user_id": member.user.id.0,
-                "guild_id": member.guild_id.0,
+                "user_id": member.user.id.to_string(),
+                "guild_id": member.guild_id.to_string(),
             },
             FindOneOptions::builder()
                 .projection(doc! { "role_ids": 1 })
@@ -53,7 +53,7 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<()> {
         let role_ids: Vec<RoleId> = entry
             .get_array("role_ids")?
             .iter()
-            .filter_map(|i| i.as_i64().map(|i| RoleId(i as u64)))
+            .filter_map(|i| i.as_str().and_then(|s| s.parse().ok()).map(RoleId))
             .collect();
         info!("Restoring sticky roles: {:?}", role_ids);
 

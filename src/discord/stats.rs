@@ -71,7 +71,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
         .update_one(
             doc! {
                 "type": "channel",
-                "id": channel.id.0,
+                "id": channel.id.to_string(),
             },
             doc! {
                 "$set": {
@@ -86,10 +86,10 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                 },
                 "$inc": {
                     "message_count": 1,
-                    "user_mention_count": user_mentions.len() as u64,
-                    "channel_mention_count": channel_mentions.len() as u64,
-                    "role_mention_count": role_mentions.len() as u64,
-                    "emoji_count": emojis.len() as u64,
+                    "user_mention_count": user_mentions.len() as i64,
+                    "channel_mention_count": channel_mentions.len() as i64,
+                    "role_mention_count": role_mentions.len() as i64,
+                    "emoji_count": emojis.len() as i64,
                 },
             },
             UpdateOptions::builder().upsert(true).build(),
@@ -100,7 +100,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
         .update_one(
             doc! {
                 "type": "user",
-                "id": msg.author.id.0,
+                "id": msg.author.id.to_string(),
             },
             doc! {
                 "$set": {
@@ -117,10 +117,10 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                 },
                 "$inc": {
                     "message_count": 1,
-                    "user_mention_count": user_mentions.len() as u64,
-                    "channel_mention_count": channel_mentions.len() as u64,
-                    "role_mention_count": role_mentions.len() as u64,
-                    "emoji_count": emojis.len() as u64,
+                    "user_mention_count": user_mentions.len() as i64,
+                    "channel_mention_count": channel_mentions.len() as i64,
+                    "role_mention_count": role_mentions.len() as i64,
+                    "emoji_count": emojis.len() as i64,
                 },
             },
             UpdateOptions::builder().upsert(true).build(),
@@ -132,7 +132,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
             .update_one(
                 doc! {
                     "type": "emoji",
-                    "id": id,
+                    "id": id.to_string(),
                 },
                 doc! {
                     "$set": {

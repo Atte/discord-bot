@@ -28,7 +28,6 @@ pub struct DiscordConfig {
     pub blocked_users: HashSet<UserId>,
     pub command_channels: HashSet<ChannelId>,
     pub log_channels: HashSet<ChannelId>,
-    pub sticky_roles: HashSet<RoleId>,
     pub gib: GibConfig,
 }
 
