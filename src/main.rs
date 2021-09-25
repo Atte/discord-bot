@@ -19,6 +19,7 @@ mod berrytube;
 mod config;
 mod cron;
 mod discord;
+mod migrations;
 mod serialization;
 
 #[tokio::main]
@@ -34,11 +35,14 @@ async fn main() -> Result<()> {
 
     let mongo_client = mongodb::Client::with_uri_str(config.mongodb.uri).await?;
     let db = mongo_client.database(config.mongodb.database.as_ref());
+    migrations::mongo(&db).await?;
 
+    info!("Spawning Discord...");
     let mut discord = discord::Discord::try_new(config.discord, db).await?;
 
     let cron_rate = config.cron.rate;
     if cron_rate > 0 {
+        info!("Spawning cron...");
         let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.http.clone());
         tokio::spawn(async move {
             loop {
@@ -51,6 +55,7 @@ async fn main() -> Result<()> {
     }
 
     if config.berrytube.enabled {
+        info!("Spawning BerryTube...");
         let mut berrytube = berrytube::Berrytube::try_new(
             &config.berrytube,
             discord.client.shard_manager.clone(),
