@@ -18,9 +18,6 @@ use roll::ROLL_COMMAND;
 mod gib;
 use gib::GIB_COMMAND;
 
-//mod stocks;
-//use stocks::STOCK_COMMAND;
-
 #[group]
 #[only_in(guilds)]
 #[commands(gib)]

@@ -33,16 +33,6 @@ void = "1.0"
 version = "2.0.0-beta.2"
 features = ["bson-chrono-0_4"]
 
-[dependencies.plotters]
-version = "0.3.0"
-default_features = false
-features = ["bitmap_backend", "datetime", "candlestick"]
-
-[dependencies.image]
-version = "0.23.13"
-default_features = false
-features = ["png"]
-
 [dependencies.chrono]
 version = "0.4"
 features = ["serde"]
