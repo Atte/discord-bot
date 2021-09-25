@@ -21,6 +21,7 @@ mod cron;
 mod discord;
 mod migrations;
 mod serialization;
+mod webui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -40,7 +41,22 @@ async fn main() -> Result<()> {
     info!("Spawning Discord...");
     let mut discord = discord::Discord::try_new(config.discord, db).await?;
 
-    let cron_rate = config.cron.rate;
+    let webui_config = config.webui; // to prevent partial move problems
+    if webui_config.enabled {
+        info!("Spawning web UI...");
+        tokio::spawn(async move {
+            loop {
+                if let Err(report) = webui::run(webui_config.clone()).await {
+                    error!("Web UI error: {}", report);
+                } else {
+                    warn!("Web UI ended!");
+                }
+                sleep(Duration::from_secs(10)).await;
+            }
+        });
+    }
+
+    let cron_rate = config.cron.rate; // to prevent partial move problems
     if cron_rate > 0 {
         info!("Spawning cron...");
         let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.http.clone());
@@ -75,6 +91,7 @@ async fn main() -> Result<()> {
         info!("Berrytube is disabled in config");
     }
 
+    info!("Running Discord...");
     loop {
         if let Err(report) = discord.run().await {
             error!("Discord error: {}", report);

@@ -10,6 +10,7 @@ use std::{
 pub struct Config {
     pub mongodb: MongodbConfig,
     pub discord: DiscordConfig,
+    pub webui: WebUIConfig,
     pub cron: CronConfig,
     pub berrytube: BerrytubeConfig,
 }
@@ -36,6 +37,11 @@ pub struct GibConfig {
     pub endpoint: SubstitutingString,
     pub user_agent: SubstitutingString,
     pub shy_artists: HashSet<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WebUIConfig {
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

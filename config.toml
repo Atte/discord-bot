@@ -25,6 +25,10 @@ endpoint = "https://derpibooru.org/api/v1/json/search/images?sf=random&filter_id
 user_agent = "$GIB_USER_AGENT"
 shy_artists = [] # currently broken
 
+[webui]
+enabled = true
+port = 8787
+
 [cron]
 #rate = 300 # 5 minutes
 rate = 0

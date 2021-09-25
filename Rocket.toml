@@ -1,0 +1,7 @@
+[default]
+port = 8787
+ident = false
+
+[default.shutdown]
+ctrlc = false
+signals = []
