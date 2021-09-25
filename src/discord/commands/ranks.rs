@@ -159,8 +159,8 @@ async fn handle_joinleave(
         .collect();
 
     let mut response = MessageBuilder::new();
-    for arg in args.trimmed().iter::<String>() {
-        let name = arg?;
+    for arg in args.iter::<String>().map(|arg| arg.unwrap()) {
+        let name = arg.trim();
         if let Some(rank) = ranks.by_name(&name) {
             if user_role_ids.contains(&rank.role.id) {
                 if on_leave(&rank, &mut response) {
