@@ -1,4 +1,4 @@
-use rocket::{get, http::ContentType};
+use rocket::{get, http::ContentType, routes, Build, Rocket};
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
@@ -8,6 +8,10 @@ use std::{
 include!(concat!(env!("OUT_DIR"), "/webui.rs"));
 
 type ServeResponse = Option<(ContentType, Vec<u8>)>;
+
+pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
+    vega.mount("/", routes![index, path])
+}
 
 fn serve(path: &str) -> ServeResponse {
     let path = format!("{}/{}", env!("OUT_DIR"), path);

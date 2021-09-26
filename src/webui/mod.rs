@@ -2,17 +2,14 @@ use crate::{
     config::{DiscordConfig, WebUIConfig},
     Result,
 };
-use rocket::routes;
 
-mod r#static;
 mod auth;
+mod r#static;
 
 pub async fn run(config: WebUIConfig, discord_config: DiscordConfig) -> Result<()> {
-    rocket::build()
-        .manage(config)
-        .manage(auth::client(&discord_config)?)
-        .mount("/", routes![r#static::index, r#static::path, auth::redirect, auth::callback])
-        .launch()
-        .await?;
+    let vega = rocket::build().manage(config);
+    let vega = r#static::init(vega);
+    let vega = auth::init(vega, &discord_config)?;
+    vega.launch().await?;
     Ok(())
 }
