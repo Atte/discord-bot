@@ -24,6 +24,8 @@ pub struct MongodbConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
+    pub client_id: SubstitutingString,
+    pub client_secret: SubstitutingString,
     pub token: SubstitutingString,
     pub owners: HashSet<UserId>,
     pub blocked_users: HashSet<UserId>,

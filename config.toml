@@ -4,6 +4,8 @@ database = "$MONGO_DATABASE"
 
 [discord]
 command_prefix = "$COMMAND_PREFIX"
+client_id = "$DISCORD_CLIENT_ID"
+client_secret = "$DISCORD_CLIENT_SECRET"
 token = "$DISCORD_TOKEN"
 owners = [
     119122043923988483, # Atte

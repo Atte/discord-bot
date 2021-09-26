@@ -1,9 +1,19 @@
 {
     "private": true,
+    "source": "index.html",
     "scripts": {
-        "build": "parcel build --public-url . ./index.html"
+        "build": "parcel build --public-url .",
+        "watch": "parcel watch --public-url ."
     },
     "devDependencies": {
+        "@types/react": "^17.0.24",
+        "@types/react-dom": "^17.0.9",
         "parcel": "^2.0.0-rc.0"
+    },
+    "dependencies": {
+        "bootstrap": "^5.1.1",
+        "react": "^17.0.2",
+        "react-bootstrap": "^2.0.0-rc.0",
+        "react-dom": "^17.0.2"
     }
 }

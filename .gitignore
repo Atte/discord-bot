@@ -2,3 +2,5 @@
 /.envrc
 **/*.rs.bk
 /run.sh
+/secret_key
+.parcel-cache
