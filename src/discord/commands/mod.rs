@@ -1,3 +1,4 @@
+use super::{get_data, DiscordConfigKey};
 use serenity::{
     client::Context,
     framework::standard::{
@@ -29,14 +30,24 @@ pub struct Horse;
 pub struct Ranks;
 
 #[group]
-//#[commands(roll, ping, stock)]
-#[commands(roll, ping)]
+#[cfg_attr(feature = "webui", commands(roll, ping, webui))]
+#[cfg_attr(not(feature = "webui"), commands(roll, ping))]
 pub struct Misc;
 
 #[command]
 #[num_args(0)]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(ctx, "Pong!").await?;
+    Ok(())
+}
+
+#[cfg(feature = "webui")]
+#[command]
+#[aliases(web, ui, link, url, uri)]
+#[num_args(0)]
+async fn webui(ctx: &Context, msg: &Message) -> CommandResult {
+    let config = get_data::<DiscordConfigKey>(ctx).await?;
+    msg.reply(&ctx, config.webui_url).await?;
     Ok(())
 }
 

@@ -1,4 +1,4 @@
-use super::r#static::rocket_uri_macro_index;
+use super::{r#static::rocket_uri_macro_index, util::HeaderResponder};
 use crate::config::DiscordConfig;
 use log::{error, trace};
 use oauth2::{
@@ -7,7 +7,7 @@ use oauth2::{
 };
 use rocket::{
     get,
-    http::{Cookie, CookieJar, SameSite, Status},
+    http::{Cookie, CookieJar, Header, SameSite, Status},
     request::{FromRequest, Outcome, Request},
     response::Redirect,
     routes,
@@ -24,7 +24,7 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         Outcome::Success(request.local_cache(|| {
-            if let Some(cookie) = request.cookies().get_private("user_id") {
+            if let Some(cookie) = request.cookies().get_private("user") {
                 if let Ok(user) = serde_json::from_str(cookie.value()) {
                     return SessionUser(Some(user));
                 }
@@ -45,10 +45,10 @@ pub fn init(vega: Rocket<Build>, discord_config: &DiscordConfig) -> crate::Resul
     );
     Ok(vega
         .manage(client)
-        .mount("/auth", routes![redirect, callback, user]))
+        .mount("/", routes![redirect, callback, user, clear]))
 }
 
-#[get("/redirect")]
+#[get("/auth/redirect")]
 fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
@@ -64,7 +64,7 @@ fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
     Redirect::to(auth_url.to_string())
 }
 
-#[get("/callback?<state>&<code>")]
+#[get("/auth/callback?<state>&<code>")]
 async fn callback(
     state: &str,
     code: &str,
@@ -86,24 +86,24 @@ async fn callback(
         .request_async(async_http_client)
         .await
         .map_err(|err| {
-            error!("exchange_code {}", err);
+            error!("exchange_code {:#?}", err);
             (Status::BadGateway, "unable to exchange code for token")
         })?;
 
-    let api = Http::new_with_token(token.access_token().secret());
+    let api = Http::new_with_token(&format!("Bearer {}", token.access_token().secret()));
     let user = api.get_current_user().await.map_err(|err| {
-        error!("get_current_user {}", err);
+        error!("get_current_user {:#?}", err);
         (Status::BadGateway, "unable to get current user information")
     })?;
     let user_string = serde_json::to_string(&user).map_err(|err| {
-        error!("to_string(user) {}", err);
+        error!("to_string(user) {:#?}", err);
         (
             Status::InternalServerError,
             "unable to stringify current user",
         )
     })?;
 
-    trace!("{} logged in", user.name);
+    trace!("{} ({}) logged in", user.id, user.tag());
     cookies.add_private(
         Cookie::build("user", user_string)
             .http_only(true)
@@ -114,7 +114,15 @@ async fn callback(
     Ok(Redirect::to(uri!(index)))
 }
 
-#[get("/user")]
+#[get("/auth/user")]
 fn user(user: &SessionUser) -> Option<Json<CurrentUser>> {
     user.0.clone().map(Json)
+}
+
+#[get("/auth/clear")]
+fn clear() -> HeaderResponder<Redirect> {
+    HeaderResponder::new(
+        Redirect::to(uri!(redirect)),
+        Header::new("Clear-Site-Data", "*"),
+    )
 }

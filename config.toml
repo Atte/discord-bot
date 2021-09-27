@@ -7,6 +7,7 @@ command_prefix = "$COMMAND_PREFIX"
 client_id = "$DISCORD_CLIENT_ID"
 client_secret = "$DISCORD_CLIENT_SECRET"
 token = "$DISCORD_TOKEN"
+webui_url = "$WEBUI_URL"
 owners = [
     119122043923988483, # Atte
 ]

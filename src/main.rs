@@ -40,16 +40,16 @@ async fn main() -> Result<()> {
 
     #[cfg(feature = "webui")]
     {
-        // to prevent partial move problems
-        let webui_config = config.webui;
-        let discord_config = config.discord;
-
         info!("Spawning web UI...");
+        let webui = webui::WebUI::new(
+            config.webui,
+            config.discord,
+            discord.client.cache_and_http.http.clone(),
+        );
         tokio::spawn(async move {
             loop {
-                if let Err(report) = webui::run(webui_config.clone(), discord_config.clone()).await
-                {
-                    error!("Web UI error: {}", report);
+                if let Err(report) = webui.run().await {
+                    error!("Web UI error: {:#?}", report);
                 } else {
                     warn!("Web UI ended!");
                 }
@@ -60,16 +60,15 @@ async fn main() -> Result<()> {
 
     #[cfg(feature = "cron")]
     {
-        let cron_rate = config.cron.rate; // to prevent partial move problems
-        if cron_rate > 0 {
+        if config.cron.rate > 0 {
             info!("Spawning cron...");
             let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.http.clone());
             tokio::spawn(async move {
                 loop {
                     if let Err(report) = cron.run().await {
-                        error!("Cron error: {}", report);
+                        error!("Cron error: {:#?}", report);
                     }
-                    sleep(Duration::from_secs(cron_rate)).await;
+                    sleep(Duration::from_secs(cron.rate)).await;
                 }
             });
         }
@@ -86,7 +85,7 @@ async fn main() -> Result<()> {
         tokio::spawn(async move {
             loop {
                 if let Err(report) = berrytube.run().await {
-                    error!("Berrytube error: {}", report);
+                    error!("Berrytube error: {:#?}", report);
                 } else {
                     warn!("Berrytube ended!");
                 }
@@ -98,7 +97,7 @@ async fn main() -> Result<()> {
     info!("Running Discord...");
     loop {
         if let Err(report) = discord.run().await {
-            error!("Discord error: {}", report);
+            error!("Discord error: {:#?}", report);
         } else {
             warn!("Discord ended!");
         }

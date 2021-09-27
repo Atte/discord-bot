@@ -27,6 +27,8 @@ pub struct DiscordConfig {
     pub client_id: SubstitutingString,
     pub client_secret: SubstitutingString,
     pub token: SubstitutingString,
+    #[cfg(feature = "webui")]
+    pub webui_url: SubstitutingString,
     pub owners: HashSet<UserId>,
     pub blocked_users: HashSet<UserId>,
     pub command_channels: HashSet<ChannelId>,

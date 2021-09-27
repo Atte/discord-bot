@@ -7,6 +7,7 @@ use std::{collections::HashMap, sync::Arc};
 pub struct Cron {
     http: Arc<Http>,
     delete_old_messages: HashMap<ChannelId, i64>,
+    pub rate: u64,
 }
 
 impl Cron {
@@ -14,6 +15,7 @@ impl Cron {
         Self {
             http,
             delete_old_messages: config.delete_old_messages,
+            rate: config.rate,
         }
     }
 
