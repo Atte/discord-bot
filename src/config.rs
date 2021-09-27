@@ -42,9 +42,7 @@ pub struct GibConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct WebUIConfig {
-    pub enabled: bool,
-}
+pub struct WebUIConfig {}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CronConfig {
@@ -54,7 +52,6 @@ pub struct CronConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BerrytubeConfig {
-    pub enabled: bool,
     pub url: SubstitutingString,
 }
 

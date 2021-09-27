@@ -2,6 +2,7 @@ use includedir_codegen::Compression;
 use std::{ffi::OsStr, path::Path, process::Command};
 
 const SOURCE_DIR: &str = "webui";
+const ENV_SWITCH: &str = "CARGO_FEATURE_WEBUI";
 
 fn npm<I, S>(args: I) -> std::io::Result<()>
 where
@@ -17,6 +18,11 @@ where
 }
 
 fn main() -> std::io::Result<()> {
+    println!("cargo:rerun-if-env-changed={}", ENV_SWITCH);
+    if std::env::var_os(ENV_SWITCH).is_none() {
+        return Ok(());
+    }
+
     println!("cargo:rerun-if-changed={}", SOURCE_DIR);
 
     if !Path::new(SOURCE_DIR).join("node_modules").exists() {

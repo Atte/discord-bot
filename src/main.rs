@@ -11,12 +11,15 @@ mod substituting_string;
 mod util;
 use substituting_string::SubstitutingString;
 
+#[cfg(feature = "berrytube")]
 mod berrytube;
 mod config;
+#[cfg(feature = "cron")]
 mod cron;
 mod discord;
 mod migrations;
 mod serialization;
+#[cfg(feature = "webui")]
 mod webui;
 
 #[tokio::main]
@@ -35,10 +38,12 @@ async fn main() -> Result<()> {
     info!("Spawning Discord...");
     let mut discord = discord::Discord::try_new(config.discord.clone(), db).await?;
 
-    // to prevent partial move problems
-    let webui_config = config.webui;
-    let discord_config = config.discord;
-    if webui_config.enabled {
+    #[cfg(feature = "webui")]
+    {
+        // to prevent partial move problems
+        let webui_config = config.webui;
+        let discord_config = config.discord;
+
         info!("Spawning web UI...");
         tokio::spawn(async move {
             loop {
@@ -53,21 +58,25 @@ async fn main() -> Result<()> {
         });
     }
 
-    let cron_rate = config.cron.rate; // to prevent partial move problems
-    if cron_rate > 0 {
-        info!("Spawning cron...");
-        let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.http.clone());
-        tokio::spawn(async move {
-            loop {
-                if let Err(report) = cron.run().await {
-                    error!("Cron error: {}", report);
+    #[cfg(feature = "cron")]
+    {
+        let cron_rate = config.cron.rate; // to prevent partial move problems
+        if cron_rate > 0 {
+            info!("Spawning cron...");
+            let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.http.clone());
+            tokio::spawn(async move {
+                loop {
+                    if let Err(report) = cron.run().await {
+                        error!("Cron error: {}", report);
+                    }
+                    sleep(Duration::from_secs(cron_rate)).await;
                 }
-                sleep(Duration::from_secs(cron_rate)).await;
-            }
-        });
+            });
+        }
     }
 
-    if config.berrytube.enabled {
+    #[cfg(feature = "berrytube")]
+    {
         info!("Spawning BerryTube...");
         let mut berrytube = berrytube::Berrytube::try_new(
             &config.berrytube,
@@ -84,8 +93,6 @@ async fn main() -> Result<()> {
                 sleep(Duration::from_secs(10)).await;
             }
         });
-    } else {
-        info!("Berrytube is disabled in config");
     }
 
     info!("Running Discord...");

@@ -1,5 +1,5 @@
 use crate::config::DiscordConfig;
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use serenity::{
     client::{bridge::gateway::GatewayIntents, Client, Context},
     framework::StandardFramework,

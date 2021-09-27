@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, Error};
+use anyhow::{Context, Error, Result};
 use futures::{Stream, StreamExt};
 use reqwest::{Client, IntoUrl};
 use std::{io::BufRead, time::Duration};

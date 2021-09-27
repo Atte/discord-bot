@@ -7,13 +7,14 @@ use oauth2::{
 };
 use rocket::{
     get,
-    http::{Cookie, CookieJar, Status, SameSite},
+    http::{Cookie, CookieJar, SameSite, Status},
     request::{FromRequest, Outcome, Request},
     response::Redirect,
-    routes, uri, Build, Rocket, State,
+    routes,
     serde::json::Json,
+    uri, Build, Rocket, State,
 };
-use serenity::{http::Http, model::user::CurrentUser, model::oauth2::OAuth2Scope};
+use serenity::{http::Http, model::oauth2::OAuth2Scope, model::user::CurrentUser};
 
 pub struct SessionUser(Option<CurrentUser>);
 
@@ -42,7 +43,9 @@ pub fn init(vega: Rocket<Build>, discord_config: &DiscordConfig) -> crate::Resul
             "https://discord.com/api/oauth2/token".to_string(),
         )?),
     );
-    Ok(vega.manage(client).mount("/auth", routes![redirect, callback, user]))
+    Ok(vega
+        .manage(client)
+        .mount("/auth", routes![redirect, callback, user]))
 }
 
 #[get("/redirect")]
@@ -94,7 +97,10 @@ async fn callback(
     })?;
     let user_string = serde_json::to_string(&user).map_err(|err| {
         error!("to_string(user) {}", err);
-        (Status::InternalServerError, "unable to stringify current user")
+        (
+            Status::InternalServerError,
+            "unable to stringify current user",
+        )
     })?;
 
     trace!("{} logged in", user.name);

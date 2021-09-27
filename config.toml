@@ -28,16 +28,12 @@ user_agent = "$GIB_USER_AGENT"
 shy_artists = [] # currently broken
 
 [webui]
-enabled = true
-port = 8787
 
 [cron]
-#rate = 300 # 5 minutes
-rate = 0
+rate = 300 # 5 minutes
 
 [cron.delete_old_messages]
 #804380193534771220 = 240 # lfg, 4 hours
 
 [berrytube]
-enabled = true
 url = "https://socket.berrytube.tv/sse?events=videoChange,videoStatus"
