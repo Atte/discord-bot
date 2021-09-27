@@ -1,5 +1,5 @@
 use super::{get_data, DbKey};
-use crate::Result;
+use anyhow::Result;
 use log::info;
 use mongodb::{
     bson::{doc, Document},

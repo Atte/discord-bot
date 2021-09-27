@@ -1,4 +1,5 @@
-use crate::{Result, SubstitutingString};
+use crate::SubstitutingString;
+use anyhow::Result;
 use serde::Deserialize;
 use serenity::model::id::{ChannelId, UserId};
 use std::{
@@ -24,8 +25,6 @@ pub struct MongodbConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
-    pub client_id: SubstitutingString,
-    pub client_secret: SubstitutingString,
     pub token: SubstitutingString,
     #[cfg(feature = "webui")]
     pub webui_url: SubstitutingString,
@@ -44,7 +43,10 @@ pub struct GibConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct WebUIConfig {}
+pub struct WebUIConfig {
+    pub discord_client_id: SubstitutingString,
+    pub discord_client_secret: SubstitutingString,
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CronConfig {

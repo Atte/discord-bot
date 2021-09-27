@@ -41,11 +41,8 @@ async fn main() -> Result<()> {
     #[cfg(feature = "webui")]
     {
         info!("Spawning web UI...");
-        let webui = webui::WebUI::new(
-            config.webui,
-            config.discord,
-            discord.client.cache_and_http.http.clone(),
-        );
+        let webui =
+            webui::WebUI::try_new(config.webui, discord.client.cache_and_http.clone()).await?;
         tokio::spawn(async move {
             loop {
                 if let Err(report) = webui.run().await {
@@ -62,7 +59,7 @@ async fn main() -> Result<()> {
     {
         if config.cron.rate > 0 {
             info!("Spawning cron...");
-            let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.http.clone());
+            let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.clone());
             tokio::spawn(async move {
                 loop {
                     if let Err(report) = cron.run().await {

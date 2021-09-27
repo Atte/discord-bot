@@ -15,7 +15,7 @@ export interface CurrentUser {
 }
 
 async function loadUser({}, { signal }): Promise<CurrentUser | null> {
-    const response = await fetch('auth/user', { signal });
+    const response = await fetch('me/user', { signal });
     if (response.status === 404) {
         window.location.href = 'auth/redirect';
         return null;

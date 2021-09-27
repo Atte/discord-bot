@@ -1,43 +1,44 @@
 use super::{r#static::rocket_uri_macro_index, util::HeaderResponder};
-use crate::config::DiscordConfig;
+use crate::config::WebUIConfig;
 use log::{error, trace};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, Scope, TokenResponse, TokenUrl,
 };
 use rocket::{
-    get,
+    get, head,
     http::{Cookie, CookieJar, Header, SameSite, Status},
     request::{FromRequest, Outcome, Request},
     response::Redirect,
-    routes,
-    serde::json::Json,
-    uri, Build, Rocket, State,
+    routes, uri, Build, Rocket, State,
 };
 use serenity::{http::Http, model::oauth2::OAuth2Scope, model::user::CurrentUser};
 
-pub struct SessionUser(Option<CurrentUser>);
+pub struct SessionUser(pub CurrentUser);
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for &'r SessionUser {
     type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        Outcome::Success(request.local_cache(|| {
-            if let Some(cookie) = request.cookies().get_private("user") {
-                if let Ok(user) = serde_json::from_str(cookie.value()) {
-                    return SessionUser(Some(user));
+        request
+            .local_cache(|| {
+                if let Some(cookie) = request.cookies().get_private("user") {
+                    if let Ok(user) = serde_json::from_str(cookie.value()) {
+                        return Some(SessionUser(user));
+                    }
                 }
-            }
-            SessionUser(None)
-        }))
+                None
+            })
+            .as_ref()
+            .map_or(Outcome::Forward(()), |user| Outcome::Success(user))
     }
 }
 
-pub fn init(vega: Rocket<Build>, discord_config: &DiscordConfig) -> crate::Result<Rocket<Build>> {
+pub fn init(vega: Rocket<Build>, config: &WebUIConfig) -> crate::Result<Rocket<Build>> {
     let client = BasicClient::new(
-        ClientId::new(discord_config.client_id.to_string()),
-        Some(ClientSecret::new(discord_config.client_secret.to_string())),
+        ClientId::new(config.discord_client_id.to_string()),
+        Some(ClientSecret::new(config.discord_client_secret.to_string())),
         AuthUrl::new("https://discord.com/api/oauth2/authorize".to_string())?,
         Some(TokenUrl::new(
             "https://discord.com/api/oauth2/token".to_string(),
@@ -45,7 +46,7 @@ pub fn init(vega: Rocket<Build>, discord_config: &DiscordConfig) -> crate::Resul
     );
     Ok(vega
         .manage(client)
-        .mount("/", routes![redirect, callback, user, clear]))
+        .mount("/", routes![redirect, callback, callback_head, clear]))
 }
 
 #[get("/auth/redirect")]
@@ -63,6 +64,9 @@ fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
     );
     Redirect::to(auth_url.to_string())
 }
+
+#[head("/auth/callback")]
+fn callback_head() {}
 
 #[get("/auth/callback?<state>&<code>")]
 async fn callback(
@@ -112,11 +116,6 @@ async fn callback(
     );
 
     Ok(Redirect::to(uri!(index)))
-}
-
-#[get("/auth/user")]
-fn user(user: &SessionUser) -> Option<Json<CurrentUser>> {
-    user.0.clone().map(Json)
 }
 
 #[get("/auth/clear")]

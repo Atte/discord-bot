@@ -1,35 +1,52 @@
-use crate::{
-    config::{DiscordConfig, WebUIConfig},
-    Result,
+#![allow(clippy::let_unit_value, clippy::needless_pass_by_value)]
+
+use crate::config::WebUIConfig;
+use anyhow::Result;
+use serenity::{
+    model::{guild::GuildInfo, id::GuildId},
+    CacheAndHttp,
 };
-use serenity::http::client::Http;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 mod auth;
+mod me;
 mod r#static;
 mod util;
 
+pub type BotGuilds = HashMap<GuildId, GuildInfo>;
+
 pub struct WebUI {
     config: WebUIConfig,
-    discord_config: DiscordConfig,
-    http: Arc<Http>,
+    discord: Arc<CacheAndHttp>,
+    guilds: BotGuilds,
 }
 
 impl WebUI {
-    pub fn new(config: WebUIConfig, discord_config: DiscordConfig, http: Arc<Http>) -> Self {
-        Self {
+    pub async fn try_new(config: WebUIConfig, discord: Arc<CacheAndHttp>) -> Result<Self> {
+        let guilds = discord
+            .http
+            .get_current_user()
+            .await?
+            .guilds(&discord.http)
+            .await?
+            .into_iter()
+            .map(|guild| (guild.id, guild))
+            .collect();
+        Ok(Self {
             config,
-            discord_config,
-            http,
-        }
+            discord,
+            guilds,
+        })
     }
 
     pub async fn run(&self) -> Result<()> {
         let vega = rocket::build()
             .manage(self.config.clone())
-            .manage(self.http.clone());
+            .manage(self.discord.clone())
+            .manage(self.guilds.clone());
         let vega = r#static::init(vega);
-        let vega = auth::init(vega, &self.discord_config)?;
+        let vega = auth::init(vega, &self.config)?;
+        let vega = me::init(vega);
         vega.launch().await?;
         Ok(())
     }

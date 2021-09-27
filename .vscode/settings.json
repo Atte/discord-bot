@@ -1,6 +1,7 @@
 {
     "files.exclude": {
+        "**/.parcel-cache": true,
+        "**/node_modules": true,
         "target": true
-    },
-    "rust.all_features": false
+    }
 }

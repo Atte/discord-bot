@@ -1,19 +1,23 @@
-use crate::{config::CronConfig, Result};
+use crate::config::CronConfig;
+use anyhow::Result;
 use chrono::{Duration, Utc};
 use log::info;
-use serenity::{http::client::Http, model::id::ChannelId};
+use serenity::{
+    model::id::{ChannelId, MessageId},
+    CacheAndHttp,
+};
 use std::{collections::HashMap, sync::Arc};
 
 pub struct Cron {
-    http: Arc<Http>,
+    discord: Arc<CacheAndHttp>,
     delete_old_messages: HashMap<ChannelId, i64>,
     pub rate: u64,
 }
 
 impl Cron {
-    pub fn new(config: CronConfig, http: Arc<Http>) -> Self {
+    pub fn new(config: CronConfig, discord: Arc<CacheAndHttp>) -> Self {
         Self {
-            http,
+            discord,
             delete_old_messages: config.delete_old_messages,
             rate: config.rate,
         }
@@ -24,12 +28,14 @@ impl Cron {
         for (channel_id, seconds) in &self.delete_old_messages {
             let max_age = Duration::seconds(*seconds);
 
-            let messages = self.http.get_messages(channel_id.0, "limit=100").await?;
-            let delete_message_ids: Vec<u64> = messages
+            let messages = channel_id
+                .messages(&self.discord.http, |c| c.limit(100))
+                .await?;
+            let delete_message_ids: Vec<MessageId> = messages
                 .iter()
                 .filter_map(|msg| {
                     if msg.timestamp < now && (now - msg.timestamp) > max_age {
-                        Some(msg.id.0)
+                        Some(msg.id)
                     } else {
                         None
                     }
@@ -40,14 +46,14 @@ impl Cron {
                 0 => { /* nothing to delete */ }
                 1 => {
                     info!("Deleting an obsolete message from {}", channel_id);
-                    self.http
-                        .delete_message(channel_id.0, delete_message_ids[0])
+                    channel_id
+                        .delete_message(&self.discord.http, delete_message_ids[0])
                         .await?;
                 }
                 len => {
                     info!("Deleting {} obsolete messages from {}", len, channel_id);
-                    self.http
-                        .delete_messages(channel_id.0, &serde_json::to_value(&delete_message_ids)?)
+                    channel_id
+                        .delete_messages(&self.discord.http, delete_message_ids)
                         .await?;
                 }
             }

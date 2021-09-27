@@ -77,6 +77,7 @@ impl Discord {
             .help(&commands::HELP_COMMAND);
 
         let client = Client::builder(&config.token)
+            .cache_settings(|c| c.max_messages(1024))
             .intents(GatewayIntents::all())
             .event_handler(event_handler::Handler)
             .framework(framework)
@@ -84,8 +85,6 @@ impl Discord {
             .type_map_insert::<DiscordConfigKey>(config)
             .type_map_insert::<DbKey>(db)
             .await?;
-
-        client.cache_and_http.cache.set_max_messages(1024).await;
 
         Ok(Self { client })
     }
