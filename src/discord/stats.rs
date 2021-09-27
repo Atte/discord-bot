@@ -1,5 +1,5 @@
 use super::{get_data, DbKey};
-use crate::{eyre::bail, Result};
+use anyhow::{bail, Result};
 use chrono::Utc;
 use lazy_static::lazy_static;
 use mongodb::{

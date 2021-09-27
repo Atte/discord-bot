@@ -1,7 +1,7 @@
 use includedir_codegen::Compression;
 use std::{ffi::OsStr, path::Path, process::Command};
 
-const SOURCE_DIR: &'static str = "webui";
+const SOURCE_DIR: &str = "webui";
 
 fn npm<I, S>(args: I) -> std::io::Result<()>
 where

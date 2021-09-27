@@ -1,5 +1,6 @@
 use super::{get_data, limits::EMBED_DESC_LENGTH, DiscordConfigKey};
-use crate::{eyre::Report, util::ellipsis_string, Result};
+use crate::util::ellipsis_string;
+use anyhow::{Error, Result};
 use serenity::{
     builder::CreateEmbed,
     client::Context,
@@ -31,7 +32,7 @@ async fn send_log(
                     .await?;
             }
             Ok(_) => {} // ignore deletions outside guilds, and in irrelevant guilds
-            Err(err) => result = Err(Report::new(err)),
+            Err(err) => result = Err(Error::new(err)),
         }
     }
     result

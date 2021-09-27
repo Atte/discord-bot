@@ -1,4 +1,5 @@
-use crate::{config::DiscordConfig, eyre::eyre, Result};
+use crate::config::DiscordConfig;
+use anyhow::{Result, anyhow};
 use serenity::{
     client::{bridge::gateway::GatewayIntents, Client, Context},
     framework::StandardFramework,
@@ -39,7 +40,7 @@ where
     let data = ctx.data.read().await;
     data.get::<T>()
         .cloned()
-        .ok_or_else(|| eyre!("get_data called with missing TypeMapKey"))
+        .ok_or_else(|| anyhow!("get_data called with missing TypeMapKey"))
 }
 
 pub async fn get_data_or_insert_with<T, F>(ctx: &Context, f: F) -> T::Value

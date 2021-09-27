@@ -3,7 +3,8 @@ use super::super::{
     limits::{EMBED_DESC_LENGTH, REPLY_LENGTH},
     DiscordConfigKey,
 };
-use crate::{eyre::eyre, util::ellipsis_string, Result};
+use crate::util::ellipsis_string;
+use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use serenity::{
     client::Context,
@@ -63,17 +64,17 @@ impl Ranks {
             .into()
             .to_guild_cached(&ctx)
             .await
-            .ok_or_else(|| eyre!("Guild not found!"))?;
+            .ok_or_else(|| anyhow!("Guild not found!"))?;
         let cutoff_position = guild
             .member(&ctx, ctx.cache.current_user_id().await)
             .await?
             .roles(&ctx)
             .await
-            .ok_or_else(|| eyre!("Roles for bot not found!"))?
+            .ok_or_else(|| anyhow!("Roles for bot not found!"))?
             .into_iter()
             .map(|role| role.position)
             .min()
-            .ok_or_else(|| eyre!("Empty roles for bot!"))?;
+            .ok_or_else(|| anyhow!("Empty roles for bot!"))?;
         Ok(Self::new(
             guild
                 .roles
@@ -97,7 +98,7 @@ impl Ranks {
         Self::from_guild(
             ctx,
             msg.guild_id
-                .ok_or_else(|| eyre!("No guild_id on Message!"))?,
+                .ok_or_else(|| anyhow!("No guild_id on Message!"))?,
         )
         .await
     }
@@ -147,12 +148,12 @@ async fn handle_joinleave(
 ) -> CommandResult {
     let guild_id = msg
         .guild_id
-        .ok_or_else(|| eyre!("No guild_id on Message!"))?;
+        .ok_or_else(|| anyhow!("No guild_id on Message!"))?;
     let ranks = Ranks::from_guild(ctx, guild_id).await?;
     let mut user_role_ids: HashSet<RoleId> = msg
         .member
         .as_ref()
-        .ok_or_else(|| eyre!("No Member on Message!"))?
+        .ok_or_else(|| anyhow!("No Member on Message!"))?
         .roles
         .iter()
         .copied()

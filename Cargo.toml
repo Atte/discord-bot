@@ -52,17 +52,9 @@ features = ["stream"]
 version = "1.1"
 features = ["fs", "macros", "rt", "sync", "time", "rt-multi-thread"]
 
-[dependencies.eyre]
-version = "0.6"
-optional = true
-
-[dependencies.stable-eyre]
-version = "0.2"
-optional = true
-
-[features]
-default = ["stable-eyre"]
-nightly = ["eyre"]
+[dependencies.anyhow]
+version = "1.0"
+features = ["backtrace"]
 
 [build-dependencies]
 includedir_codegen = "0.6"
