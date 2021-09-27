@@ -1,3 +1,4 @@
+use conv::ConvUtil;
 use itertools::Itertools;
 use std::time::Duration;
 
@@ -50,18 +51,26 @@ pub fn separate_thousands_signed(n: isize) -> String {
     }
 }
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn separate_thousands_floating(n: f64) -> String {
-    if !n.is_normal() {
+    if n == 0.0 || n == -0.0 {
+        "0".to_owned()
+    } else if !n.is_normal() {
         n.to_string()
     } else if n.abs().fract() <= f64::EPSILON {
-        separate_thousands_signed(n.trunc() as isize)
+        n.trunc()
+            .approx_as::<isize>()
+            .map_or_else(|err| err.to_string(), separate_thousands_signed)
     } else {
-        format!(
-            "{}{}.{}",
-            if n < 0.0 { "-" } else { "" },
-            separate_thousands_unsigned(n.abs().trunc() as usize),
-            separate_thousands_impl(&n.abs().fract().to_string()[2..], true),
+        n.abs().trunc().approx_as::<usize>().map_or_else(
+            |err| err.to_string(),
+            |trunc| {
+                format!(
+                    "{}{}.{}",
+                    if n.is_sign_negative() { "-" } else { "" },
+                    separate_thousands_unsigned(trunc),
+                    separate_thousands_impl(&n.abs().fract().to_string()[2..], true),
+                )
+            },
         )
     }
 }
