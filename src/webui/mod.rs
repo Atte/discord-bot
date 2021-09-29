@@ -2,11 +2,19 @@
 
 use crate::config::WebUIConfig;
 use anyhow::Result;
+use rocket::{
+    fairing::AdHoc,
+    http::Header,
+    shield::{self, Shield},
+};
 use serenity::{
     model::{guild::GuildInfo, id::GuildId},
     CacheAndHttp,
 };
 use std::{collections::HashMap, sync::Arc};
+
+mod json;
+use json::Json;
 
 mod auth;
 mod me;
@@ -43,7 +51,17 @@ impl WebUI {
         let vega = rocket::build()
             .manage(self.config.clone())
             .manage(self.discord.clone())
-            .manage(self.guilds.clone());
+            .manage(self.guilds.clone())
+            .attach(
+                Shield::default()
+                    .enable(shield::Referrer::NoReferrer)
+                    .disable::<shield::Hsts>(),
+            )
+            .attach(AdHoc::on_response("Cache-Control", |_request, response| {
+                Box::pin(async move {
+                    response.set_header(Header::new("Cache-Control", "no-store"));
+                })
+            }));
         let vega = r#static::init(vega);
         let vega = auth::init(vega, &self.config)?;
         let vega = me::init(vega);

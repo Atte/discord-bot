@@ -1,20 +1,21 @@
 import React from 'react';
 import Async from 'react-async';
 import { Alert, Container, Button } from 'react-bootstrap';
+import Guilds from './Guilds';
 
-export interface CurrentUser {
+export interface CurrentUserData {
     id: number,
     avatar?: string,
     bot: boolean,
     discriminator: number,
     email?: string,
     mfa_enabled: boolean,
-    name: string,
+    username: string,
     verified?: boolean,
     public_flags?: { bits: number },
 }
 
-async function loadUser({}, { signal }): Promise<CurrentUser | null> {
+async function fetchCurrentUser({}, { signal }): Promise<CurrentUserData | null> {
     const response = await fetch('me/user', { signal });
     if (response.status === 404) {
         window.location.href = 'auth/redirect';
@@ -33,7 +34,7 @@ function clearStorage(): void {
 export default function App(): JSX.Element {
     return <Container>
         <Button variant="primary" onClick={clearStorage}>Log out</Button>
-        <Async promiseFn={loadUser}>
+        <Async promiseFn={fetchCurrentUser}>
             <Async.Pending>Loading session...</Async.Pending>
             <Async.Rejected>
                 <Alert variant="danger">
@@ -41,7 +42,11 @@ export default function App(): JSX.Element {
                     <p>{error => error.message}</p>
                 </Alert>
             </Async.Rejected>
-            <Async.Fulfilled>{data => data ? JSON.stringify(data) : 'Redirecting to login...'}</Async.Fulfilled>
+            <Async.Fulfilled>{(data: CurrentUserData | null) =>
+                data
+                ? <><p>{data.username}#{data.discriminator}</p><Guilds /></>
+                : 'Redirecting to login...'
+            }</Async.Fulfilled>
         </Async>
     </Container>;
 }

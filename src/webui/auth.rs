@@ -57,9 +57,7 @@ fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
         .url();
     cookies.add_private(
         Cookie::build("csrf_token", csrf_token.secret().to_string())
-            .http_only(true)
             .same_site(SameSite::Lax)
-            .permanent()
             .finish(),
     );
     Redirect::to(auth_url.to_string())
@@ -108,12 +106,8 @@ async fn callback(
     })?;
 
     trace!("{} ({}) logged in", user.id, user.tag());
-    cookies.add_private(
-        Cookie::build("user", user_string)
-            .http_only(true)
-            .permanent()
-            .finish(),
-    );
+    cookies.remove_private(csrf_token);
+    cookies.add_private(Cookie::new("user", user_string));
 
     Ok(Redirect::to(uri!(index)))
 }

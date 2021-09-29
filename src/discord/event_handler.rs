@@ -1,12 +1,12 @@
 use super::{limits::ACTIVITY_LENGTH, log_channel, sticky_roles, ActivityKey};
 use crate::util::ellipsis_string;
-use log::error;
+use log::{error, trace};
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
     model::{
         gateway::{Activity, Ready},
-        guild::Member,
+        guild::{Guild, Member},
         id::{ChannelId, GuildId, MessageId},
         user::User,
     },
@@ -26,6 +26,10 @@ impl EventHandler for Handler {
         } {
             ctx.set_activity(Activity::playing(&activity)).await;
         }
+    }
+
+    async fn guild_create(&self, _ctx: Context, guild: Guild, _is_new: bool) {
+        trace!("Joined guild {} ({})", guild.name, guild.id);
     }
 
     async fn message_delete(
