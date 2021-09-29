@@ -17,6 +17,7 @@ mod json;
 use json::Json;
 
 mod auth;
+mod bot;
 mod me;
 mod r#static;
 mod util;
@@ -63,6 +64,7 @@ impl WebUI {
                 })
             }));
         let vega = r#static::init(vega);
+        let vega = bot::init(vega);
         let vega = auth::init(vega, &self.config)?;
         let vega = me::init(vega);
         vega.launch().await?;

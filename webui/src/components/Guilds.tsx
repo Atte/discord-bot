@@ -4,18 +4,14 @@ import { Alert } from 'react-bootstrap';
 import Guild from './Guild';
 
 export interface GuildData {
-    id: number,
-    avatar?: string,
-    bot: boolean,
-    discriminator: number,
-    email?: string,
-    mfa_enabled: boolean,
-    name: string,
-    verified?: boolean,
-    public_flags?: { bits: number },
+    id: string;
+    icon?: string;
+    name: string;
+    owner: boolean;
+    permissions: number | string;
 }
 
-async function fetchGuilds({}, { signal }): Promise<GuildData[]> {
+async function fetchGuilds({}, { signal }: { signal: AbortSignal }): Promise<GuildData[]> {
     const response = await fetch('me/guilds', { signal });
     if (!response.ok) {
         throw new Error(response.statusText);
@@ -29,7 +25,7 @@ export default function Guilds(): JSX.Element {
         <Async.Rejected>
             <Alert variant="danger">
                 <Alert.Heading>Guild load error</Alert.Heading>
-                <p>{error => error.message}</p>
+                <p>{(error: Error) => error.message}</p>
             </Alert>
         </Async.Rejected>
         <Async.Fulfilled>{(data: GuildData[]) => data.map(guild => <Guild guild={guild} />)}</Async.Fulfilled>
