@@ -2,6 +2,7 @@
 
 use crate::config::WebUIConfig;
 use anyhow::Result;
+use nonzero_ext::nonzero;
 use rocket::{
     fairing::AdHoc,
     http::Header,
@@ -23,6 +24,11 @@ mod r#static;
 mod util;
 
 pub type BotGuilds = HashMap<GuildId, GuildInfo>;
+pub type RateLimiter = governor::RateLimiter<
+    u64,
+    governor::state::keyed::DefaultKeyedStateStore<u64>,
+    governor::clock::DefaultClock,
+>;
 
 pub struct WebUI {
     config: WebUIConfig,
@@ -53,6 +59,9 @@ impl WebUI {
             .manage(self.config.clone())
             .manage(self.discord.clone())
             .manage(self.guilds.clone())
+            .manage(RateLimiter::keyed(governor::Quota::per_second(nonzero!(
+                1_u32
+            ))))
             .attach(
                 Shield::default()
                     .enable(shield::Referrer::NoReferrer)

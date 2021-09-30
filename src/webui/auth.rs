@@ -1,4 +1,4 @@
-use super::{r#static::rocket_uri_macro_index, util::HeaderResponder};
+use super::{r#static::rocket_uri_macro_index, util::HeaderResponder, RateLimiter};
 use crate::config::WebUIConfig;
 use log::{error, trace};
 use oauth2::{
@@ -21,17 +21,33 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
     type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        request
+        let mut first_time = false;
+        match request
             .local_cache(|| {
-                if let Some(cookie) = request.cookies().get_private("user") {
-                    if let Ok(user) = serde_json::from_str(cookie.value()) {
-                        return Some(SessionUser(user));
-                    }
-                }
-                None
+                request
+                    .cookies()
+                    .get_private("user")
+                    .and_then(|cookie| serde_json::from_str::<CurrentUser>(cookie.value()).ok())
+                    .map(|user| {
+                        first_time = true;
+                        SessionUser(user)
+                    })
             })
             .as_ref()
-            .map_or(Outcome::Forward(()), |user| Outcome::Success(user))
+        {
+            Some(user) => {
+                if first_time {
+                    request
+                        .guard::<&State<RateLimiter>>()
+                        .await
+                        .expect("no RateLimiter in request state")
+                        .until_key_ready(&user.0.id.0)
+                        .await;
+                }
+                Outcome::Success(user)
+            }
+            None => Outcome::Forward(()),
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import Async from 'react-async';
 import { Alert } from 'react-bootstrap';
-import Guild from './Guild';
+import GuildRanks from './GuildRanks';
 
 export interface GuildData {
     id: string;
@@ -28,6 +28,6 @@ export default function Guilds(): JSX.Element {
                 <p>{(error: Error) => error.message}</p>
             </Alert>
         </Async.Rejected>
-        <Async.Fulfilled>{(data: GuildData[]) => data.map(guild => <Guild guild={guild} />)}</Async.Fulfilled>
+        <Async.Fulfilled>{(data: GuildData[]) => data.map(guild => <GuildRanks guild={guild} />)}</Async.Fulfilled>
     </Async>;
 }

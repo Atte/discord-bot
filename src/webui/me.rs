@@ -116,7 +116,7 @@ async fn guild_ranks_add(
     user: &SessionUser,
     discord: &State<Arc<CacheAndHttp>>,
     bot_guilds: &State<BotGuilds>,
-) -> Result<(), (Status, &'static str)> {
+) -> Result<Json<GuildRanksResponse>, (Status, &'static str)> {
     let guild_id = GuildId(guild_id);
     if !bot_guilds.contains_key(&guild_id) {
         return Err((Status::BadRequest, "invalid guild"));
@@ -130,15 +130,21 @@ async fn guild_ranks_add(
         return Err((Status::BadRequest, "invalid role"));
     }
 
-    guild_id
+    let mut member = guild_id
         .member(discord.inner().clone(), user.0.id)
         .await
-        .map_err(|_| (Status::BadGateway, "can't fetch member"))?
+        .map_err(|_| (Status::BadGateway, "can't fetch member"))?;
+
+    member
         .add_role(&discord.http, role_id)
         .await
         .map_err(|_| (Status::BadGateway, "can't add member to role"))?;
 
-    Ok(())
+    let (current, available) = ranks_from_guild(guild_id, discord.inner().clone())
+        .await?
+        .partition(|role| member.roles.contains(&role.id));
+
+    Ok(Json(GuildRanksResponse { current, available }))
 }
 
 #[delete("/me/guilds/<guild_id>/ranks/<role_id>")]
@@ -148,7 +154,7 @@ async fn guild_ranks_delete(
     user: &SessionUser,
     discord: &State<Arc<CacheAndHttp>>,
     bot_guilds: &State<BotGuilds>,
-) -> Result<(), (Status, &'static str)> {
+) -> Result<Json<GuildRanksResponse>, (Status, &'static str)> {
     let guild_id = GuildId(guild_id);
     if !bot_guilds.contains_key(&guild_id) {
         return Err((Status::BadRequest, "invalid guild"));
@@ -162,13 +168,19 @@ async fn guild_ranks_delete(
         return Err((Status::BadRequest, "invalid role"));
     }
 
-    guild_id
+    let mut member = guild_id
         .member(discord.inner().clone(), user.0.id)
         .await
-        .map_err(|_| (Status::BadGateway, "can't fetch member"))?
+        .map_err(|_| (Status::BadGateway, "can't fetch member"))?;
+
+    member
         .remove_role(&discord.http, role_id)
         .await
         .map_err(|_| (Status::BadGateway, "can't add member to role"))?;
 
-    Ok(())
+    let (current, available) = ranks_from_guild(guild_id, discord.inner().clone())
+        .await?
+        .partition(|role| member.roles.contains(&role.id));
+
+    Ok(Json(GuildRanksResponse { current, available }))
 }

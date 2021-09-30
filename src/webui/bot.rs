@@ -1,11 +1,6 @@
 use super::Json;
 use rocket::{get, routes, Build, Rocket, State};
-use serenity::{
-    model::{
-        user::CurrentUser,
-    },
-    CacheAndHttp,
-};
+use serenity::{model::user::CurrentUser, CacheAndHttp};
 use std::sync::Arc;
 
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
