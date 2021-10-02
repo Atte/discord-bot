@@ -1,25 +1,29 @@
 use includedir_codegen::Compression;
-use std::{ffi::OsStr, path::Path, process::Command};
+use std::{io, env, ffi::OsStr, path::Path, process::Command};
 
 const SOURCE_DIR: &str = "webui";
 const ENV_SWITCH: &str = "CARGO_FEATURE_WEBUI";
 
-fn npm<I, S>(args: I) -> std::io::Result<()>
+fn npm<I, S>(args: I) -> io::Result<()>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    Command::new("npm")
+    let status = Command::new("npm")
         .args(args)
         .current_dir(SOURCE_DIR)
         .spawn()?
         .wait()?;
-    Ok(())
+    if status.success() {
+        Ok(())
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, status.to_string()))
+    }
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> io::Result<()> {
     println!("cargo:rerun-if-env-changed={}", ENV_SWITCH);
-    if std::env::var_os(ENV_SWITCH).is_none() {
+    if env::var_os(ENV_SWITCH).is_none() {
         return Ok(());
     }
 
@@ -29,7 +33,7 @@ fn main() -> std::io::Result<()> {
         npm(["ci"])?;
     }
 
-    let webui_dist = std::env::var("OUT_DIR").expect("missing env OUT_DIR");
+    let webui_dist = env::var("OUT_DIR").expect("missing env OUT_DIR");
     npm(["run", "build", "--", "--dist-dir", &webui_dist])?;
 
     includedir_codegen::start("WEBUI_FILES")

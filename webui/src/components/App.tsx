@@ -1,9 +1,12 @@
-import React from 'react';
-import Async from 'react-async';
-import { Alert, Container, Button, Navbar, Nav } from 'react-bootstrap';
-import { HashRouter as Router, Switch, Route, Link, Redirect } from 'react-router-dom';
+import Router, { Route } from 'preact-router';
+import { Match } from 'preact-router/match';
+import { useEffect, useErrorBoundary, useState } from 'preact/hooks';
+import { createHashHistory } from 'history';
+import { useFetch } from '../util';
 import DiscordImage from './DiscordImage';
 import Guilds from './Guilds';
+import Redirect from './Redirect';
+import Errors from './Errors';
 
 export interface CurrentUserData {
     id: string;
@@ -17,69 +20,61 @@ export interface CurrentUserData {
     public_flags?: number;
 }
 
-async function fetchCurrentUser({}, { signal }: { signal: AbortSignal }): Promise<CurrentUserData | null> {
-    const response = await fetch('me/user', { signal });
-    if (response.status === 404) {
-        window.location.href = 'auth/redirect';
-        return null;
-    }
-    if (!response.ok) {
-        throw new Error(response.statusText);
-    }
-    return response.json();
-}
-
-async function fetchBotUser({}, { signal }: { signal: AbortSignal }): Promise<CurrentUserData | null> {
-    const response = await fetch('bot/user', { signal });
-    if (!response.ok) {
-        throw new Error(response.statusText);
-    }
-    const data: CurrentUserData | null = await response.json();
-    if (data?.username) {
-        document.title = data.username;
-    }
-    return data;
-}
-
 function clearStorage(): void {
     window.location.href = 'auth/clear';
 }
 
-export default function App(): JSX.Element {
-    const logout = <Button variant="primary" onClick={clearStorage} className="ms-3 me-3">Log out</Button>;
-    return <Container>
-        <Async promiseFn={fetchCurrentUser}>
-            <Async.Pending>Loading session... {logout}</Async.Pending>
-            <Async.Rejected>
-                <Alert variant="danger">
-                    <Alert.Heading>Login error</Alert.Heading>
-                    <p>{(error: Error) => error.message}</p>
-                    {logout}
-                </Alert>
-            </Async.Rejected>
-            <Async.Fulfilled>{(user: CurrentUserData | null) =>
-                !user
-                ? 'Redirecting to login...'
-                : <Router>
-                    <Navbar bg="dark" variant="dark">
-                        <Async promiseFn={fetchBotUser}>
-                            <Async.Fulfilled>{(bot: CurrentUserData) => <Navbar.Brand className="ms-3">{bot.username}</Navbar.Brand>}</Async.Fulfilled>
-                        </Async>
-                        <Nav className="me-auto">
-                            <Nav.Link as={Link} to="/ranks">Ranks</Nav.Link>
-                        </Nav>
-                        {user.avatar && <DiscordImage type="avatar" user_id={user.id} user_avatar={user.avatar} size={32} />}
-                        <Navbar.Text className="fw-bold">{user.username}#{user.discriminator}</Navbar.Text>
-                        {logout}
-                    </Navbar>
-                    <Switch>
-                        <Redirect exact from="/" to="/ranks" />
-                        <Route path="/ranks">
-                            <Guilds />
-                        </Route>
-                    </Switch>
-                </Router>
-            }</Async.Fulfilled>
-        </Async>
-    </Container>;
+function NavLink(props: { path: string, children: any }) {
+    return <Match path={props.path}>{({matches}: {matches: boolean}) => 
+        <li class={matches ? 'uk-active' : undefined}>
+            <a href={props.path}>{props.children}</a>
+        </li>
+    }</Match>
+}
+
+export default function App() {
+    const [childError] = useErrorBoundary();
+    const [user, userError] = useFetch<CurrentUserData>('me/user');
+    const [bot, botError] = useFetch<CurrentUserData>('bot/user');
+
+    useEffect(() => {
+        if (userError?.message === '404') {
+            window.location.href = 'auth/redirect';
+        }
+    }, [userError]);
+
+    useEffect(() => {
+        if (bot?.username) {
+            document.title = bot.username;
+        }
+    }, [bot]);
+
+    return <div class="uk-container">
+        <nav class="uk-navbar-container" uk-navbar>
+            <div class="uk-navbar-left">
+                <div class="uk-navbar-item uk-logo">
+                    {bot?.avatar && <DiscordImage type="avatar" user_id={bot.id} user_avatar={bot.avatar} size={32} circle />}
+                    {' '}{bot?.username}
+                </div>
+                <ul class="uk-navbar-nav">
+                    <NavLink path="/ranks"><span uk-icon="users"></span>{' '}Ranks</NavLink>
+                </ul>
+            </div>
+            <div class="uk-navbar-right">
+                <div class="uk-navbar-item">
+                    {user?.avatar && <DiscordImage type="avatar" user_id={user.id} user_avatar={user.avatar} size={32} circle />}
+                    {' '}<span class="uk-text-bold">{user?.username}</span>#{user?.discriminator}
+                </div>
+                <button class="uk-button uk-button-primary uk-margin-right" onClick={clearStorage}>
+                    <span uk-icon="sign-out"></span>
+                    {' '}Log out
+                </button>
+            </div>
+        </nav>
+        <Errors errors={[childError, userError, botError]} />
+        <Router history={createHashHistory()}>
+            <Route path="/ranks" component={Guilds} />
+            <Route path="/" component={Redirect} to="/ranks" />
+        </Router>
+    </div>;
 }

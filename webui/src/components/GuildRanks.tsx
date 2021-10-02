@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import Async, { IfFulfilled, IfPending, IfRejected, useFetch } from 'react-async';
-import { Alert, Form } from 'react-bootstrap';
+import { useState } from 'preact/hooks';
+import { useFetch } from '../util';
+import Errors from './Errors';
 import { GuildData } from './Guilds';
 
 interface Role {
@@ -25,18 +25,8 @@ interface GuildRanks {
     available: Role[];
 }
 
-async function fetchGuildRanks({ id }: { id: string }, { signal }: { signal: AbortSignal }): Promise<GuildRanks> {
-    const response = await fetch(`me/guilds/${id}/ranks`, { signal });
-    if (!response.ok) {
-        throw new Error(response.statusText);
-    }
-    return response.json();
-}
-
-export default function GuildRanks(props: { guild: GuildData }): JSX.Element {
-    const state = useFetch<GuildRanks>(`me/guilds/${props.guild.id}/ranks`, {
-        headers: { accept: 'application/json' },
-    });
+export default function GuildRanks(props: { guild: GuildData }) {
+    const [ranks, ranksError, setRanks, setRanksError] = useFetch<GuildRanks>(`me/guilds/${props.guild.id}/ranks`);
     const [changing, setChanging] = useState(false);
 
     async function setRole(role: Role, on: boolean): Promise<void> {
@@ -46,36 +36,33 @@ export default function GuildRanks(props: { guild: GuildData }): JSX.Element {
             if (!response.ok) {
                 throw new Error(response.statusText);
             }
-            state.setData(await response.json());
+            setRanks(await response.json());
         } catch (err) {
-            console.error(err);
-            state.reload(); // something broke, reload to ensure state is valid
+            setRanksError(err as Error);
         } finally {
             setChanging(false);
         }
     }
 
     return <>
-        <h3>{props.guild.name}</h3>
-        <IfPending state={state}>Loading ranks...</IfPending>
-        <IfRejected state={state}>
-            <Alert variant="danger">
-                <Alert.Heading>Rank load error</Alert.Heading>
-                <p>{(error: Error) => error.message}</p>
-            </Alert>
-        </IfRejected>
-        <IfFulfilled state={state}>{(data: GuildRanks) => <Form>
-                {data && data.current.concat(data.available).sort((a, b) => a.name.localeCompare(b.name)).map(role =>
-                    <Form.Check
-                        type="checkbox"
-                        id={role.id}
-                        label={role.name}
-                        disabled={changing}
-                        checked={data.current.includes(role)}
-                        onChange={() => setRole(role, !data.current.includes(role))}
-                    />
+        <Errors errors={[ranksError]} />
+        <form>
+            <ul class="uk-list">
+                {ranks && ranks.current.concat(ranks.available).sort((a, b) => a.name.localeCompare(b.name)).map(role =>
+                    <li key={role.id}>
+                        <label>
+                            <input
+                                class="uk-checkbox"
+                                type="checkbox"
+                                disabled={changing}
+                                checked={ranks.current.includes(role)}
+                                onChange={() => setRole(role, !ranks.current.includes(role))}
+                            />
+                            {' '}{role.name}
+                        </label>
+                    </li>
                 )}
-            </Form>
-        }</IfFulfilled>
+            </ul>
+        </form>
     </>;
 }
