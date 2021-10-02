@@ -15,6 +15,7 @@ pub struct Cron {
 }
 
 impl Cron {
+    #[inline]
     pub fn new(config: CronConfig, discord: Arc<CacheAndHttp>) -> Self {
         Self {
             discord,

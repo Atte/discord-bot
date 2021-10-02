@@ -1,4 +1,4 @@
-use super::{get_data, stats::update_stats, DiscordConfigKey};
+use super::{get_data, stats::update_stats, ConfigKey};
 use crate::util::format_duration_long;
 use log::{error, warn};
 use serenity::{
@@ -16,8 +16,8 @@ pub async fn normal_message(ctx: &Context, msg: &Message) {
 
 #[hook]
 pub async fn unrecognised_command(ctx: &Context, msg: &Message, _command_name: &str) {
-    if let Ok(config) = get_data::<DiscordConfigKey>(ctx).await {
-        if config.command_channels.contains(&msg.channel_id) {
+    if let Ok(config) = get_data::<ConfigKey>(ctx).await {
+        if config.discord.command_channels.contains(&msg.channel_id) {
             let _result = msg.reply(&ctx, "That's not a command!").await;
         }
     }

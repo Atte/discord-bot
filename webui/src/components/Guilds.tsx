@@ -12,7 +12,7 @@ export interface GuildData {
 }
 
 export default function Guilds() {
-    const [guilds, guildsError] = useFetch<GuildData[]>('me/guilds');
+    const [guilds, guildsError] = useFetch<GuildData[]>('api/me/guilds');
 
     return <>
         <Errors errors={[guildsError]} />

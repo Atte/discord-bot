@@ -13,7 +13,8 @@ pub struct SseEvent {
 }
 
 impl SseEvent {
-    fn new() -> Self {
+    #[inline]
+    const fn new() -> Self {
         Self {
             event: None,
             data: None,

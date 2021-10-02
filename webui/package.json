@@ -2,8 +2,7 @@
     "private": true,
     "source": "index.html",
     "scripts": {
-        "build": "parcel build --no-autoinstall --public-url .",
-        "watch": "parcel watch --no-autoinstall --public-url ."
+        "build": "parcel build --public-url static"
     },
     "devDependencies": {
         "@types/history": "^4.7.9",

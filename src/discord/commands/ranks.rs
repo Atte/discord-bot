@@ -1,7 +1,7 @@
 use super::super::{
     get_data,
     limits::{EMBED_DESC_LENGTH, REPLY_LENGTH},
-    DiscordConfigKey,
+    ConfigKey,
 };
 use crate::util::ellipsis_string;
 use anyhow::{anyhow, Result};
@@ -54,6 +54,7 @@ impl Ord for Rank {
 struct Ranks(Vec<Rank>);
 
 impl Ranks {
+    #[inline]
     fn new(mut ranks: Vec<Rank>) -> Self {
         ranks.sort_unstable();
         Self(ranks)
@@ -269,7 +270,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
         String::from_utf8(tw.into_inner()?)?
     };
 
-    let prefix = get_data::<DiscordConfigKey>(ctx).await?.command_prefix;
+    let prefix = get_data::<ConfigKey>(ctx).await?.discord.command_prefix;
     msg.channel_id
         .send_message(&ctx, |message| {
             message.embed(|embed| {

@@ -31,18 +31,18 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    let mongo_client = mongodb::Client::with_uri_str(config.mongodb.uri).await?;
+    let mongo_client = mongodb::Client::with_uri_str(config.mongodb.uri.to_string()).await?;
     let db = mongo_client.database(config.mongodb.database.as_ref());
     migrations::mongo(&db).await?;
 
     info!("Spawning Discord...");
-    let mut discord = discord::Discord::try_new(config.discord.clone(), db).await?;
+    let mut discord = discord::Discord::try_new(config.clone(), db).await?;
 
     #[cfg(feature = "webui")]
     {
         info!("Spawning web UI...");
         let webui =
-            webui::WebUI::try_new(config.webui, discord.client.cache_and_http.clone()).await?;
+            webui::WebUI::try_new(config.clone(), discord.client.cache_and_http.clone()).await?;
         tokio::spawn(async move {
             loop {
                 if let Err(report) = webui.run().await {

@@ -26,13 +26,13 @@ interface GuildRanks {
 }
 
 export default function GuildRanks({ guild }: { guild: GuildData }) {
-    const [ranks, ranksError, setRanks, setRanksError] = useFetch<GuildRanks>(`me/guilds/${guild.id}/ranks`);
+    const [ranks, ranksError, setRanks, setRanksError] = useFetch<GuildRanks>(`api/me/guilds/${guild.id}/ranks`);
     const [changing, setChanging] = useState(false);
 
     async function setRole(role: Role, on: boolean): Promise<void> {
         setChanging(true);
         try {
-            const response = await fetch(`me/guilds/${role.guild_id}/ranks/${role.id}`, { method: on ? 'POST' : 'DELETE' });
+            const response = await fetch(`api/me/guilds/${role.guild_id}/ranks/${role.id}`, { method: on ? 'POST' : 'DELETE' });
             if (!response.ok) {
                 throw new Error(response.statusText);
             }

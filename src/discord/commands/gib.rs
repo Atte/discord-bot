@@ -1,5 +1,5 @@
 use super::super::{
-    get_data, get_data_or_insert_with, limits::EMBED_FIELD_VALUE_LENGTH, DbKey, DiscordConfigKey,
+    get_data, get_data_or_insert_with, limits::EMBED_FIELD_VALUE_LENGTH, ConfigKey, DbKey,
 };
 use crate::util::{ellipsis_string, separate_thousands_unsigned};
 use chrono::Utc;
@@ -54,7 +54,7 @@ const COLLECTION_NAME: &str = "gib-seen";
 #[description("Gib pics from Derpibooru")]
 #[usage("[tags\u{2026}]")]
 async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let config = get_data::<DiscordConfigKey>(ctx).await?;
+    let config = get_data::<ConfigKey>(ctx).await?;
     let collection = get_data::<DbKey>(ctx)
         .await?
         .collection::<Document>(COLLECTION_NAME);

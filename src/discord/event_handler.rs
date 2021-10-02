@@ -1,12 +1,12 @@
 use super::{limits::ACTIVITY_LENGTH, log_channel, sticky_roles, ActivityKey};
 use crate::util::ellipsis_string;
-use log::{error, trace};
+use log::error;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
     model::{
         gateway::{Activity, Ready},
-        guild::{Guild, Member},
+        guild::Member,
         id::{ChannelId, GuildId, MessageId},
         user::User,
     },
@@ -28,9 +28,17 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_create(&self, _ctx: Context, guild: Guild, _is_new: bool) {
-        trace!("Joined guild {} ({})", guild.name, guild.id);
+    /*
+    async fn message(&self, ctx: Context, message: Message) {
+        if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
+            if config.discord.rules_channels.contains(&message.channel_id) && !message.is_own(&ctx).await {
+                if let Err(err) = message.delete(&ctx).await {
+                    error!("Unable to delete rules channel spam: {}", err);
+                }
+            }
+        }
     }
+    */
 
     async fn message_delete(
         &self,

@@ -1,4 +1,4 @@
-use crate::config::DiscordConfig;
+use crate::config::Config;
 use anyhow::{anyhow, Result};
 use serenity::{
     client::{bridge::gateway::GatewayIntents, Client, Context},
@@ -20,10 +20,10 @@ impl TypeMapKey for ActivityKey {
     type Value = String;
 }
 
-struct DiscordConfigKey;
+struct ConfigKey;
 
-impl TypeMapKey for DiscordConfigKey {
-    type Value = DiscordConfig;
+impl TypeMapKey for ConfigKey {
+    type Value = Config;
 }
 
 struct DbKey;
@@ -58,13 +58,13 @@ pub struct Discord {
 }
 
 impl Discord {
-    pub async fn try_new(config: DiscordConfig, db: mongodb::Database) -> Result<Self> {
+    pub async fn try_new(config: Config, db: mongodb::Database) -> Result<Self> {
         let framework = StandardFramework::new()
             .configure(|c| {
-                c.prefix(config.command_prefix.as_ref())
-                    .owners(config.owners.clone())
-                    .blocked_users(config.blocked_users.clone())
-                    .allowed_channels(config.command_channels.clone())
+                c.prefix(config.discord.command_prefix.as_ref())
+                    .owners(config.discord.owners.clone())
+                    .blocked_users(config.discord.blocked_users.clone())
+                    .allowed_channels(config.discord.command_channels.clone())
                     .case_insensitivity(true)
             })
             .normal_message(hooks::normal_message)
@@ -76,13 +76,13 @@ impl Discord {
             .group(&commands::MISC_GROUP)
             .help(&commands::HELP_COMMAND);
 
-        let client = Client::builder(&config.token)
+        let client = Client::builder(&config.discord.token)
             .cache_settings(|c| c.max_messages(1024))
             .intents(GatewayIntents::all())
             .event_handler(event_handler::Handler)
             .framework(framework)
             .type_map_insert::<ActivityKey>(String::new())
-            .type_map_insert::<DiscordConfigKey>(config)
+            .type_map_insert::<ConfigKey>(config)
             .type_map_insert::<DbKey>(db)
             .await?;
 

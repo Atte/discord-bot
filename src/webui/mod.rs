@@ -1,6 +1,6 @@
 #![allow(clippy::let_unit_value, clippy::needless_pass_by_value)]
 
-use crate::config::WebUIConfig;
+use crate::config::Config;
 use anyhow::Result;
 use nonzero_ext::nonzero;
 use rocket::{fairing::AdHoc, http::Header, shield::Shield};
@@ -24,13 +24,13 @@ pub type RateLimiter = governor::RateLimiter<
 >;
 
 pub struct WebUI {
-    config: WebUIConfig,
+    config: Config,
     discord: Arc<CacheAndHttp>,
     guilds: BotGuilds,
 }
 
 impl WebUI {
-    pub async fn try_new(config: WebUIConfig, discord: Arc<CacheAndHttp>) -> Result<Self> {
+    pub async fn try_new(config: Config, discord: Arc<CacheAndHttp>) -> Result<Self> {
         let guilds = discord
             .http
             .get_current_user()
@@ -39,7 +39,7 @@ impl WebUI {
             .await?
             .into_iter()
             .filter_map(|guild| {
-                if config.guilds.contains(&guild.id) {
+                if config.webui.guilds.contains(&guild.id) {
                     Some((guild.id, guild))
                 } else {
                     None
@@ -73,12 +73,12 @@ impl WebUI {
                             "script-src 'self'",
                             "style-src 'self'",
                             "connect-src 'self'",
-                            "form-action 'self'",
                             "img-src https://cdn.discordapp.com",
+                            "form-action 'self'",
+                            "base-uri 'self'",
                             "frame-ancestors 'none'",
                             "block-all-mixed-content",
                             "disown-opener",
-                            "base-uri 'none'",
                         ];
                         response.set_header(Header::new("Content-Security-Policy", CSP.join("; ")));
                         response.set_header(Header::new("X-Frame-Options", "DENY"));

@@ -7,7 +7,8 @@ pub struct HeaderResponder<T> {
 }
 
 impl<T> HeaderResponder<T> {
-    pub fn new(inner: T, header: Header<'static>) -> Self {
+    #[inline]
+    pub const fn new(inner: T, header: Header<'static>) -> Self {
         Self { inner, header }
     }
 }

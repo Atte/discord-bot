@@ -2,6 +2,7 @@ use super::json::to_safe_string;
 use log::error;
 use rocket::{get, http::ContentType, routes, Build, Rocket, State};
 use serenity::CacheAndHttp;
+use static_assertions::const_assert;
 use std::sync::Arc;
 use std::{
     borrow::Cow,
@@ -41,9 +42,9 @@ pub async fn index(discord: &State<Arc<CacheAndHttp>>) -> ServeResponse {
     ));
     if let Some(ref avatar) = bot.avatar {
         const SIZE: u16 = 64;
-        debug_assert!(SIZE >= 16);
-        debug_assert!(SIZE <= 4096);
-        debug_assert!(SIZE.is_power_of_two());
+        const_assert!(SIZE >= 16);
+        const_assert!(SIZE <= 4096);
+        const_assert!(SIZE.is_power_of_two());
 
         let url = format!(
             "https://cdn.discordapp.com/avatars/{}/{}.png?size={}",
@@ -84,7 +85,7 @@ pub async fn index(discord: &State<Arc<CacheAndHttp>>) -> ServeResponse {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-#[get("/<path..>")]
+#[get("/static/<path..>")]
 pub fn path(path: PathBuf) -> ServeResponse {
     path.to_str().and_then(serve)
 }

@@ -1,5 +1,6 @@
 use super::{r#static::rocket_uri_macro_index, util::HeaderResponder, RateLimiter};
-use crate::config::WebUIConfig;
+use crate::config::Config;
+use governor::Jitter;
 use log::{error, trace};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
@@ -14,6 +15,7 @@ use rocket::{
     routes, uri, Build, Rocket, State,
 };
 use serenity::{http::Http, model::oauth2::OAuth2Scope, model::user::CurrentUser};
+use std::time::Duration;
 
 pub struct SessionUser(pub CurrentUser);
 
@@ -42,7 +44,10 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
                         .guard::<&State<RateLimiter>>()
                         .await
                         .expect("no RateLimiter in request state")
-                        .until_key_ready(&user.0.id.0)
+                        .until_key_ready_with_jitter(
+                            &user.0.id.0,
+                            Jitter::up_to(Duration::from_millis(100)),
+                        )
                         .await;
                 }
                 Outcome::Success(user)
@@ -52,21 +57,22 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
     }
 }
 
-pub fn init(vega: Rocket<Build>, config: &WebUIConfig) -> crate::Result<Rocket<Build>> {
+pub fn init(vega: Rocket<Build>, config: &Config) -> crate::Result<Rocket<Build>> {
     let client = BasicClient::new(
-        ClientId::new(config.discord_client_id.to_string()),
-        Some(ClientSecret::new(config.discord_client_secret.to_string())),
+        ClientId::new(config.discord.client_id.to_string()),
+        Some(ClientSecret::new(config.discord.client_secret.to_string())),
         AuthUrl::new("https://discord.com/api/oauth2/authorize".to_string())?,
         Some(TokenUrl::new(
             "https://discord.com/api/oauth2/token".to_string(),
         )?),
     );
-    Ok(vega
-        .manage(client)
-        .mount("/", routes![redirect, callback, callback_head, clear]))
+    Ok(vega.manage(client).mount(
+        "/api/auth",
+        routes![redirect, callback, callback_head, clear],
+    ))
 }
 
-#[post("/auth/redirect")]
+#[post("/redirect")]
 fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
@@ -80,10 +86,10 @@ fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
     Redirect::to(auth_url.to_string())
 }
 
-#[head("/auth/callback")]
-fn callback_head() {}
+#[head("/callback")]
+const fn callback_head() {}
 
-#[get("/auth/callback?<state>&<code>")]
+#[get("/callback?<state>&<code>")]
 async fn callback(
     state: &str,
     code: &str,
@@ -129,7 +135,7 @@ async fn callback(
     Ok(Redirect::to(uri!(index)))
 }
 
-#[post("/auth/clear")]
+#[post("/clear")]
 fn clear(cookies: &CookieJar<'_>) -> HeaderResponder<Redirect> {
     cookies.remove_private(Cookie::named("user"));
     HeaderResponder::new(

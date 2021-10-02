@@ -30,7 +30,7 @@ function NavLink(props: { path: string, children: any }) {
 
 export default function App({ bot }: { bot: CurrentUserData }) {
     const [childError] = useErrorBoundary();
-    const [user, userError] = useFetch<CurrentUserData>('me/user');
+    const [user, userError] = useFetch<CurrentUserData>('api/me/user');
 
     return <div class="uk-container">
         <nav class="uk-navbar-container uk-flex-wrap" uk-navbar>
@@ -49,7 +49,7 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                     {' '}<span class="uk-text-bold">{user.username}</span>#{user.discriminator}
                 </div>
                 <div class="uk-navbar-item">
-                    <form action="auth/clear" method="POST">
+                    <form action="api/auth/clear" method="POST">
                         <button class="uk-button uk-button-primary">
                             <span uk-icon="sign-out" />
                             {' '}Log out
@@ -59,12 +59,14 @@ export default function App({ bot }: { bot: CurrentUserData }) {
             </div>}
         </nav>
         {userError?.message === '404'
-            ? <form action="auth/redirect" method="POST">
-                <button class="uk-button uk-button-primary uk-animation-fade uk-animation-fast">
-                    <span uk-icon="sign-in" />
-                    {' '}Log in with Discord
-                </button>
-            </form>
+            ? <div class="uk-padding-small">
+                <form action="api/auth/redirect" method="POST">
+                    <button class="uk-button uk-button-primary uk-animation-fade uk-animation-fast">
+                        <span uk-icon="sign-in" />
+                        {' '}Log in with Discord
+                    </button>
+                </form>
+            </div>
             : <>
                 <Errors errors={[childError, userError]} />
                 {user ?
@@ -72,7 +74,7 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                         <Route path="/ranks" component={Guilds} />
                         <Route path="/" component={Redirect} to="/ranks" />
                     </Router>
-                : <div><div uk-spinner="ratio: 3" /></div>}
+                : <div class="uk-padding-small"><div uk-spinner="ratio: 3" /></div>}
             </>
         }
     </div>;

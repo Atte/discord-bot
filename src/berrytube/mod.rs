@@ -6,7 +6,7 @@ use crate::{
     Result,
 };
 use futures::{pin_mut, StreamExt};
-use log::{trace, warn};
+use log::warn;
 use reqwest::Url;
 use serde::Deserialize;
 use serenity::{
@@ -63,7 +63,6 @@ impl Berrytube {
                     data: Some(data),
                     ..
                 })) => {
-                    trace!("BT event: {:?}", event);
                     if event == "videoChange" {
                         if let Ok(video_change) = serde_json::from_str::<VideoChangeEvent>(&data) {
                             // videoChange might come after videoStatus when receiving the backlog

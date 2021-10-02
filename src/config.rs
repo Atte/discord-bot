@@ -11,8 +11,12 @@ use std::{
 pub struct Config {
     pub mongodb: MongodbConfig,
     pub discord: DiscordConfig,
+    pub gib: GibConfig,
+    #[cfg(feature = "webui")]
     pub webui: WebUIConfig,
+    #[cfg(feature = "cron")]
     pub cron: CronConfig,
+    #[cfg(feature = "berrytube")]
     pub berrytube: BerrytubeConfig,
 }
 
@@ -27,12 +31,14 @@ pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
     pub token: SubstitutingString,
     #[cfg(feature = "webui")]
-    pub webui_url: SubstitutingString,
+    pub client_id: SubstitutingString,
+    #[cfg(feature = "webui")]
+    pub client_secret: SubstitutingString,
     pub owners: HashSet<UserId>,
     pub blocked_users: HashSet<UserId>,
     pub command_channels: HashSet<ChannelId>,
     pub log_channels: HashSet<ChannelId>,
-    pub gib: GibConfig,
+    pub rules_channels: HashSet<ChannelId>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -44,8 +50,7 @@ pub struct GibConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct WebUIConfig {
-    pub discord_client_id: SubstitutingString,
-    pub discord_client_secret: SubstitutingString,
+    pub url: SubstitutingString,
     pub guilds: HashSet<GuildId>,
 }
 

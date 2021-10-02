@@ -1,4 +1,3 @@
-use super::{get_data, DiscordConfigKey};
 use serenity::{
     client::Context,
     framework::standard::{
@@ -46,8 +45,8 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[aliases(web, ui, link, url, uri)]
 #[num_args(0)]
 async fn webui(ctx: &Context, msg: &Message) -> CommandResult {
-    let config = get_data::<DiscordConfigKey>(ctx).await?;
-    msg.reply(&ctx, config.webui_url).await?;
+    let config = super::get_data::<super::ConfigKey>(ctx).await?;
+    msg.reply(&ctx, config.webui.url).await?;
     Ok(())
 }
 
