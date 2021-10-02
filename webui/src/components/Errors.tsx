@@ -1,5 +1,5 @@
-export default function Errors(props: { errors: (Error | undefined)[] }) {
+export default function Errors({ errors }: { errors: (Error | undefined)[] }) {
     return <>
-        {props.errors.filter(err => err).map(err => <div class="uk-alert-danger" uk-alert>{err!.toString()}</div>)}
+        {errors.filter(err => err).map(err => <div class="uk-alert-danger uk-animation-slide-top-small" uk-alert>{err!.toString()}</div>)}
     </>
 }

@@ -8,6 +8,7 @@ use oauth2::{
 use rocket::{
     get, head,
     http::{Cookie, CookieJar, Header, SameSite, Status},
+    post,
     request::{FromRequest, Outcome, Request},
     response::Redirect,
     routes, uri, Build, Rocket, State,
@@ -65,7 +66,7 @@ pub fn init(vega: Rocket<Build>, config: &WebUIConfig) -> crate::Result<Rocket<B
         .mount("/", routes![redirect, callback, callback_head, clear]))
 }
 
-#[get("/auth/redirect")]
+#[post("/auth/redirect")]
 fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
@@ -121,17 +122,18 @@ async fn callback(
         )
     })?;
 
-    trace!("{} ({}) logged in", user.id, user.tag());
+    trace!("{} ({}) logged in", user.tag(), user.id);
     cookies.remove_private(csrf_token);
     cookies.add_private(Cookie::new("user", user_string));
 
     Ok(Redirect::to(uri!(index)))
 }
 
-#[get("/auth/clear")]
-fn clear() -> HeaderResponder<Redirect> {
+#[post("/auth/clear")]
+fn clear(cookies: &CookieJar<'_>) -> HeaderResponder<Redirect> {
+    cookies.remove_private(Cookie::named("user"));
     HeaderResponder::new(
-        Redirect::to(uri!(redirect)),
+        Redirect::to(uri!(index)),
         Header::new("Clear-Site-Data", "*"),
     )
 }

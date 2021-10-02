@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { useFetch } from '../util';
+import { sortBy, useFetch } from '../util';
 import Errors from './Errors';
 import { GuildData } from './Guilds';
 
@@ -25,8 +25,8 @@ interface GuildRanks {
     available: Role[];
 }
 
-export default function GuildRanks(props: { guild: GuildData }) {
-    const [ranks, ranksError, setRanks, setRanksError] = useFetch<GuildRanks>(`me/guilds/${props.guild.id}/ranks`);
+export default function GuildRanks({ guild }: { guild: GuildData }) {
+    const [ranks, ranksError, setRanks, setRanksError] = useFetch<GuildRanks>(`me/guilds/${guild.id}/ranks`);
     const [changing, setChanging] = useState(false);
 
     async function setRole(role: Role, on: boolean): Promise<void> {
@@ -47,9 +47,9 @@ export default function GuildRanks(props: { guild: GuildData }) {
     return <>
         <Errors errors={[ranksError]} />
         <form>
-            <ul class="uk-list">
-                {ranks && ranks.current.concat(ranks.available).sort((a, b) => a.name.localeCompare(b.name)).map(role =>
-                    <li key={role.id}>
+            {ranks ? <ul class="uk-list uk-column-1-2@s uk-animation-slide-top-small">
+                {ranks.current.concat(ranks.available).sort(sortBy('name')).map(role =>
+                    <li key={role.id} style="break-inside: avoid">
                         <label>
                             <input
                                 class="uk-checkbox"
@@ -62,7 +62,7 @@ export default function GuildRanks(props: { guild: GuildData }) {
                         </label>
                     </li>
                 )}
-            </ul>
+            </ul> : <div><div uk-spinner /></div>}
         </form>
     </>;
 }

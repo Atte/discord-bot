@@ -1,5 +1,5 @@
 use includedir_codegen::Compression;
-use std::{io, env, ffi::OsStr, path::Path, process::Command};
+use std::{env, ffi::OsStr, io, path::Path, process::Command};
 
 const SOURCE_DIR: &str = "webui";
 const ENV_SWITCH: &str = "CARGO_FEATURE_WEBUI";

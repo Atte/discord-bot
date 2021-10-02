@@ -1,7 +1,7 @@
 use crate::SubstitutingString;
 use anyhow::Result;
 use serde::Deserialize;
-use serenity::model::id::{ChannelId, UserId};
+use serenity::model::id::{ChannelId, GuildId, UserId};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -46,6 +46,7 @@ pub struct GibConfig {
 pub struct WebUIConfig {
     pub discord_client_id: SubstitutingString,
     pub discord_client_secret: SubstitutingString,
+    pub guilds: HashSet<GuildId>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

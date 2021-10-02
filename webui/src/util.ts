@@ -4,6 +4,10 @@ export function unreachable(x: never): never {
     throw new Error(`Unreachable reached: ${x}`);
 }
 
+export function sortBy<T extends { [key in K]: string }, K extends keyof T>(key: K): (a: T, b: T) => number {
+    return (a, b) => a[key].toLowerCase().localeCompare(b[key].toLowerCase(), 'en');
+}
+
 export function useFetch<T>(input: RequestInfo, init?: RequestInit, dependencies?: Inputs) {
     const [response, setResponse] = useState<T>();
     const [error, setError] = useState<Error>();

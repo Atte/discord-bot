@@ -1,10 +1,12 @@
-use super::{auth::SessionUser, BotGuilds, Json};
+use super::{auth::SessionUser, json::Json, BotGuilds};
+use futures::{future::join_all, FutureExt};
+use log::trace;
 use rocket::{delete, get, http::Status, post, routes, Build, Rocket, State};
 use serde::Serialize;
 use serenity::{
     model::{
-        guild::{GuildInfo, Role},
-        id::{GuildId, RoleId},
+        guild::{GuildInfo, Member, Role},
+        id::{GuildId, UserId},
         user::CurrentUser,
     },
     CacheAndHttp,
@@ -29,22 +31,34 @@ fn user(user: &SessionUser) -> Json<CurrentUser> {
     Json(user.0.clone())
 }
 
+async fn guild_member(
+    guild_id: GuildId,
+    user_id: UserId,
+    discord: &State<Arc<CacheAndHttp>>,
+) -> Option<Member> {
+    if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
+        guild.members.get(&user_id).cloned()
+    } else {
+        guild_id.member(discord.inner().clone(), user_id).await.ok()
+    }
+}
+
 #[get("/me/guilds")]
 async fn guilds(
     user: &SessionUser,
     discord: &State<Arc<CacheAndHttp>>,
     bot_guilds: &State<BotGuilds>,
 ) -> Result<Json<Vec<GuildInfo>>, (Status, &'static str)> {
-    let guilds = user
-        .0
-        .guilds(&discord.http)
-        .await
-        .map_err(|_| (Status::BadGateway, "can't fetch user's guilds"))?;
     Ok(Json(
-        guilds
-            .into_iter()
-            .filter(|guild| bot_guilds.contains_key(&guild.id))
-            .collect(),
+        join_all(bot_guilds.iter().map(|(guild_id, guild_info)| async move {
+            guild_member(*guild_id, user.0.id, discord)
+                .await
+                .map(|_| guild_info.clone())
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect(),
     ))
 }
 
@@ -58,7 +72,14 @@ async fn ranks_from_guild(
         .map_err(|_| (Status::BadGateway, "can't fetch bot member"))?;
 
     let roles = guild_id
-        .roles(&discord.http)
+        .to_guild_cached(&discord.cache)
+        .then(|guild| async {
+            if let Some(guild) = guild {
+                Ok(guild.roles)
+            } else {
+                guild_id.roles(&discord.http).await
+            }
+        })
         .await
         .map_err(|_| (Status::BadGateway, "can't fetch guild's roles"))?;
 
@@ -97,10 +118,9 @@ async fn guild_ranks(
         return Err((Status::BadRequest, "invalid guild"));
     }
 
-    let member = guild_id
-        .member(discord.inner().clone(), user.0.id)
+    let member = guild_member(guild_id, user.0.id, discord)
         .await
-        .map_err(|_| (Status::BadGateway, "can't fetch member"))?;
+        .ok_or((Status::BadGateway, "can't fetch member"))?;
 
     let (current, available) = ranks_from_guild(guild_id, discord.inner().clone())
         .await?
@@ -122,23 +142,27 @@ async fn guild_ranks_add(
         return Err((Status::BadRequest, "invalid guild"));
     }
 
-    let role_id = RoleId(role_id);
-    if !ranks_from_guild(guild_id, discord.inner().clone())
+    let role = ranks_from_guild(guild_id, discord.inner().clone())
         .await?
-        .any(|role| role.id == role_id)
-    {
-        return Err((Status::BadRequest, "invalid role"));
-    }
+        .find(|role| role.id == role_id)
+        .ok_or((Status::BadRequest, "invalid role"))?;
 
-    let mut member = guild_id
-        .member(discord.inner().clone(), user.0.id)
+    let mut member = guild_member(guild_id, user.0.id, discord)
         .await
-        .map_err(|_| (Status::BadGateway, "can't fetch member"))?;
+        .ok_or((Status::BadGateway, "can't fetch member"))?;
 
     member
-        .add_role(&discord.http, role_id)
+        .add_role(&discord.http, &role)
         .await
         .map_err(|_| (Status::BadGateway, "can't add member to role"))?;
+
+    trace!(
+        "{} ({}) joined rank {} ({})",
+        user.0.tag(),
+        user.0.id,
+        role.name,
+        role.id
+    );
 
     let (current, available) = ranks_from_guild(guild_id, discord.inner().clone())
         .await?
@@ -160,23 +184,27 @@ async fn guild_ranks_delete(
         return Err((Status::BadRequest, "invalid guild"));
     }
 
-    let role_id = RoleId(role_id);
-    if !ranks_from_guild(guild_id, discord.inner().clone())
+    let role = ranks_from_guild(guild_id, discord.inner().clone())
         .await?
-        .any(|role| role.id == role_id)
-    {
-        return Err((Status::BadRequest, "invalid role"));
-    }
+        .find(|role| role.id == role_id)
+        .ok_or((Status::BadRequest, "invalid role"))?;
 
-    let mut member = guild_id
-        .member(discord.inner().clone(), user.0.id)
+    let mut member = guild_member(guild_id, user.0.id, discord)
         .await
-        .map_err(|_| (Status::BadGateway, "can't fetch member"))?;
+        .ok_or((Status::BadGateway, "can't fetch member"))?;
 
     member
-        .remove_role(&discord.http, role_id)
+        .remove_role(&discord.http, &role)
         .await
-        .map_err(|_| (Status::BadGateway, "can't add member to role"))?;
+        .map_err(|_| (Status::BadGateway, "can't remove member from role"))?;
+
+    trace!(
+        "{} ({}) left rank {} ({})",
+        user.0.tag(),
+        user.0.id,
+        role.name,
+        role.id
+    );
 
     let (current, available) = ranks_from_guild(guild_id, discord.inner().clone())
         .await?

@@ -3,22 +3,15 @@
 use crate::config::WebUIConfig;
 use anyhow::Result;
 use nonzero_ext::nonzero;
-use rocket::{
-    fairing::AdHoc,
-    http::Header,
-    shield::{self, Shield},
-};
+use rocket::{fairing::AdHoc, http::Header, shield::Shield};
 use serenity::{
     model::{guild::GuildInfo, id::GuildId},
     CacheAndHttp,
 };
 use std::{collections::HashMap, sync::Arc};
 
-mod json;
-use json::Json;
-
 mod auth;
-mod bot;
+mod json;
 mod me;
 mod r#static;
 mod util;
@@ -45,7 +38,13 @@ impl WebUI {
             .guilds(&discord.http)
             .await?
             .into_iter()
-            .map(|guild| (guild.id, guild))
+            .filter_map(|guild| {
+                if config.guilds.contains(&guild.id) {
+                    Some((guild.id, guild))
+                } else {
+                    None
+                }
+            })
             .collect();
         Ok(Self {
             config,
@@ -63,17 +62,38 @@ impl WebUI {
                 1_u32
             ))))
             .attach(
-                Shield::default()
-                    .enable(shield::Referrer::NoReferrer)
-                    .disable::<shield::Hsts>(),
+                Shield::new(), // security headers are set manually below
             )
-            .attach(AdHoc::on_response("Cache-Control", |_request, response| {
-                Box::pin(async move {
-                    response.set_header(Header::new("Cache-Control", "no-store"));
-                })
-            }));
+            .attach(AdHoc::on_response(
+                "custom headers",
+                |_request, response| {
+                    Box::pin(async move {
+                        const CSP: [&str; 10] = [
+                            "default-src 'none'",
+                            "script-src 'self'",
+                            "style-src 'self'",
+                            "connect-src 'self'",
+                            "form-action 'self'",
+                            "img-src https://cdn.discordapp.com",
+                            "frame-ancestors 'none'",
+                            "block-all-mixed-content",
+                            "disown-opener",
+                            "base-uri 'none'",
+                        ];
+                        response.set_header(Header::new("Content-Security-Policy", CSP.join("; ")));
+                        response.set_header(Header::new("X-Frame-Options", "DENY"));
+                        response.set_header(Header::new("X-Content-Type-Options", "nosniff"));
+                        response.set_header(Header::new("Referrer-Policy", "no-referrer"));
+                        response.set_header(Header::new(
+                            "Permissions-Policy",
+                            "payment=(), interest-cohort=()",
+                        ));
+
+                        response.set_header(Header::new("Cache-Control", "no-store"));
+                    })
+                },
+            ));
         let vega = r#static::init(vega);
-        let vega = bot::init(vega);
         let vega = auth::init(vega, &self.config)?;
         let vega = me::init(vega);
         vega.launch().await?;
