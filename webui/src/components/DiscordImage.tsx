@@ -43,5 +43,6 @@ export default function DiscordImage(props: Image) {
         height={props.size}
         src={`https://cdn.discordapp.com/${props.type}s/${ids.join('/')}.${animate ? 'gif' : 'webp'}`}
         style={borderRadius > 0 ? `border-radius: ${borderRadius}px` : undefined}
+        crossOrigin="anonymous"
     />;
 }

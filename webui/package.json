@@ -2,7 +2,12 @@
     "private": true,
     "source": "index.html",
     "scripts": {
-        "build": "parcel build --public-url static"
+        "build": "parcel build"
+    },
+    "targets": {
+        "default": {
+            "publicUrl": "static"
+        }
     },
     "devDependencies": {
         "@types/history": "^4.7.9",

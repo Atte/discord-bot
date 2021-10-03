@@ -1,6 +1,10 @@
-use super::json::to_safe_string;
+use super::{json::to_safe_string, util::HeaderResponder};
 use log::error;
-use rocket::{get, http::ContentType, routes, Build, Rocket, State};
+use rocket::{
+    get,
+    http::{ContentType, Header},
+    routes, Build, Rocket, State,
+};
 use serenity::CacheAndHttp;
 use static_assertions::const_assert;
 use std::sync::Arc;
@@ -12,13 +16,11 @@ use std::{
 // defines const WEBUI_FILES
 include!(concat!(env!("OUT_DIR"), "/webui.rs"));
 
-type ServeResponse = Option<(ContentType, Vec<u8>)>;
-
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
     vega.mount("/", routes![index, path])
 }
 
-fn serve(path: &str) -> ServeResponse {
+fn serve(path: &str) -> Option<(ContentType, Vec<u8>)> {
     let path = format!("{}/{}", env!("OUT_DIR"), path);
     let file = WEBUI_FILES.get(&path).ok().map(Cow::into_owned)?;
     let mime = Path::new(&path)
@@ -28,18 +30,27 @@ fn serve(path: &str) -> ServeResponse {
     Some((mime, file))
 }
 
+#[allow(clippy::needless_pass_by_value)]
+#[get("/static/<path..>")]
+pub fn path(path: PathBuf) -> Option<(ContentType, Vec<u8>)> {
+    path.to_str().and_then(serve)
+}
+
 #[get("/")]
-pub async fn index(discord: &State<Arc<CacheAndHttp>>) -> ServeResponse {
+pub async fn index(
+    discord: &State<Arc<CacheAndHttp>>,
+) -> Option<HeaderResponder<(ContentType, Vec<u8>)>> {
     let bot = discord.cache.current_user().await;
 
     let mut extra: Vec<String> = Vec::new();
-    extra.push(format!("<title>{}</title>", bot.name));
-
-    // https://ogp.me/
     extra.push(format!(
-        r#"<meta property="og:title" content="{}" />"#,
-        bot.name
+        r#"
+            <title>{name}</title>
+            <meta property="og:title" content="{name}" />
+        "#,
+        name = bot.name
     ));
+
     if let Some(ref avatar) = bot.avatar {
         const SIZE: u16 = 64;
         const_assert!(SIZE >= 16);
@@ -47,24 +58,19 @@ pub async fn index(discord: &State<Arc<CacheAndHttp>>) -> ServeResponse {
         const_assert!(SIZE.is_power_of_two());
 
         let url = format!(
-            "https://cdn.discordapp.com/avatars/{}/{}.png?size={}",
-            bot.id, avatar, SIZE
+            "https://cdn.discordapp.com/avatars/{}/{}.png?size={size}",
+            bot.id,
+            avatar,
+            size = SIZE
         );
 
-        extra.push(format!(
-            r#"<link rel="icon" type="image/png" href="{}" />"#,
-            url
-        ));
-        extra.push(format!(r#"<meta property="og:image" content="{}" />"#, url));
-        extra.push(r#"<meta property="og:image:type" content="image/png" />"#.to_string());
-        extra.push(format!(
-            r#"<meta property="og:image:width" content="{}" />"#,
-            SIZE
-        ));
-        extra.push(format!(
-            r#"<meta property="og:image:height" content="{}" />"#,
-            SIZE
-        ));
+        extra.push(format!(r#"
+            <link rel="icon" type="image/png" href="{url}" sizes="{size}x{size}" crossorigin="anonymous" />
+            <meta property="og:image" content="{url}" />
+            <meta property="og:image:type" content="image/png" />
+            <meta property="og:image:width" content="{size}" />
+            <meta property="og:image:height" content="{size}" />
+        "#, url=url, size=SIZE));
     }
 
     match to_safe_string(&bot) {
@@ -76,16 +82,16 @@ pub async fn index(discord: &State<Arc<CacheAndHttp>>) -> ServeResponse {
     }
 
     let (mime, source) = serve("index.html")?;
-    Some((
-        mime,
-        String::from_utf8_lossy(&source)
-            .replace("</head>", &format!("{}</head>", extra.join("")))
-            .into_bytes(),
+    Some(HeaderResponder::new(
+        Header::new(
+            "Link",
+            r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,
+        ),
+        (
+            mime,
+            String::from_utf8_lossy(&source)
+                .replace("</head>", &format!("{}</head>", extra.join("")))
+                .into_bytes(),
+        ),
     ))
-}
-
-#[allow(clippy::needless_pass_by_value)]
-#[get("/static/<path..>")]
-pub fn path(path: PathBuf) -> ServeResponse {
-    path.to_str().and_then(serve)
 }

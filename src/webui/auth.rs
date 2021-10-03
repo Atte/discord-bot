@@ -1,4 +1,9 @@
-use super::{r#static::rocket_uri_macro_index, util::HeaderResponder, RateLimiter};
+use super::{
+    r#static::rocket_uri_macro_index,
+    server_timing::Metrics,
+    util::{HeaderResponder, SecureRequest},
+    RateLimiter,
+};
 use crate::config::Config;
 use governor::Jitter;
 use log::{error, trace};
@@ -15,9 +20,26 @@ use rocket::{
     routes, uri, Build, Rocket, State,
 };
 use serenity::{http::Http, model::oauth2::OAuth2Scope, model::user::CurrentUser};
-use std::time::Duration;
+use std::{
+    ops::{Deref, DerefMut},
+    time::Duration,
+};
 
-pub struct SessionUser(pub CurrentUser);
+pub struct SessionUser(CurrentUser);
+
+impl Deref for SessionUser {
+    type Target = CurrentUser;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for SessionUser {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for &'r SessionUser {
@@ -40,15 +62,24 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
         {
             Some(user) => {
                 if first_time {
+                    let mut metrics = request
+                        .guard::<&Metrics>()
+                        .await
+                        .expect("no Metrics in request state")
+                        .write()
+                        .await;
+                    let metric = metrics.entry("ratelimit".to_string()).or_default();
+                    metric.start();
                     request
                         .guard::<&State<RateLimiter>>()
                         .await
                         .expect("no RateLimiter in request state")
                         .until_key_ready_with_jitter(
-                            &user.0.id.0,
+                            &user.id.0,
                             Jitter::up_to(Duration::from_millis(100)),
                         )
                         .await;
+                    metric.stop();
                 }
                 Outcome::Success(user)
             }
@@ -73,7 +104,11 @@ pub fn init(vega: Rocket<Build>, config: &Config) -> crate::Result<Rocket<Build>
 }
 
 #[post("/redirect")]
-fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
+fn redirect(
+    secure: Option<&SecureRequest>,
+    client: &State<BasicClient>,
+    cookies: &CookieJar<'_>,
+) -> Redirect {
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new(OAuth2Scope::Identify.to_string()))
@@ -81,6 +116,7 @@ fn redirect(client: &State<BasicClient>, cookies: &CookieJar<'_>) -> Redirect {
     cookies.add_private(
         Cookie::build("csrf_token", csrf_token.secret().to_string())
             .same_site(SameSite::Lax)
+            .secure(secure.is_some())
             .finish(),
     );
     Redirect::to(auth_url.to_string())
@@ -93,6 +129,7 @@ const fn callback_head() {}
 async fn callback(
     state: &str,
     code: &str,
+    secure: Option<&SecureRequest>,
     client: &State<BasicClient>,
     cookies: &CookieJar<'_>,
 ) -> Result<Redirect, (Status, &'static str)> {
@@ -130,7 +167,12 @@ async fn callback(
 
     trace!("{} ({}) logged in", user.tag(), user.id);
     cookies.remove_private(csrf_token);
-    cookies.add_private(Cookie::new("user", user_string));
+    cookies.add_private(
+        Cookie::build("user", user_string)
+            .same_site(SameSite::Strict)
+            .secure(secure.is_some())
+            .finish(),
+    );
 
     Ok(Redirect::to(uri!(index)))
 }
@@ -139,7 +181,7 @@ async fn callback(
 fn clear(cookies: &CookieJar<'_>) -> HeaderResponder<Redirect> {
     cookies.remove_private(Cookie::named("user"));
     HeaderResponder::new(
-        Redirect::to(uri!(index)),
         Header::new("Clear-Site-Data", "*"),
+        Redirect::to(uri!(index)),
     )
 }

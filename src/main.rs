@@ -1,5 +1,6 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(dead_code)] // disbaled features cause warning spam otherwise
 #![recursion_limit = "512"]
 
 use anyhow::Result;

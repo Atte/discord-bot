@@ -3,16 +3,21 @@
 use crate::config::Config;
 use anyhow::Result;
 use nonzero_ext::nonzero;
-use rocket::{fairing::AdHoc, http::Header, shield::Shield};
+use rocket::{data::ToByteUnit, fairing::AdHoc, http::Header, shield::Shield};
 use serenity::{
     model::{guild::GuildInfo, id::GuildId},
     CacheAndHttp,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    net::Ipv4Addr,
+    sync::Arc,
+};
 
 mod auth;
 mod json;
 mod me;
+mod server_timing;
 mod r#static;
 mod util;
 
@@ -54,45 +59,80 @@ impl WebUI {
     }
 
     pub async fn run(&self) -> Result<()> {
-        let vega = rocket::build()
-            .manage(self.config.clone())
-            .manage(self.discord.clone())
-            .manage(self.guilds.clone())
-            .manage(RateLimiter::keyed(governor::Quota::per_second(nonzero!(
-                1_u32
-            ))))
-            .attach(
-                Shield::new(), // security headers are set manually below
-            )
-            .attach(AdHoc::on_response(
-                "custom headers",
-                |_request, response| {
-                    Box::pin(async move {
-                        const CSP: [&str; 10] = [
-                            "default-src 'none'",
-                            "script-src 'self'",
-                            "style-src 'self'",
-                            "connect-src 'self'",
-                            "img-src https://cdn.discordapp.com",
-                            "form-action 'self'",
-                            "base-uri 'self'",
-                            "frame-ancestors 'none'",
-                            "block-all-mixed-content",
-                            "disown-opener",
-                        ];
-                        response.set_header(Header::new("Content-Security-Policy", CSP.join("; ")));
-                        response.set_header(Header::new("X-Frame-Options", "DENY"));
-                        response.set_header(Header::new("X-Content-Type-Options", "nosniff"));
-                        response.set_header(Header::new("Referrer-Policy", "no-referrer"));
-                        response.set_header(Header::new(
-                            "Permissions-Policy",
-                            "payment=(), interest-cohort=()",
-                        ));
+        let vega = rocket::custom(
+            // "merge" = replace, "join" = set if not defined already
+            rocket::Config::figment()
+                .merge((
+                    "shutdown",
+                    rocket::config::Shutdown {
+                        ctrlc: false,
+                        #[cfg(unix)]
+                        signals: HashSet::new(),
+                        ..rocket::config::Shutdown::default()
+                    },
+                ))
+                .merge((
+                    "limits",
+                    rocket::data::Limits::default()
+                        .limit("form", 0.bytes())
+                        .limit("data-form", 0.bytes())
+                        .limit("file", 0.bytes())
+                        .limit("string", 0.bytes())
+                        .limit("bytes", 0.bytes())
+                        .limit("json", 0.bytes())
+                        .limit("msgpack", 0.bytes()),
+                ))
+                .join(("address", Ipv4Addr::UNSPECIFIED))
+                .join(("port", 8787))
+                .join(("ident", rocket::config::Ident::none())),
+        )
+        .manage(self.config.clone())
+        .manage(self.discord.clone())
+        .manage(self.guilds.clone())
+        .manage(RateLimiter::keyed(governor::Quota::per_second(nonzero!(
+            1_u32
+        ))))
+        .attach(server_timing::ServerTiming)
+        .attach(
+            // security headers are set manually below
+            Shield::new(),
+        )
+        .attach(AdHoc::on_response(
+            "custom headers",
+            |_request, response| {
+                Box::pin(async move {
+                    const CSP: [&str; 10] = [
+                        "default-src 'none'",
+                        "script-src 'self'",
+                        "style-src 'self'",
+                        "connect-src 'self'",
+                        "img-src data: https://cdn.discordapp.com",
+                        "form-action 'self' https://discord.com/api/oauth2/authorize",
+                        "base-uri 'self'",
+                        "frame-ancestors 'none'",
+                        "block-all-mixed-content",
+                        "disown-opener",
+                    ];
+                    response.set_header(Header::new("Content-Security-Policy", CSP.join("; ")));
 
-                        response.set_header(Header::new("Cache-Control", "no-store"));
-                    })
-                },
-            ));
+                    response.set_header(Header::new("X-XSS-Protection", "1; mode=block"));
+                    response.set_header(Header::new("X-Frame-Options", "DENY"));
+                    response.set_header(Header::new("X-Content-Type-Options", "nosniff"));
+                    response.set_header(Header::new("Referrer-Policy", "no-referrer"));
+                    response.set_header(Header::new(
+                        "Permissions-Policy",
+                        "payment=(), interest-cohort=()",
+                    ));
+
+                    response
+                        .set_header(Header::new("Cross-Origin-Embedder-Policy", "require-corp"));
+                    response.set_header(Header::new("Cross-Origin-Opener-Policy", "same-origin"));
+                    response.set_header(Header::new("Cross-Origin-Resource-Policy", "same-origin"));
+
+                    response.set_header(Header::new("Cache-Control", "no-store"));
+                })
+            },
+        ));
         let vega = r#static::init(vega);
         let vega = auth::init(vega, &self.config)?;
         let vega = me::init(vega);

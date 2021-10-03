@@ -31,8 +31,8 @@ pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
 }
 
 #[get("/user")]
-const fn user(user: &SessionUser) -> Json<&CurrentUser> {
-    Json(&user.0)
+fn user(user: &SessionUser) -> Json<&CurrentUser> {
+    Json(&*user)
 }
 
 async fn guild_roles(
@@ -74,7 +74,7 @@ async fn guilds(
 ) -> Result<Json<Vec<GuildsResponse>>, (Status, &'static str)> {
     Ok(Json(
         join_all(bot_guilds.iter().map(|(guild_id, guild_info)| async move {
-            let member = guild_member(*guild_id, user.0.id, discord).await?;
+            let member = guild_member(*guild_id, user.id, discord).await?;
             let admin_roles: HashSet<RoleId> = guild_roles(*guild_id, discord)
                 .await?
                 .into_iter()
@@ -159,7 +159,7 @@ async fn guild_ranks(
         return Err((Status::BadRequest, "invalid guild"));
     }
 
-    let member = guild_member(guild_id, user.0.id, discord)
+    let member = guild_member(guild_id, user.id, discord)
         .await
         .ok_or((Status::BadGateway, "can't fetch member"))?;
 
@@ -188,7 +188,7 @@ async fn guild_ranks_add(
         .find(|role| role.id == role_id)
         .ok_or((Status::BadRequest, "invalid role"))?;
 
-    let mut member = guild_member(guild_id, user.0.id, discord)
+    let mut member = guild_member(guild_id, user.id, discord)
         .await
         .ok_or((Status::BadGateway, "can't fetch member"))?;
 
@@ -199,8 +199,8 @@ async fn guild_ranks_add(
 
     trace!(
         "{} ({}) joined rank {} ({})",
-        user.0.tag(),
-        user.0.id,
+        user.tag(),
+        user.id,
         role.name,
         role.id
     );
@@ -230,7 +230,7 @@ async fn guild_ranks_delete(
         .find(|role| role.id == role_id)
         .ok_or((Status::BadRequest, "invalid role"))?;
 
-    let mut member = guild_member(guild_id, user.0.id, discord)
+    let mut member = guild_member(guild_id, user.id, discord)
         .await
         .ok_or((Status::BadGateway, "can't fetch member"))?;
 
@@ -241,8 +241,8 @@ async fn guild_ranks_delete(
 
     trace!(
         "{} ({}) left rank {} ({})",
-        user.0.tag(),
-        user.0.id,
+        user.tag(),
+        user.id,
         role.name,
         role.id
     );
