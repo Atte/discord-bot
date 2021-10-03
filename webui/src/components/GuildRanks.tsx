@@ -20,13 +20,13 @@ interface Role {
     };
 }
 
-interface GuildRanks {
+interface GuildRanksData {
     current: Role[];
     available: Role[];
 }
 
 export default function GuildRanks({ guild }: { guild: GuildData }) {
-    const [ranks, ranksError, setRanks, setRanksError] = useFetch<GuildRanks>(`api/me/guilds/${guild.id}/ranks`);
+    const [ranks, ranksError, setRanks, setRanksError] = useFetch<GuildRanksData>(`api/me/guilds/${guild.id}/ranks`);
     const [changing, setChanging] = useState(false);
 
     async function setRole(role: Role, on: boolean): Promise<void> {
@@ -57,7 +57,7 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
                             .sort(sortBy('name'))
                             .map((role) => (
                                 <li key={role.id} style="break-inside: avoid">
-                                    <label>
+                                    <label style="cursor: pointer">
                                         <input
                                             class="uk-checkbox"
                                             type="checkbox"

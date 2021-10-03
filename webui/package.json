@@ -3,6 +3,7 @@
     "source": "index.html",
     "scripts": {
         "build": "parcel build",
+        "lint": "eslint src/",
         "format": "prettier --write ."
     },
     "targets": {
@@ -12,8 +13,14 @@
     },
     "devDependencies": {
         "@types/history": "^4.7.9",
+        "@typescript-eslint/eslint-plugin": "^4.32.0",
+        "@typescript-eslint/parser": "^4.32.0",
+        "eslint": "^7.32.0",
+        "eslint-config-preact": "^1.1.4",
+        "eslint-config-prettier": "^8.3.0",
         "parcel": "^2.0.0-rc.0",
-        "prettier": "2.4.1"
+        "prettier": "2.4.1",
+        "typescript": "^4.4.3"
     },
     "dependencies": {
         "history": "^4.10.1",
