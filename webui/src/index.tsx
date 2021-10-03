@@ -5,5 +5,7 @@ import App, { CurrentUserData } from './components/App';
 
 UIkit.use(Icons);
 
-const bot: CurrentUserData = JSON.parse((document.head.querySelector('script[type="application/x-bot-user+json"]') as HTMLScriptElement).textContent!);
+const botData = document.head.querySelector('script[type="application/x-bot-user+json"]');
+const bot: CurrentUserData = JSON.parse(botData!.textContent!);
+
 render(<App bot={bot} />, document.body);

@@ -19,7 +19,7 @@ export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
         abortController.signal.addEventListener('abort', () => {
             aborted = true;
         });
-        
+
         async function inner() {
             try {
                 const res = await fetch(input, {
@@ -31,7 +31,7 @@ export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
                     signal: abortController.signal,
                 });
                 if (!res.ok) {
-                    throw new Error(res.status.toString())
+                    throw new Error(res.status.toString());
                 }
 
                 const data = await res.json();
@@ -46,7 +46,7 @@ export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
         }
         inner();
 
-        return function() {
+        return function () {
             aborted = true;
             abortController.abort();
         };

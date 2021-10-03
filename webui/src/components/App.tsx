@@ -21,69 +21,93 @@ export interface CurrentUserData {
     public_flags?: number;
 }
 
-function NavLink({ path, children }: { path: string, children: ComponentChildren }) {
-    return <Match path={path}>{({matches}: {matches: boolean}) => 
-        <li class={matches ? 'uk-active' : undefined}>
-            <a href={path}>{children}</a>
-        </li>
-    }</Match>
+function NavLink({ path, children }: { path: string; children: ComponentChildren }) {
+    return (
+        <Match path={path}>
+            {({ matches }: { matches: boolean }) => (
+                <li class={matches ? 'uk-active' : undefined}>
+                    <a href={path}>{children}</a>
+                </li>
+            )}
+        </Match>
+    );
 }
 
 export default function App({ bot }: { bot: CurrentUserData }) {
     const [childError] = useErrorBoundary();
     const [user, userError] = useFetch<CurrentUserData>('api/me/user');
 
-    return <div class="uk-container">
-        <nav class="uk-navbar-container uk-flex-wrap" uk-navbar>
-            <div class="uk-navbar-left">
-                <div class="uk-navbar-item uk-logo">
-                    {bot.avatar && <DiscordImage type="avatar" user_id={bot.id} user_avatar={bot.avatar} size={32} circle />}
-                    {' '}{bot.username}
+    return (
+        <div class="uk-container">
+            <nav class="uk-navbar-container uk-flex-wrap" uk-navbar>
+                <div class="uk-navbar-left">
+                    <div class="uk-navbar-item uk-logo">
+                        {bot.avatar && (
+                            <DiscordImage type="avatar" user_id={bot.id} user_avatar={bot.avatar} size={32} circle />
+                        )}{' '}
+                        {bot.username}
+                    </div>
+                    {user && (
+                        <ul class="uk-navbar-nav uk-animation-fade uk-animation-fast">
+                            <NavLink path="/ranks">
+                                <span uk-icon="users" /> Ranks
+                            </NavLink>
+                        </ul>
+                    )}
                 </div>
-                {user && <ul class="uk-navbar-nav uk-animation-fade uk-animation-fast">
-                    <NavLink path="/ranks"><span uk-icon="users" />{' '}Ranks</NavLink>
-                </ul>}
-            </div>
-            {user && <div class="uk-navbar-right uk-animation-fade uk-animation-fast">
-                <div class="uk-navbar-item">
-                    {user.avatar && <DiscordImage type="avatar" user_id={user.id} user_avatar={user.avatar} size={32} circle />}
-                    {' '}<span class="uk-text-bold">{user.username}</span>#{user.discriminator}
-                </div>
-                <div class="uk-navbar-item">
-                    <form action="api/auth/clear" method="POST">
-                        <button class="uk-button uk-button-primary">
-                            <span uk-icon="sign-out" />
-                            {' '}Sign out
+                {user && (
+                    <div class="uk-navbar-right uk-animation-fade uk-animation-fast">
+                        <div class="uk-navbar-item">
+                            {user.avatar && (
+                                <DiscordImage
+                                    type="avatar"
+                                    user_id={user.id}
+                                    user_avatar={user.avatar}
+                                    size={32}
+                                    circle
+                                />
+                            )}{' '}
+                            <span class="uk-text-bold">{user.username}</span>#{user.discriminator}
+                        </div>
+                        <div class="uk-navbar-item">
+                            <form action="api/auth/clear" method="POST">
+                                <button class="uk-button uk-button-primary">
+                                    <span uk-icon="sign-out" /> Sign out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </nav>
+            {userError?.message === '404' ? (
+                <div class="uk-padding-small">
+                    <form action="api/auth/redirect" method="POST">
+                        <button class="uk-button uk-button-primary uk-animation-fade uk-animation-fast">
+                            <span uk-icon="sign-in" /> Sign in with Discord
                         </button>
                     </form>
                 </div>
-            </div>}
-        </nav>
-        {userError?.message === '404'
-            ? <div class="uk-padding-small">
-                <form action="api/auth/redirect" method="POST">
-                    <button class="uk-button uk-button-primary uk-animation-fade uk-animation-fast">
-                        <span uk-icon="sign-in" />
-                        {' '}Sign in with Discord
-                    </button>
-                </form>
-            </div>
-            : <>
-                <Errors errors={[childError, userError]}>
-                    <form action="api/auth/clear" method="POST">
-                        <button class="uk-button uk-button-primary">
-                            <span uk-icon="refresh" />
-                            {' '}Retry
-                        </button>
-                    </form>
-                </Errors>
-                {user ?
-                    <Router history={createHashHistory()}>
-                        <Route path="/ranks" component={Guilds} />
-                        <Route path="/" component={Redirect} to="/ranks" />
-                    </Router>
-                : <div class="uk-padding-small"><div uk-spinner="ratio: 3" /></div>}
-            </>
-        }
-    </div>;
+            ) : (
+                <>
+                    <Errors errors={[childError, userError]}>
+                        <form action="api/auth/clear" method="POST">
+                            <button class="uk-button uk-button-primary">
+                                <span uk-icon="refresh" /> Retry
+                            </button>
+                        </form>
+                    </Errors>
+                    {user ? (
+                        <Router history={createHashHistory()}>
+                            <Route path="/ranks" component={Guilds} />
+                            <Route path="/" component={Redirect} to="/ranks" />
+                        </Router>
+                    ) : (
+                        <div class="uk-padding-small">
+                            <div uk-spinner="ratio: 3" />
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
 }

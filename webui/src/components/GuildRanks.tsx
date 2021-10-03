@@ -14,9 +14,9 @@ interface Role {
     permissions: number | string;
     position: number;
     tags: {
-        bot_id?: string,
-        integration_id?: string,
-        premium_subscriber: boolean,
+        bot_id?: string;
+        integration_id?: string;
+        premium_subscriber: boolean;
     };
 }
 
@@ -32,7 +32,9 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
     async function setRole(role: Role, on: boolean): Promise<void> {
         setChanging(true);
         try {
-            const response = await fetch(`api/me/guilds/${role.guild_id}/ranks/${role.id}`, { method: on ? 'POST' : 'DELETE' });
+            const response = await fetch(`api/me/guilds/${role.guild_id}/ranks/${role.id}`, {
+                method: on ? 'POST' : 'DELETE',
+            });
             if (!response.ok) {
                 throw new Error(response.statusText);
             }
@@ -44,25 +46,36 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
         }
     }
 
-    return <>
-        <Errors errors={[ranksError]} />
-        <form>
-            {ranks ? <ul class="uk-list uk-column-1-2@s uk-animation-slide-top-small">
-                {ranks.current.concat(ranks.available).sort(sortBy('name')).map(role =>
-                    <li key={role.id} style="break-inside: avoid">
-                        <label>
-                            <input
-                                class="uk-checkbox"
-                                type="checkbox"
-                                disabled={changing}
-                                checked={ranks.current.includes(role)}
-                                onChange={() => setRole(role, !ranks.current.includes(role))}
-                            />
-                            {' '}{role.name}
-                        </label>
-                    </li>
+    return (
+        <>
+            <Errors errors={[ranksError]} />
+            <form>
+                {ranks ? (
+                    <ul class="uk-list uk-column-1-2@s uk-animation-slide-top-small">
+                        {ranks.current
+                            .concat(ranks.available)
+                            .sort(sortBy('name'))
+                            .map((role) => (
+                                <li key={role.id} style="break-inside: avoid">
+                                    <label>
+                                        <input
+                                            class="uk-checkbox"
+                                            type="checkbox"
+                                            disabled={changing}
+                                            checked={ranks.current.includes(role)}
+                                            onChange={() => setRole(role, !ranks.current.includes(role))}
+                                        />{' '}
+                                        {role.name}
+                                    </label>
+                                </li>
+                            ))}
+                    </ul>
+                ) : (
+                    <div class="uk-text-center">
+                        <div uk-spinner />
+                    </div>
                 )}
-            </ul> : <div class="uk-text-center"><div uk-spinner /></div>}
-        </form>
-    </>;
+            </form>
+        </>
+    );
 }

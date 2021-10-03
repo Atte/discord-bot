@@ -13,10 +13,10 @@ interface GuildIcon {
 }
 
 type DiscordImageProps = (UserAvatar | GuildIcon) & {
-    animated?: boolean,
-    circle?: boolean,
-    squircle?: boolean,
-    size: 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096,
+    animated?: boolean;
+    circle?: boolean;
+    squircle?: boolean;
+    size: 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096;
 };
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -35,14 +35,16 @@ export default function DiscordImage(props: DiscordImageProps) {
     }
 
     const animate = props.animated && ids[ids.length - 1].startsWith('a_') && !reducedMotion.matches;
-    const borderRadius = props.circle ? (props.size / 2) : props.squircle ? (props.size / 3) : 0;
+    const borderRadius = props.circle ? props.size / 2 : props.squircle ? props.size / 3 : 0;
 
-    return <img
-        alt=""
-        width={props.size}
-        height={props.size}
-        src={`https://cdn.discordapp.com/${props.type}s/${ids.join('/')}.${animate ? 'gif' : 'webp'}`}
-        style={borderRadius > 0 ? `border-radius: ${borderRadius}px` : undefined}
-        crossOrigin="anonymous"
-    />;
+    return (
+        <img
+            alt=""
+            width={props.size}
+            height={props.size}
+            src={`https://cdn.discordapp.com/${props.type}s/${ids.join('/')}.${animate ? 'gif' : 'webp'}`}
+            style={borderRadius > 0 ? `border-radius: ${borderRadius}px` : undefined}
+            crossOrigin="anonymous"
+        />
+    );
 }

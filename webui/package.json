@@ -2,7 +2,8 @@
     "private": true,
     "source": "index.html",
     "scripts": {
-        "build": "parcel build"
+        "build": "parcel build",
+        "format": "prettier --write ."
     },
     "targets": {
         "default": {
@@ -11,7 +12,8 @@
     },
     "devDependencies": {
         "@types/history": "^4.7.9",
-        "parcel": "^2.0.0-rc.0"
+        "parcel": "^2.0.0-rc.0",
+        "prettier": "2.4.1"
     },
     "dependencies": {
         "history": "^4.10.1",
