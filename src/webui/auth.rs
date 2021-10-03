@@ -1,7 +1,6 @@
 use super::{
     r#static::rocket_uri_macro_index,
-    server_timing::Metrics,
-    util::{HeaderResponder, SecureRequest},
+    util::{HeaderResponder, SecureRequest, ServerTimingMetrics},
     RateLimiter,
 };
 use crate::config::Config;
@@ -63,7 +62,7 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
             Some(user) => {
                 if first_time {
                     let mut metrics = request
-                        .guard::<&Metrics>()
+                        .guard::<&ServerTimingMetrics>()
                         .await
                         .expect("no Metrics in request state")
                         .write()
@@ -180,8 +179,5 @@ async fn callback(
 #[post("/clear")]
 fn clear(cookies: &CookieJar<'_>) -> HeaderResponder<Redirect> {
     cookies.remove_private(Cookie::named("user"));
-    HeaderResponder::new(
-        Header::new("Clear-Site-Data", "*"),
-        Redirect::to(uri!(index)),
-    )
+    HeaderResponder::from(Redirect::to(uri!(index))).set_header(Header::new("Clear-Site-Data", "*"))
 }

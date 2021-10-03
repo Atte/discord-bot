@@ -25,7 +25,7 @@ export default function Guilds() {
                     </h3>
                     <GuildRanks guild={guild} />
                 </div>
-            </div>) : <div><div uk-spinner="ratio: 3" /></div>}
+            </div>) : <div class="uk-padding-small"><div uk-spinner="ratio: 3" /></div>}
         </div>
     </>;
 }

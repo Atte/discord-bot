@@ -1,4 +1,4 @@
-import { useState, useEffect, Inputs } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 
 export function unreachable(x: never): never {
     throw new Error(`Unreachable reached: ${x}`);
@@ -12,10 +12,10 @@ export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
     const [response, setResponse] = useState<T>();
     const [error, setError] = useState<Error>();
 
-    let abortController: AbortController;
     useEffect(() => {
         let aborted = false;
-        abortController = new AbortController();
+
+        const abortController = new AbortController();
         abortController.signal.addEventListener('abort', () => {
             aborted = true;
         });

@@ -12,7 +12,7 @@ interface GuildIcon {
     guild_icon: string;
 }
 
-type Image = (UserAvatar | GuildIcon) & {
+type DiscordImageProps = (UserAvatar | GuildIcon) & {
     animated?: boolean,
     circle?: boolean,
     squircle?: boolean,
@@ -21,7 +21,7 @@ type Image = (UserAvatar | GuildIcon) & {
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-export default function DiscordImage(props: Image) {
+export default function DiscordImage(props: DiscordImageProps) {
     let ids: string[];
     switch (props.type) {
         case 'avatar':

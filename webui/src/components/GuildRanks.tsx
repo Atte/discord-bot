@@ -62,7 +62,7 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
                         </label>
                     </li>
                 )}
-            </ul> : <div><div uk-spinner /></div>}
+            </ul> : <div class="uk-text-center"><div uk-spinner /></div>}
         </form>
     </>;
 }

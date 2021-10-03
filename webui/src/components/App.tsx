@@ -1,3 +1,4 @@
+import { ComponentChildren } from 'preact';
 import Router, { Route } from 'preact-router';
 import { Match } from 'preact-router/match';
 import { useErrorBoundary } from 'preact/hooks';
@@ -20,10 +21,10 @@ export interface CurrentUserData {
     public_flags?: number;
 }
 
-function NavLink(props: { path: string, children: any }) {
-    return <Match path={props.path}>{({matches}: {matches: boolean}) => 
+function NavLink({ path, children }: { path: string, children: ComponentChildren }) {
+    return <Match path={path}>{({matches}: {matches: boolean}) => 
         <li class={matches ? 'uk-active' : undefined}>
-            <a href={props.path}>{props.children}</a>
+            <a href={path}>{children}</a>
         </li>
     }</Match>
 }
@@ -52,7 +53,7 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                     <form action="api/auth/clear" method="POST">
                         <button class="uk-button uk-button-primary">
                             <span uk-icon="sign-out" />
-                            {' '}Log out
+                            {' '}Sign out
                         </button>
                     </form>
                 </div>
@@ -63,12 +64,19 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                 <form action="api/auth/redirect" method="POST">
                     <button class="uk-button uk-button-primary uk-animation-fade uk-animation-fast">
                         <span uk-icon="sign-in" />
-                        {' '}Log in with Discord
+                        {' '}Sign in with Discord
                     </button>
                 </form>
             </div>
             : <>
-                <Errors errors={[childError, userError]} />
+                <Errors errors={[childError, userError]}>
+                    <form action="api/auth/clear" method="POST">
+                        <button class="uk-button uk-button-primary">
+                            <span uk-icon="refresh" />
+                            {' '}Retry
+                        </button>
+                    </form>
+                </Errors>
                 {user ?
                     <Router history={createHashHistory()}>
                         <Route path="/ranks" component={Guilds} />

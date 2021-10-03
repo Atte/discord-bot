@@ -14,13 +14,13 @@ use std::{
 };
 
 #[derive(Default)]
-pub struct Metric {
+pub struct ServerTimingMetric {
     desc: Option<String>,
     duration: Option<Duration>,
     start: Option<Instant>,
 }
 
-impl Metric {
+impl ServerTimingMetric {
     #[inline]
     pub fn start(&mut self) {
         self.stop();
@@ -50,35 +50,35 @@ impl Metric {
     }
 }
 
-pub struct Metrics(RwLock<HashMap<String, Metric>>);
+pub struct ServerTimingMetrics(RwLock<HashMap<String, ServerTimingMetric>>);
 
-impl Deref for Metrics {
-    type Target = RwLock<HashMap<String, Metric>>;
+impl Deref for ServerTimingMetrics {
+    type Target = RwLock<HashMap<String, ServerTimingMetric>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for Metrics {
+impl DerefMut for ServerTimingMetrics {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for &'r Metrics {
+impl<'r> FromRequest<'r> for &'r ServerTimingMetrics {
     type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        Outcome::Success(request.local_cache(|| Metrics(RwLock::new(HashMap::new()))))
+        Outcome::Success(request.local_cache(|| ServerTimingMetrics(RwLock::new(HashMap::new()))))
     }
 }
 
-pub struct ServerTiming;
+pub struct ServerTimingFairing;
 
 #[rocket::async_trait]
-impl Fairing for ServerTiming {
+impl Fairing for ServerTimingFairing {
     fn info(&self) -> Info {
         Info {
             name: "Server-Timing",
@@ -87,7 +87,7 @@ impl Fairing for ServerTiming {
     }
 
     async fn on_request(&self, request: &mut Request<'_>, _data: &mut Data<'_>) {
-        if let Outcome::Success(metrics) = request.guard::<&Metrics>().await {
+        if let Outcome::Success(metrics) = request.guard::<&ServerTimingMetrics>().await {
             metrics
                 .write()
                 .await
@@ -98,7 +98,7 @@ impl Fairing for ServerTiming {
     }
 
     async fn on_response<'r>(&self, request: &'r Request<'_>, response: &mut Response<'r>) {
-        if let Outcome::Success(metrics) = request.guard::<&Metrics>().await {
+        if let Outcome::Success(metrics) = request.guard::<&ServerTimingMetrics>().await {
             let header = metrics
                 .read()
                 .await

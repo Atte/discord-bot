@@ -1,4 +1,5 @@
 use super::{json::to_safe_string, util::HeaderResponder};
+use indoc::formatdoc;
 use log::error;
 use rocket::{
     get,
@@ -7,10 +8,10 @@ use rocket::{
 };
 use serenity::CacheAndHttp;
 use static_assertions::const_assert;
-use std::sync::Arc;
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 // defines const WEBUI_FILES
@@ -32,8 +33,12 @@ fn serve(path: &str) -> Option<(ContentType, Vec<u8>)> {
 
 #[allow(clippy::needless_pass_by_value)]
 #[get("/static/<path..>")]
-pub fn path(path: PathBuf) -> Option<(ContentType, Vec<u8>)> {
-    path.to_str().and_then(serve)
+pub fn path(path: PathBuf) -> Option<HeaderResponder<(ContentType, Vec<u8>)>> {
+    path.to_str().and_then(serve).map(|inner| {
+        HeaderResponder::from(inner)
+            // 1 year
+            .set_header(Header::new("Cache-Control", "public, max-age=31536000"))
+    })
 }
 
 #[get("/")]
@@ -43,7 +48,7 @@ pub async fn index(
     let bot = discord.cache.current_user().await;
 
     let mut extra: Vec<String> = Vec::new();
-    extra.push(format!(
+    extra.push(formatdoc!(
         r#"
             <title>{name}</title>
             <meta property="og:title" content="{name}" />
@@ -64,7 +69,7 @@ pub async fn index(
             size = SIZE
         );
 
-        extra.push(format!(r#"
+        extra.push(formatdoc!(r#"
             <link rel="icon" type="image/png" href="{url}" sizes="{size}x{size}" crossorigin="anonymous" />
             <meta property="og:image" content="{url}" />
             <meta property="og:image:type" content="image/png" />
@@ -82,16 +87,16 @@ pub async fn index(
     }
 
     let (mime, source) = serve("index.html")?;
-    Some(HeaderResponder::new(
-        Header::new(
-            "Link",
-            r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,
-        ),
-        (
+    Some(
+        HeaderResponder::from((
             mime,
             String::from_utf8_lossy(&source)
                 .replace("</head>", &format!("{}</head>", extra.join("")))
                 .into_bytes(),
-        ),
-    ))
+        ))
+        .set_header(Header::new(
+            "Link",
+            r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,
+        )),
+    )
 }

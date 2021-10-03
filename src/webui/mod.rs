@@ -2,6 +2,7 @@
 
 use crate::config::Config;
 use anyhow::Result;
+use indoc::indoc;
 use nonzero_ext::nonzero;
 use rocket::{data::ToByteUnit, fairing::AdHoc, http::Header, shield::Shield};
 use serenity::{
@@ -17,7 +18,6 @@ use std::{
 mod auth;
 mod json;
 mod me;
-mod server_timing;
 mod r#static;
 mod util;
 
@@ -92,7 +92,7 @@ impl WebUI {
         .manage(RateLimiter::keyed(governor::Quota::per_second(nonzero!(
             1_u32
         ))))
-        .attach(server_timing::ServerTiming)
+        .attach(util::ServerTimingFairing)
         .attach(
             // security headers are set manually below
             Shield::new(),
@@ -101,19 +101,24 @@ impl WebUI {
             "custom headers",
             |_request, response| {
                 Box::pin(async move {
-                    const CSP: [&str; 10] = [
-                        "default-src 'none'",
-                        "script-src 'self'",
-                        "style-src 'self'",
-                        "connect-src 'self'",
-                        "img-src data: https://cdn.discordapp.com",
-                        "form-action 'self' https://discord.com/api/oauth2/authorize",
-                        "base-uri 'self'",
-                        "frame-ancestors 'none'",
-                        "block-all-mixed-content",
-                        "disown-opener",
-                    ];
-                    response.set_header(Header::new("Content-Security-Policy", CSP.join("; ")));
+                    const CSP: &str = indoc!(
+                        r#"
+                            default-src 'none'
+                            script-src 'self'
+                            style-src 'self'
+                            connect-src 'self'
+                            img-src data: https://cdn.discordapp.com
+                            form-action 'self' https://discord.com/api/oauth2/authorize
+                            base-uri 'self'
+                            frame-ancestors 'none'
+                            block-all-mixed-content
+                            disown-opener
+                        "#
+                    );
+                    response.set_header(Header::new(
+                        "Content-Security-Policy",
+                        CSP.trim().replace('\n', "; "),
+                    ));
 
                     response.set_header(Header::new("X-XSS-Protection", "1; mode=block"));
                     response.set_header(Header::new("X-Frame-Options", "DENY"));
@@ -129,7 +134,9 @@ impl WebUI {
                     response.set_header(Header::new("Cross-Origin-Opener-Policy", "same-origin"));
                     response.set_header(Header::new("Cross-Origin-Resource-Policy", "same-origin"));
 
-                    response.set_header(Header::new("Cache-Control", "no-store"));
+                    if !response.headers().contains("Cache-Control") {
+                        response.set_header(Header::new("Cache-Control", "no-store, max-age=0"));
+                    }
                 })
             },
         ));

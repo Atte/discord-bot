@@ -10,10 +10,11 @@ readme = "README.md"
 repository = "https://github.com/Atte/discord-bot"
 
 [dependencies]
+bytes = "1.0"
 conv = "0.3"
 env_logger = "0.9"
-bytes = "1.0"
 futures = "0.3"
+indoc = "1.0"
 itertools = "0.10"
 lazy_static = "1.4"
 log = "0.4"
