@@ -4,12 +4,12 @@ use std::{env, ffi::OsStr, io, path::Path, process::Command};
 const SOURCE_DIR: &str = "webui";
 const ENV_SWITCH: &str = "CARGO_FEATURE_WEBUI";
 
-fn npm<I, S>(args: I) -> io::Result<()>
+fn yarn<I, S>(args: I) -> io::Result<()>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    let status = Command::new("npm")
+    let status = Command::new("yarn")
         .args(args)
         .current_dir(SOURCE_DIR)
         .spawn()?
@@ -30,11 +30,11 @@ fn main() -> io::Result<()> {
     println!("cargo:rerun-if-changed={}", SOURCE_DIR);
 
     if !Path::new(SOURCE_DIR).join("node_modules").exists() {
-        npm(["ci"])?;
+        yarn(["install", "--frozen-lockfile"])?;
     }
 
     let webui_dist = env::var("OUT_DIR").expect("missing env OUT_DIR");
-    npm(["run", "build", "--", "--dist-dir", &webui_dist])?;
+    yarn(["run", "build", "--dist-dir", &webui_dist])?;
 
     includedir_codegen::start("WEBUI_FILES")
         .dir(webui_dist, Compression::None)
