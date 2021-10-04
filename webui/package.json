@@ -3,12 +3,12 @@
     "version": "0.0.1",
     "license": "MIT",
     "private": true,
-    "source": "index.html",
+    "source": "src/index.html",
     "scripts": {
         "build": "parcel build --no-autoinstall",
         "watch": "parcel watch --no-autoinstall --no-hmr",
         "rebuild": "rm dist/*; parcel build --no-autoinstall",
-        "lint": "eslint src/",
+        "lint": "eslint .",
         "format": "prettier --write .",
         "test": "jest"
     },

@@ -21,18 +21,18 @@ where
 }
 
 fn main() -> io::Result<()> {
-    println!("cargo:rerun-if-env-changed={}", "CARGO");
+    println!("cargo:rerun-if-env-changed=CARGO");
     if env::var("CARGO").unwrap().ends_with("/rls") {
         println!("cargo:warning=Skipping build script for RLS build!");
         return Ok(());
     }
 
-    println!("cargo:rerun-if-env-changed={}", "CARGO_FEATURE_WEBUI");
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_WEBUI");
     if env::var_os("CARGO_FEATURE_WEBUI").is_none() {
         return Ok(());
     }
 
-    println!("cargo:rerun-if-env-changed={}", "WEBUI_PASSTHROUGH");
+    println!("cargo:rerun-if-env-changed=WEBUI_PASSTHROUGH");
     if env::var_os("WEBUI_PASSTHROUGH").is_none() {
         println!("cargo:warning=Skipping build script because WEBUI_PASSTHROUGH is enabled!");
         return Ok(());

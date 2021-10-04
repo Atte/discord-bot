@@ -1,4 +1,4 @@
-import { sortBy } from './util';
+import { sortBy } from '../src/util';
 
 describe('sortBy', () => {
     test('basic strings', () => {

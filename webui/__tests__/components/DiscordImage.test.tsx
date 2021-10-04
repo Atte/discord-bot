@@ -1,6 +1,6 @@
 import { render as originalRender, screen } from '@testing-library/preact';
 import { ComponentChild } from 'preact';
-import DiscordImage from './DiscordImage';
+import DiscordImage from '../../src/components/DiscordImage';
 
 function render(child: ComponentChild): HTMLImageElement {
     originalRender(child);

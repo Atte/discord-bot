@@ -36,11 +36,17 @@ fn serve(path: &str) -> Option<(ContentType, Vec<u8>)> {
             .ok()
             .map(Cow::into_owned)?
     };
-    let mime = Path::new(&path)
+    let ext = Path::new(&path)
         .extension()
-        .and_then(std::ffi::OsStr::to_str)
-        .and_then(ContentType::from_extension)?;
-    Some((mime, file))
+        .and_then(std::ffi::OsStr::to_str)?;
+    Some((
+        if ext == "map" {
+            ContentType::JSON
+        } else {
+            ContentType::from_extension(ext)?
+        },
+        file,
+    ))
 }
 
 #[allow(clippy::needless_pass_by_value)]
