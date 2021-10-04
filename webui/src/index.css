@@ -5,3 +5,8 @@
         animation-name: none;
     }
 }
+
+/* needed for pre-rendered version to work without style-src unsafe-inline */
+.uk-navbar-item.uk-logo > img {
+    border-radius: 16px;
+}

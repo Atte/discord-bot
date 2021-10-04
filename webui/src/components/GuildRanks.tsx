@@ -31,7 +31,7 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
             <Errors errors={[ranksError]} />
             <form>
                 {ranks ? (
-                    <ul class="uk-list uk-column-1-2@s uk-animation-slide-top-small">
+                    <ul class="uk-list uk-column-1-2@s uk-column-1-3@m uk-column-1-4@l uk-column-1-5@xl uk-animation-slide-top-small">
                         {ranks.current
                             .concat(ranks.available)
                             .sort(sortByProp('name'))

@@ -1,13 +1,10 @@
 use super::{json::to_safe_string, util::HeaderResponder};
-use indoc::formatdoc;
-use log::error;
 use rocket::{
     get,
     http::{ContentType, Header},
     routes, Build, Rocket, State,
 };
 use serenity::CacheAndHttp;
-use static_assertions::const_assert;
 use std::{
     borrow::Cow,
     env, fs,
@@ -64,59 +61,30 @@ pub async fn index(
     discord: &State<Arc<CacheAndHttp>>,
 ) -> Option<HeaderResponder<(ContentType, Vec<u8>)>> {
     let bot = discord.cache.current_user().await;
-
     let (mime, source) = serve("index.html")?;
+
     let mut source = String::from_utf8_lossy(&source)
         .replace("(BOT_ID)", &bot.id.to_string())
         .replace("(BOT_NAME)", &bot.name)
         .replace("(BOT_DISCRIMINATOR)", &bot.discriminator.to_string());
 
-    let mut head: Vec<String> = Vec::new();
-    head.push(formatdoc!(
-        r#"
-            <title>{name}</title>
-            <meta property="og:title" content="{name}" />
-        "#,
-        name = bot.name
-    ));
-
     if let Some(ref avatar) = bot.avatar {
-        const SIZE: u16 = 64;
-        const_assert!(SIZE >= 16);
-        const_assert!(SIZE <= 4096);
-        const_assert!(SIZE.is_power_of_two());
-
         source = source.replace("(BOT_AVATAR)", avatar);
-
-        let url = format!(
-            "https://cdn.discordapp.com/avatars/{}/{}.png?size={size}",
-            bot.id,
-            avatar,
-            size = SIZE
-        );
-
-        head.push(formatdoc!(r#"
-            <link rel="icon" type="image/png" href="{url}" sizes="{size}x{size}" crossorigin="anonymous" />
-            <meta property="og:image" content="{url}" />
-            <meta property="og:image:type" content="image/png" />
-            <meta property="og:image:width" content="{size}" />
-            <meta property="og:image:height" content="{size}" />
-        "#, url=url, size=SIZE));
     }
-
-    match to_safe_string(&bot) {
-        Ok(string) => head.push(format!(
-            r#"<script type="application/x-bot-user+json">{}</script>"#,
-            string
-        )),
-        Err(err) => error!("Bot user JSON serialization failed: {:#?}", err),
+    if let Ok(ref string) = to_safe_string(&bot) {
+        source = source.replace(
+            "(BOT_JSON)",
+            &format!(
+                r#"<script type="application/x-bot-user+json">{}</script>"#,
+                string
+            ),
+        );
     }
 
     Some(
-        HeaderResponder::from((mime, source.replace("(HEAD)", &head.join("")).into_bytes()))
-            .set_header(Header::new(
-                "Link",
-                r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,
-            )),
+        HeaderResponder::from((mime, source.into_bytes())).set_header(Header::new(
+            "Link",
+            r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,
+        )),
     )
 }

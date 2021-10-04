@@ -2,7 +2,7 @@
 
 use crate::config::Config;
 use anyhow::Result;
-use indoc::indoc;
+use itertools::Itertools;
 use nonzero_ext::nonzero;
 use rocket::{data::ToByteUnit, fairing::AdHoc, http::Header, shield::Shield};
 use serenity::{
@@ -101,23 +101,23 @@ impl WebUI {
             "custom headers",
             |_request, response| {
                 Box::pin(async move {
-                    const CSP: &str = indoc!(
-                        r#"
-                            default-src 'none'
-                            script-src 'self'
-                            style-src 'self'
-                            connect-src 'self'
-                            img-src data: https://cdn.discordapp.com
-                            form-action 'self' https://discord.com/api/oauth2/authorize
-                            base-uri 'self'
-                            frame-ancestors 'none'
-                            block-all-mixed-content
-                            disown-opener
-                        "#
-                    );
+                    const CSP: &str = r#"
+                        default-src 'none'
+                        script-src 'self'
+                        style-src 'self'
+                        connect-src 'self'
+                        img-src data: https://cdn.discordapp.com
+                        form-action 'self' https://discord.com/api/oauth2/authorize
+                        navigate-to 'self'
+                        base-uri 'none'
+                        frame-ancestors 'none'
+                        block-all-mixed-content
+                        disown-opener
+                        sandbox allow-forms allow-same-origin allow-scripts allow-top-navigation-by-user-activation
+                    "#;
                     response.set_header(Header::new(
                         "Content-Security-Policy",
-                        CSP.trim().replace('\n', "; "),
+                        CSP.trim().split('\n').map(str::trim).join("; "),
                     ));
 
                     response.set_header(Header::new("X-XSS-Protection", "1; mode=block"));
@@ -126,7 +126,8 @@ impl WebUI {
                     response.set_header(Header::new("Referrer-Policy", "no-referrer"));
                     response.set_header(Header::new(
                         "Permissions-Policy",
-                        "payment=(), interest-cohort=()",
+                        "camera display-capture geolocation interest-cohort microphone payment usb clipboard-read conversion-measurement serial"
+                            .split(' ').map(|key| format!("{}=()", key)).join(", ")
                     ));
 
                     response
