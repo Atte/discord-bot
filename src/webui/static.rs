@@ -10,6 +10,7 @@ use serenity::CacheAndHttp;
 use static_assertions::const_assert;
 use std::{
     borrow::Cow,
+    env, fs,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -22,8 +23,19 @@ pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
 }
 
 fn serve(path: &str) -> Option<(ContentType, Vec<u8>)> {
-    let path = format!("{}/{}", env!("OUT_DIR"), path);
-    let file = WEBUI_FILES.get(&path).ok().map(Cow::into_owned)?;
+    let file = if env::var_os("WEBUI_PASSTHROUGH").is_some() {
+        let base = PathBuf::from("./webui/dist/").canonicalize().ok()?;
+        let full = base.join(path).canonicalize().ok()?;
+        if !full.starts_with(base) {
+            return None;
+        }
+        fs::read(full).ok()?
+    } else {
+        WEBUI_FILES
+            .get(&format!("{}/{}", env!("OUT_DIR"), path))
+            .ok()
+            .map(Cow::into_owned)?
+    };
     let mime = Path::new(&path)
         .extension()
         .and_then(std::ffi::OsStr::to_str)

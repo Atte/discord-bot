@@ -2,7 +2,6 @@ use includedir_codegen::Compression;
 use std::{env, ffi::OsStr, io, path::Path, process::Command};
 
 const SOURCE_DIR: &str = "webui";
-const ENV_SWITCH: &str = "CARGO_FEATURE_WEBUI";
 
 fn yarn<I, S>(args: I) -> io::Result<()>
 where
@@ -22,8 +21,20 @@ where
 }
 
 fn main() -> io::Result<()> {
-    println!("cargo:rerun-if-env-changed={}", ENV_SWITCH);
-    if env::var_os(ENV_SWITCH).is_none() {
+    println!("cargo:rerun-if-env-changed={}", "CARGO");
+    if env::var("CARGO").unwrap().ends_with("/rls") {
+        println!("cargo:warning=Skipping build script for RLS build!");
+        return Ok(());
+    }
+
+    println!("cargo:rerun-if-env-changed={}", "CARGO_FEATURE_WEBUI");
+    if env::var_os("CARGO_FEATURE_WEBUI").is_none() {
+        return Ok(());
+    }
+
+    println!("cargo:rerun-if-env-changed={}", "WEBUI_PASSTHROUGH");
+    if env::var_os("WEBUI_PASSTHROUGH").is_none() {
+        println!("cargo:warning=Skipping build script because WEBUI_PASSTHROUGH is enabled!");
         return Ok(());
     }
 

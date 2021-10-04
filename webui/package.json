@@ -6,6 +6,7 @@
     "source": "index.html",
     "scripts": {
         "build": "parcel build --no-autoinstall",
+        "watch": "parcel watch --no-autoinstall --no-hmr",
         "rebuild": "rm dist/*; parcel build --no-autoinstall",
         "lint": "eslint src/",
         "format": "prettier --write .",
