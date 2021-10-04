@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import { render } from 'preact-render-to-string';
 import { CurrentUserData } from './src/apitypes';
 import App from './src/components/App';
@@ -11,7 +12,7 @@ const bot: CurrentUserData = {
     discriminator: '(BOT_DISCRIMINATOR)' as unknown as number,
 };
 
-const html = render(
+const body = render(
     <App bot={bot} />,
     {},
     {
@@ -19,4 +20,6 @@ const html = render(
     },
 );
 
-console.log(html);
+let html = fs.readFileSync('./src/index.html', 'utf8');
+html = html.replace(/<body>[\s\S]*<\/body>/, `<body>${body}</body>`);
+fs.writeFileSync('./src/index.html', html, 'utf8');

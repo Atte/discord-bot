@@ -11,7 +11,7 @@
         "lint": "eslint .",
         "format": "prettier --write .",
         "test": "jest",
-        "pre-render": "ts-node --prefer-ts-exts --compiler-options '{\"module\":\"CommonJS\"}' ./pre-render.tsx"
+        "pre-render": "ts-node --prefer-ts-exts --compiler-options '{\"module\":\"CommonJS\"}' ./pre-render.tsx && prettier --write ./src/index.html"
     },
     "targets": {
         "default": {
