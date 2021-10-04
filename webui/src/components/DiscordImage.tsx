@@ -19,8 +19,6 @@ type DiscordImageProps = (UserAvatar | GuildIcon) & {
     size: 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096;
 };
 
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-
 export default function DiscordImage(props: DiscordImageProps) {
     let ids: string[];
     switch (props.type) {
@@ -34,7 +32,10 @@ export default function DiscordImage(props: DiscordImageProps) {
             unreachable(props);
     }
 
-    const animate = props.animated && ids[ids.length - 1].startsWith('a_') && !reducedMotion.matches;
+    const animate =
+        props.animated &&
+        ids[ids.length - 1].startsWith('a_') &&
+        !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const borderRadius = props.circle ? props.size / 2 : props.squircle ? props.size / 3 : 0;
 
     return (
@@ -42,7 +43,9 @@ export default function DiscordImage(props: DiscordImageProps) {
             alt=""
             width={props.size}
             height={props.size}
-            src={`https://cdn.discordapp.com/${props.type}s/${ids.join('/')}.${animate ? 'gif' : 'webp'}`}
+            src={`https://cdn.discordapp.com/${props.type}s/${ids.join('/')}.${animate ? 'gif' : 'webp'}?size=${
+                props.size
+            }`}
             style={borderRadius > 0 ? `border-radius: ${borderRadius}px` : undefined}
             crossOrigin="anonymous"
         />
