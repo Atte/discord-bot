@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { sortBy, useFetch } from '../util';
 import Errors from './Errors';
 import { GuildData } from './Guilds';
+import Spinner from './Spinner';
 
 interface Role {
     id: string;
@@ -71,9 +72,7 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
                             ))}
                     </ul>
                 ) : (
-                    <div class="uk-text-center">
-                        <div uk-spinner />
-                    </div>
+                    <Spinner class="uk-text-center" />
                 )}
             </form>
         </>

@@ -2,6 +2,7 @@ import { sortBy, useFetch } from '../util';
 import DiscordImage from './DiscordImage';
 import Errors from './Errors';
 import GuildRanks from './GuildRanks';
+import Spinner from './Spinner';
 
 export interface GuildData {
     id: string;
@@ -39,9 +40,7 @@ export default function Guilds() {
                         </div>
                     ))
                 ) : (
-                    <div class="uk-padding-small">
-                        <div uk-spinner="ratio: 3" />
-                    </div>
+                    <Spinner class="uk-padding-small" ratio={3} />
                 )}
             </div>
         </>

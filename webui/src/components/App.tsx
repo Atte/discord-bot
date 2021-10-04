@@ -8,6 +8,7 @@ import DiscordImage from './DiscordImage';
 import Guilds from './Guilds';
 import Redirect from './Redirect';
 import Errors from './Errors';
+import Spinner from './Spinner';
 
 export interface CurrentUserData {
     id: string;
@@ -102,9 +103,7 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                             <Route path="/" component={Redirect} to="/ranks" />
                         </Router>
                     ) : (
-                        <div class="uk-padding-small">
-                            <div uk-spinner="ratio: 3" />
-                        </div>
+                        <Spinner class="uk-padding-small" ratio={3} />
                     )}
                 </>
             )}
