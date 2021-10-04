@@ -11,6 +11,7 @@
     },
     "globals": {
         "RequestInfo": "readonly",
-        "RequestInit": "readonly"
+        "RequestInit": "readonly",
+        "globalThis": "readonly"
     }
 }

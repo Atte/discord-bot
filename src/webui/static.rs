@@ -65,8 +65,14 @@ pub async fn index(
 ) -> Option<HeaderResponder<(ContentType, Vec<u8>)>> {
     let bot = discord.cache.current_user().await;
 
-    let mut extra: Vec<String> = Vec::new();
-    extra.push(formatdoc!(
+    let (mime, source) = serve("index.html")?;
+    let mut source = String::from_utf8_lossy(&source)
+        .replace("(BOT_ID)", &bot.id.to_string())
+        .replace("(BOT_NAME)", &bot.name)
+        .replace("(BOT_DISCRIMINATOR)", &bot.discriminator.to_string());
+
+    let mut head: Vec<String> = Vec::new();
+    head.push(formatdoc!(
         r#"
             <title>{name}</title>
             <meta property="og:title" content="{name}" />
@@ -80,6 +86,8 @@ pub async fn index(
         const_assert!(SIZE <= 4096);
         const_assert!(SIZE.is_power_of_two());
 
+        source = source.replace("(BOT_AVATAR)", avatar);
+
         let url = format!(
             "https://cdn.discordapp.com/avatars/{}/{}.png?size={size}",
             bot.id,
@@ -87,7 +95,7 @@ pub async fn index(
             size = SIZE
         );
 
-        extra.push(formatdoc!(r#"
+        head.push(formatdoc!(r#"
             <link rel="icon" type="image/png" href="{url}" sizes="{size}x{size}" crossorigin="anonymous" />
             <meta property="og:image" content="{url}" />
             <meta property="og:image:type" content="image/png" />
@@ -97,24 +105,18 @@ pub async fn index(
     }
 
     match to_safe_string(&bot) {
-        Ok(string) => extra.push(format!(
+        Ok(string) => head.push(format!(
             r#"<script type="application/x-bot-user+json">{}</script>"#,
             string
         )),
         Err(err) => error!("Bot user JSON serialization failed: {:#?}", err),
     }
 
-    let (mime, source) = serve("index.html")?;
     Some(
-        HeaderResponder::from((
-            mime,
-            String::from_utf8_lossy(&source)
-                .replace("</head>", &format!("{}</head>", extra.join("")))
-                .into_bytes(),
-        ))
-        .set_header(Header::new(
-            "Link",
-            r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,
-        )),
+        HeaderResponder::from((mime, source.replace("(HEAD)", &head.join("")).into_bytes()))
+            .set_header(Header::new(
+                "Link",
+                r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,
+            )),
     )
 }

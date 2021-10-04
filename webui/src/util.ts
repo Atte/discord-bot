@@ -4,8 +4,18 @@ export function unreachable(x: never): never {
     throw new Error(`Unreachable reached: ${x}`);
 }
 
-export function sortBy<T extends { [key in K]: string }, K extends keyof T>(key: K): (a: T, b: T) => number {
-    return (a, b) => a[key].toLowerCase().localeCompare(b[key].toLowerCase(), 'en');
+export function sortByKey<T>(key: (x: T) => number | string): (a: T, b: T) => number {
+    return (a, b) => {
+        const keyA = key(a);
+        const keyB = key(b);
+        return typeof keyA === 'number' && typeof keyB === 'number'
+            ? keyA - keyB
+            : keyA.toString().toLowerCase().localeCompare(keyB.toString().toLowerCase(), 'en');
+    };
+}
+
+export function sortByProp<T extends { [key in K]: string }, K extends keyof T>(prop: K): (a: T, b: T) => number {
+    return (a, b) => a[prop].toLowerCase().localeCompare(b[prop].toLowerCase(), 'en');
 }
 
 export function useFetch<T>(input: RequestInfo, init?: RequestInit) {

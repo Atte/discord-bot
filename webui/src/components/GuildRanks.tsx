@@ -1,36 +1,15 @@
 import { useState } from 'preact/hooks';
-import { sortBy, useFetch } from '../util';
+import { GuildData, RoleData } from '../apitypes';
+import { sortByProp } from '../util';
 import Errors from './Errors';
-import { GuildData } from './Guilds';
 import Spinner from './Spinner';
 
-interface Role {
-    id: string;
-    guild_id: string;
-    color: number;
-    hoist: boolean;
-    managed: boolean;
-    mentionable: boolean;
-    name: string;
-    permissions: number | string;
-    position: number;
-    tags: {
-        bot_id?: string;
-        integration_id?: string;
-        premium_subscriber: boolean;
-    };
-}
-
-interface GuildRanksData {
-    current: Role[];
-    available: Role[];
-}
-
 export default function GuildRanks({ guild }: { guild: GuildData }) {
-    const [ranks, ranksError, setRanks, setRanksError] = useFetch<GuildRanksData>(`api/me/guilds/${guild.id}/ranks`);
+    const [ranks, setRanks] = useState(guild.ranks);
+    const [ranksError, setRanksError] = useState<Error | undefined>(undefined);
     const [changing, setChanging] = useState(false);
 
-    async function setRole(role: Role, on: boolean): Promise<void> {
+    async function setRole(role: RoleData, on: boolean): Promise<void> {
         setChanging(true);
         try {
             const response = await fetch(`api/me/guilds/${role.guild_id}/ranks/${role.id}`, {
@@ -55,7 +34,7 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
                     <ul class="uk-list uk-column-1-2@s uk-animation-slide-top-small">
                         {ranks.current
                             .concat(ranks.available)
-                            .sort(sortBy('name'))
+                            .sort(sortByProp('name'))
                             .map((role) => (
                                 <li key={role.id} style="break-inside: avoid">
                                     <label style="cursor: pointer">

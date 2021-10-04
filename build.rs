@@ -33,7 +33,7 @@ fn main() -> io::Result<()> {
     }
 
     println!("cargo:rerun-if-env-changed=WEBUI_PASSTHROUGH");
-    if env::var_os("WEBUI_PASSTHROUGH").is_none() {
+    if env::var_os("WEBUI_PASSTHROUGH").is_some() {
         println!("cargo:warning=Skipping build script because WEBUI_PASSTHROUGH is enabled!");
         return Ok(());
     }
