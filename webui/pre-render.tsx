@@ -20,6 +20,6 @@ const body = render(
     },
 );
 
-let html = fs.readFileSync('./src/index.html', 'utf8');
+let html = fs.readFileSync('./src/index.template.html', 'utf8');
 html = html.replace(/<body>[\s\S]*<\/body>/, `<body>${body}</body>`);
 fs.writeFileSync('./src/index.html', html, 'utf8');

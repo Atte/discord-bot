@@ -37,17 +37,19 @@ export default function DiscordImage(props: DiscordImageProps) {
         ids[ids.length - 1].startsWith('a_') &&
         !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const borderRadius = props.circle ? props.size / 2 : props.squircle ? props.size / 3 : 0;
+    const baseUrl = `https://cdn.discordapp.com/${props.type}s/${ids.join('/')}`;
 
     return (
-        <img
-            alt=""
-            width={props.size}
-            height={props.size}
-            src={`https://cdn.discordapp.com/${props.type}s/${ids.join('/')}.${animate ? 'gif' : 'webp'}?size=${
-                props.size
-            }`}
-            style={borderRadius > 0 ? `border-radius: ${borderRadius}px` : undefined}
-            crossOrigin="anonymous"
-        />
+        <picture>
+            {!animate && <source srcset={`${baseUrl}.webp?size=${props.size}`} type="image/webp" />}
+            <img
+                alt=""
+                width={props.size}
+                height={props.size}
+                src={`${baseUrl}.${animate ? 'gif' : 'png'}?size=${props.size}`}
+                style={borderRadius > 0 ? `border-radius: ${borderRadius}px` : undefined}
+                crossOrigin="anonymous"
+            />
+        </picture>
     );
 }

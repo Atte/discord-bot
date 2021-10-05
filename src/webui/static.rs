@@ -21,7 +21,7 @@ pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
 
 fn serve(path: &str) -> Option<(ContentType, Vec<u8>)> {
     let file = if env::var_os("WEBUI_PASSTHROUGH").is_some() {
-        let base = PathBuf::from("./webui/dist/").canonicalize().ok()?;
+        let base = Path::new("./webui/dist/").canonicalize().ok()?;
         let full = base.join(path).canonicalize().ok()?;
         if !full.starts_with(base) {
             return None;
@@ -71,6 +71,7 @@ pub async fn index(
     if let Some(ref avatar) = bot.avatar {
         source = source.replace("(BOT_AVATAR)", avatar);
     }
+
     if let Ok(ref string) = to_safe_string(&bot) {
         source = source.replace(
             "(BOT_JSON)",

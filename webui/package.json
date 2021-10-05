@@ -5,9 +5,9 @@
     "private": true,
     "source": "src/index.html",
     "scripts": {
-        "build": "parcel build --no-autoinstall",
+        "build": "yarn run pre-render && parcel build --no-autoinstall",
         "watch": "parcel watch --no-autoinstall --no-hmr",
-        "rebuild": "rm dist/*; parcel build --no-autoinstall",
+        "rebuild": "rm dist/*; yarn run build",
         "lint": "eslint .",
         "format": "prettier --write .",
         "test": "jest",
