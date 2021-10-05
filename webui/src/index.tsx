@@ -10,6 +10,3 @@ const botData = document.head.querySelector('script[type="application/x-bot-user
 const bot: CurrentUserData = JSON.parse(botData!.textContent!);
 
 hydrate(<App bot={bot} />, document.body);
-
-// only does some extra styling, so can be loaded after first render
-import('./uikit');

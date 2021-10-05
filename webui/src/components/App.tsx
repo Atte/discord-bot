@@ -1,7 +1,7 @@
 import Router, { Route } from 'preact-router';
-import { useErrorBoundary } from 'preact/hooks';
+import { useEffect, useErrorBoundary } from 'preact/hooks';
 import { createHashHistory } from 'history';
-import { useFetch } from '../util';
+import { ResponseStatusError, useFetch } from '../util';
 import DiscordImage from './DiscordImage';
 import Redirect from './Redirect';
 import Errors from './Errors';
@@ -15,9 +15,19 @@ export default function App({ bot }: { bot: CurrentUserData }) {
     const [user, userError] = useFetch<CurrentUserData>('api/me/user');
     const [guilds, guildsError] = useFetch<GuildData[]>('api/me/guilds');
 
+    useEffect(() => {
+        // UIkit only does some additional styling,
+        // so only load it after first paint to seem faster
+        import('../uikit');
+    }, []);
+
+    const needToLogin =
+        (userError instanceof ResponseStatusError && userError.response.status === 404) ||
+        (guildsError instanceof ResponseStatusError && guildsError.response.status === 404);
+
     return (
         <div class="uk-container">
-            <nav class="uk-navbar-container uk-flex-wrap" uk-navbar>
+            <nav class="uk-navbar-container uk-flex-wrap uk-navbar" uk-navbar>
                 <div class="uk-navbar-left">
                     <div class="uk-navbar-item uk-logo">
                         {bot.avatar && (
@@ -52,7 +62,7 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                     )}
                 </div>
             </nav>
-            {userError?.message === '404' || guildsError?.message === '404' ? (
+            {needToLogin ? (
                 <div class="uk-padding-small">
                     <form action="api/auth/redirect" method="POST">
                         <button class="uk-button uk-button-primary uk-animation-fade uk-animation-fast">
@@ -71,7 +81,7 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                     </Errors>
                     {guilds ? (
                         <div class="uk-padding-small uk-animation-fade uk-animation-fast">
-                            <ul uk-tab class="uk-margin-remove-bottom">
+                            <ul class="uk-margin-remove-bottom uk-tab" uk-tab>
                                 {guilds.map((guild) => (
                                     <NavLink key={guild.id} path={`/guilds/${encodeURIComponent(guild.name)}`}>
                                         {guild.icon && (

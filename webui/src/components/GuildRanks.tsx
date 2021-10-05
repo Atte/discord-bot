@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { GuildData, RoleData } from '../apitypes';
-import { sortByProp } from '../util';
+import { sortByKey } from '../util';
 import Errors from './Errors';
 import Spinner from './Spinner';
 
@@ -34,7 +34,7 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
                     <ul class="uk-list uk-column-1-2@s uk-column-1-3@m uk-column-1-4@l uk-column-1-5@xl uk-animation-slide-top-small">
                         {ranks.current
                             .concat(ranks.available)
-                            .sort(sortByProp('name'))
+                            .sort(sortByKey((guild) => guild.name))
                             .map((role) => (
                                 <li key={role.id} style="break-inside: avoid">
                                     <label style="cursor: pointer">

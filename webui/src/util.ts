@@ -14,13 +14,15 @@ export function sortByKey<T>(key: (x: T) => number | string): (a: T, b: T) => nu
     };
 }
 
-export function sortByProp<T extends { [key in K]: string }, K extends keyof T>(prop: K): (a: T, b: T) => number {
-    return (a, b) => a[prop].toLowerCase().localeCompare(b[prop].toLowerCase(), 'en');
+export class ResponseStatusError extends Error {
+    constructor(message: string, public readonly response: Response) {
+        super(message);
+    }
 }
 
 export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
     const [response, setResponse] = useState<T>();
-    const [error, setError] = useState<Error>();
+    const [error, setError] = useState<ResponseStatusError | Error>();
 
     useEffect(() => {
         let aborted = false;
@@ -30,7 +32,7 @@ export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
             aborted = true;
         });
 
-        async function inner() {
+        (async function () {
             try {
                 const res = await fetch(input, {
                     headers: {
@@ -41,7 +43,7 @@ export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
                     signal: abortController.signal,
                 });
                 if (!res.ok) {
-                    throw new Error(res.status.toString());
+                    throw new ResponseStatusError(`${res.status} ${res.statusText}`, res);
                 }
 
                 const data = await res.json();
@@ -50,11 +52,10 @@ export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
                 }
             } catch (err) {
                 if (!aborted) {
-                    setError(err as Error);
+                    setError(err instanceof Error ? err : new Error(`${err}`));
                 }
             }
-        }
-        inner();
+        })();
 
         return function () {
             aborted = true;

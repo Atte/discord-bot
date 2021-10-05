@@ -10,7 +10,7 @@ export default function Guild({ guild }: { guild: GuildData }) {
     const path = `/guilds/${encodeURIComponent(guild.name)}`;
     return (
         <div class="uk-padding-small uk-animation-fade uk-animation-fast">
-            <ul uk-tab>
+            <ul class="uk-tab" uk-tab>
                 <NavLink path={`${path}/ranks`}>
                     <span uk-icon="users" /> Ranks
                 </NavLink>

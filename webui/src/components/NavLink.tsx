@@ -5,7 +5,7 @@ export function NavLink({ path, children }: { path: string; children: ComponentC
     return (
         <Match path={`path/:rest*`}>
             {({ matches }: { matches: boolean }) => (
-                <li class={matches ? 'uk-active' : undefined}>
+                <li class={matches ? 'uk-active' : ''}>
                     <a href={path}>{children}</a>
                 </li>
             )}
