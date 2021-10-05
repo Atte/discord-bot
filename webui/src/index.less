@@ -1,12 +1,16 @@
-@import 'uikit/src/less/uikit.theme.less';
+@import './uikit.less';
 
+// We only have one theme; no need for inversion support
+@inverse-global-color-mode: none;
+
+// Disable all UIkit animations if user prefers reduced motion
 @media (prefers-reduced-motion) {
     [class*='uk-animation-'] {
         animation-name: none;
     }
 }
 
-/* needed for pre-rendered version to work without style-src unsafe-inline */
+// Needed for pre-rendered version to work without style-src unsafe-inline
 .uk-navbar-item.uk-logo > img {
     border-radius: 16px;
 }

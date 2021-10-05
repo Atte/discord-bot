@@ -3,6 +3,7 @@
 
 /src/index.html
 /src/uikit.ts
+/src/uikit.less
 
 # https://yarnpkg.com/getting-started/qa/#which-files-should-be-gitignored
 # If you're not using Zero-Installs:
