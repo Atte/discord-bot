@@ -1,6 +1,8 @@
 /node_modules/
 /dist/
+
 /src/index.html
+/src/icons.ts
 
 # https://yarnpkg.com/getting-started/qa/#which-files-should-be-gitignored
 # If you're not using Zero-Installs:

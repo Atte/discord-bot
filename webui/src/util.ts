@@ -64,3 +64,18 @@ export function useFetch<T>(input: RequestInfo, init?: RequestInit) {
 
     return [response, error, setResponse, setError] as const;
 }
+
+export function useMediaQuery(query: string, defaultValue = false) {
+    const [value, setValue] = useState(() => globalThis.matchMedia?.(query).matches ?? defaultValue);
+    useEffect(() => {
+        function onChange(event: MediaQueryListEvent) {
+            setValue(event.matches);
+        }
+        const matchMedia = globalThis.matchMedia?.(query);
+        matchMedia?.addEventListener('change', onChange);
+        return () => {
+            matchMedia?.removeEventListener('change', onChange);
+        };
+    }, [query]);
+    return value;
+}

@@ -1,2 +1,6 @@
 declare module 'uikit';
-declare module 'uikit/dist/js/uikit-icons';
+
+declare module 'bundle-text:*' {
+    const content: string;
+    export default content;
+}

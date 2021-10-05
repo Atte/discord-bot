@@ -1,8 +1,10 @@
+import { useMediaQuery } from '../util';
+
 export default function Spinner(props: { class?: string; ratio?: number }) {
-    const animate = !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reducedMotion = useMediaQuery('(prefers-reduced-motion)');
     return (
         <div class={props.class}>
-            {animate ? <div uk-spinner={`ratio: ${props.ratio ?? 1}`} /> : <>Loading&hellip;</>}
+            {reducedMotion ? <>Loading&hellip;</> : <div uk-spinner={`ratio: ${props.ratio ?? 1}`} />}
         </div>
     );
 }

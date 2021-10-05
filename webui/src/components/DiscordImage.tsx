@@ -1,4 +1,4 @@
-import { unreachable } from '../util';
+import { unreachable, useMediaQuery } from '../util';
 
 interface UserAvatar {
     type: 'avatar';
@@ -20,6 +20,8 @@ type DiscordImageProps = (UserAvatar | GuildIcon) & {
 };
 
 export default function DiscordImage(props: DiscordImageProps) {
+    const reducedMotion = useMediaQuery('(prefers-reduced-motion)');
+
     let ids: string[];
     switch (props.type) {
         case 'avatar':
@@ -32,10 +34,7 @@ export default function DiscordImage(props: DiscordImageProps) {
             unreachable(props);
     }
 
-    const animate =
-        props.animated &&
-        ids[ids.length - 1].startsWith('a_') &&
-        !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const animate = props.animated && ids[ids.length - 1].startsWith('a_') && !reducedMotion;
     const borderRadius = props.circle ? props.size / 2 : props.squircle ? props.size / 3 : 0;
     const baseUrl = `https://cdn.discordapp.com/${props.type}s/${ids.join('/')}`;
 
