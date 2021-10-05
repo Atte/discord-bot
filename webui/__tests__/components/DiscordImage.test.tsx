@@ -31,7 +31,7 @@ describe('no reduced motion', () => {
 
     test('avatar', async () => {
         const img = render(<DiscordImage type="avatar" user_id="user" user_avatar="a_avatar" size={16} />);
-        expect(img.src).toBe('https://cdn.discordapp.com/avatars/user/a_avatar.webp?size=16');
+        expect(img.src).toBe('https://cdn.discordapp.com/avatars/user/a_avatar.png?size=16');
     });
 
     test('animated circular icon', async () => {
@@ -48,12 +48,12 @@ describe('reduced motion', () => {
 
     test('avatar', async () => {
         const img = render(<DiscordImage type="avatar" user_id="user" user_avatar="a_avatar" size={16} />);
-        expect(img.src).toBe('https://cdn.discordapp.com/avatars/user/a_avatar.webp?size=16');
+        expect(img.src).toBe('https://cdn.discordapp.com/avatars/user/a_avatar.png?size=16');
     });
 
     test('animated circular icon', async () => {
         const img = render(<DiscordImage type="icon" guild_id="guild" guild_icon="a_icon" size={64} animated circle />);
-        expect(img.src).toBe('https://cdn.discordapp.com/icons/guild/a_icon.webp?size=64');
+        expect(img.src).toBe('https://cdn.discordapp.com/icons/guild/a_icon.png?size=64');
         expect(img.style.borderRadius).not.toHaveLength(0);
     });
 });

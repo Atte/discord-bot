@@ -30,21 +30,26 @@ async function renderIndex() {
 
 async function renderIcons() {
     const fnames = await promisify(glob)('./src/**/*.tsx', { nosort: true });
-    const icons = await Promise.all(fnames.map(async fname => {
-        const source = await fs.promises.readFile(fname, 'utf8');
-        return Array.from(source.matchAll(/uk-icon="([^"]+)"/g), match => match[1]);
-    }));
+    const icons = await Promise.all(
+        fnames.map(async (fname) => {
+            const source = await fs.promises.readFile(fname, 'utf8');
+            return Array.from(source.matchAll(/uk-icon="([^"]+)"/g), (match) => match[1]);
+        }),
+    );
     const uniqueIcons = Array.from(new Set(icons.flat()));
 
     const js = `
         import UIkit from 'uikit';
         UIkit.icon.add({
-            ${uniqueIcons.map(icon => `'${icon}': require('bundle-text:uikit/src/images/icons/${icon}.svg'),`).join('\n')}
+            ${uniqueIcons
+                .map((icon) => `'${icon}': require('bundle-text:uikit/src/images/icons/${icon}.svg'),`)
+                .join('\n')}
         });
     `;
-    await fs.promises.writeFile('./src/icons.ts', js, 'utf8');
+    await fs.promises.writeFile('./src/uikit.ts', js, 'utf8');
 }
 
-Promise.all([renderIndex(), renderIcons()]).catch(err => {
+Promise.all([renderIndex(), renderIcons()]).catch((err) => {
     console.error(err);
+    process.exit(1);
 });

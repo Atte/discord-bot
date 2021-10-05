@@ -11,5 +11,5 @@ const bot: CurrentUserData = JSON.parse(botData!.textContent!);
 
 hydrate(<App bot={bot} />, document.body);
 
-import 'uikit';
-import './icons';
+// only does some extra styling, so can be loaded after first render
+import('./uikit');
