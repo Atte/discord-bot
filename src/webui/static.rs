@@ -16,7 +16,7 @@ use std::{
 include!(concat!(env!("OUT_DIR"), "/webui.rs"));
 
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
-    vega.mount("/", routes![index, path])
+    vega.mount("/", routes![index, path, robots])
 }
 
 fn serve(path: &str) -> Option<(ContentType, Vec<u8>)> {
@@ -44,6 +44,11 @@ fn serve(path: &str) -> Option<(ContentType, Vec<u8>)> {
         },
         file,
     ))
+}
+
+#[get("/robots.txt")]
+pub fn robots() -> &'static str {
+    "User-agent: *\nDisallow: /\n"
 }
 
 #[allow(clippy::needless_pass_by_value)]

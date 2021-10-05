@@ -25,24 +25,6 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                         )}{' '}
                         {bot.username}
                     </div>
-                    {guilds && (
-                        <ul class="uk-navbar-nav uk-animation-fade uk-animation-fast">
-                            {guilds.map((guild) => (
-                                <NavLink key={guild.id} path={`/guilds/${encodeURIComponent(guild.name)}`}>
-                                    {guild.icon && (
-                                        <DiscordImage
-                                            type="icon"
-                                            guild_id={guild.id}
-                                            guild_icon={guild.icon}
-                                            size={16}
-                                            squircle
-                                        />
-                                    )}{' '}
-                                    {guild.name}
-                                </NavLink>
-                            ))}
-                        </ul>
-                    )}
                 </div>
                 <div class="uk-navbar-right">
                     {user && (
@@ -88,17 +70,39 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                         </form>
                     </Errors>
                     {guilds ? (
-                        <Router history={createHashHistory()}>
-                            {guilds.map((guild) => (
+                        <div class="uk-padding-small uk-animation-fade uk-animation-fast">
+                            <ul uk-tab class="uk-margin-remove-bottom">
+                                {guilds.map((guild) => (
+                                    <NavLink key={guild.id} path={`/guilds/${encodeURIComponent(guild.name)}`}>
+                                        {guild.icon && (
+                                            <DiscordImage
+                                                type="icon"
+                                                guild_id={guild.id}
+                                                guild_icon={guild.icon}
+                                                size={32}
+                                                squircle
+                                            />
+                                        )}{' '}
+                                        {guild.name}
+                                    </NavLink>
+                                ))}
+                            </ul>
+                            <Router history={createHashHistory()}>
+                                {guilds.map((guild) => (
+                                    <Route
+                                        key={guild.id}
+                                        path={`/guilds/${encodeURIComponent(guild.name)}/:rest*`}
+                                        component={Guild}
+                                        guild={guild}
+                                    />
+                                ))}
                                 <Route
-                                    key={guild.id}
-                                    path={`/guilds/${encodeURIComponent(guild.name)}/:rest*`}
-                                    component={Guild}
-                                    guild={guild}
+                                    default
+                                    component={Redirect}
+                                    to={`/guilds/${encodeURIComponent(guilds[0].name)}`}
                                 />
-                            ))}
-                            <Route default component={Redirect} to={`/guilds/${encodeURIComponent(guilds[0].name)}`} />
-                        </Router>
+                            </Router>
+                        </div>
                     ) : (
                         <Spinner class="uk-padding-small" ratio={3} />
                     )}

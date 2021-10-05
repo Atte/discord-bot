@@ -35,7 +35,7 @@ export default function DiscordImage(props: DiscordImageProps) {
     }
 
     const animate = props.animated && ids[ids.length - 1].startsWith('a_') && !reducedMotion;
-    const borderRadius = props.circle ? props.size / 2 : props.squircle ? props.size / 3 : 0;
+    const borderRadius = Math.ceil(props.circle ? props.size / 2 : props.squircle ? props.size / 3 : 0);
     const baseUrl = `https://cdn.discordapp.com/${props.type}s/${ids.join('/')}`;
 
     return (
