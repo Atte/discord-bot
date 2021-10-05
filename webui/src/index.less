@@ -10,7 +10,13 @@
     }
 }
 
-// Needed for pre-rendered version to work without style-src unsafe-inline
-.uk-navbar-item.uk-logo > img {
-    border-radius: 16px;
-}
+// DiscordImage shapes
+@discordImageSizes: 16, 32, 64, 128, 256, 512, 1024, 2048, 4096;
+each(@discordImageSizes, {
+    .dimg-circle-@{value} {
+        border-radius: ceil(@value / 2px);
+    }
+    .dimg-squircle-@{value} {
+        border-radius: ceil(@value / 3px);
+    }
+});

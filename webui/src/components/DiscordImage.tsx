@@ -35,7 +35,6 @@ export default function DiscordImage(props: DiscordImageProps) {
     }
 
     const animate = props.animated && ids[ids.length - 1].startsWith('a_') && !reducedMotion;
-    const borderRadius = Math.ceil(props.circle ? props.size / 2 : props.squircle ? props.size / 3 : 0);
     const baseUrl = `https://cdn.discordapp.com/${props.type}s/${ids.join('/')}`;
 
     return (
@@ -43,10 +42,16 @@ export default function DiscordImage(props: DiscordImageProps) {
             {!animate && <source srcset={`${baseUrl}.webp?size=${props.size}`} type="image/webp" />}
             <img
                 alt=""
+                class={
+                    props.circle
+                        ? `dimg-circle-${props.size}`
+                        : props.squircle
+                        ? `dimg-squircle-${props.size}`
+                        : undefined
+                }
                 width={props.size}
                 height={props.size}
                 src={`${baseUrl}.${animate ? 'gif' : 'png'}?size=${props.size}`}
-                style={borderRadius > 0 ? `border-radius: ${borderRadius}px` : undefined}
                 crossOrigin="anonymous"
             />
         </picture>

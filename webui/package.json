@@ -21,6 +21,7 @@
     "devDependencies": {
         "@parcel/transformer-inline-string": "^2.0.0-rc.0",
         "@parcel/transformer-less": "^2.0.0-rc.0",
+        "@testing-library/jest-dom": "^5.14.1",
         "@testing-library/preact": "^2.0.1",
         "@types/glob": "^7.1.4",
         "@types/history": "^4.7.9",
