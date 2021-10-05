@@ -1,5 +1,4 @@
 /node_modules/
 /dist/
-
-/.pnp.*
-/.yarn/
+/.parcel-cache/
+/parcel-bundle-reports/

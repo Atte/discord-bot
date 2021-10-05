@@ -3,6 +3,5 @@
 **/*.rs.bk
 /run.sh
 /secret_key
-.parcel-cache
 /Rocket.toml
 *.pem

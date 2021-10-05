@@ -1,5 +1,7 @@
 /node_modules/
 /dist/
+/.parcel-cache/
+/parcel-bundle-reports/
 
 /src/index.html
 /src/uikit.ts

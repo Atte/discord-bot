@@ -6,10 +6,10 @@
     "scripts": {
         "build": "yarn run pre-render && parcel build --no-autoinstall ./src/index.html",
         "watch": "parcel watch --no-autoinstall --no-hmr ./src/index.html",
-        "rebuild": "rm dist/*; yarn run build",
+        "analyze": "yarn run build --reporter @parcel/reporter-bundle-analyzer",
+        "test": "jest",
         "lint": "eslint .",
         "format": "prettier --write .",
-        "test": "jest",
         "pre-render": "ts-node --prefer-ts-exts --compiler-options '{\"module\":\"CommonJS\"}' ./pre-render.tsx && prettier --write ./src/index.html ./src/uikit.ts ./src/uikit.less"
     },
     "targets": {
@@ -17,8 +17,8 @@
             "publicUrl": "static"
         }
     },
-    "packageManager": "yarn@3.0.2",
     "devDependencies": {
+        "@parcel/reporter-bundle-analyzer": "^2.0.0-rc.0",
         "@parcel/transformer-inline-string": "^2.0.0-rc.0",
         "@parcel/transformer-less": "^2.0.0-rc.0",
         "@testing-library/jest-dom": "^5.14.1",

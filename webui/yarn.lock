@@ -944,6 +944,15 @@
   dependencies:
     "@parcel/types" "2.0.0-rc.0"
 
+"@parcel/reporter-bundle-analyzer@^2.0.0-rc.0":
+  version "2.0.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@parcel/reporter-bundle-analyzer/-/reporter-bundle-analyzer-2.0.0-rc.0.tgz#061eae0106bd4fa5f0a147f9dfca177796a27e5a"
+  integrity sha512-22OUWJ4SVlxx/7kqippwGpJ3qsaEiiUlxzYNfI3hfJvi/PPu0urspaPF2X5tIW0G98YeD/O0ytiuFPROUSa6AQ==
+  dependencies:
+    "@parcel/plugin" "2.0.0-rc.0"
+    "@parcel/utils" "2.0.0-rc.0"
+    nullthrows "^1.1.1"
+
 "@parcel/reporter-cli@2.0.0-rc.0":
   version "2.0.0-rc.0"
   resolved "https://registry.yarnpkg.com/@parcel/reporter-cli/-/reporter-cli-2.0.0-rc.0.tgz#c4cd3a5f7706c394ee4cbc2f511271d141127347"
