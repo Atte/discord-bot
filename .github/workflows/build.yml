@@ -2,44 +2,44 @@ name: build
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly  # coverage requires unstable features
-        profile: minimal
-        components: llvm-tools-preview
-        default: true
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          ~/.cargo/bin/grcov
-        key: ${{ runner.os }}-cargo
-    - uses: actions/cache@v2
-      with:
-        path: target
-        key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
-    - uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --no-fail-fast --no-default-features --features nightly
-      env:
-        CARGO_TERM_COLOR: always
-        CARGO_INCREMENTAL: '0'
-        RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests -Zinstrument-coverage'
-        RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests -Zinstrument-coverage'
-    - id: coverage
-      uses: actions-rs/grcov@v0.1.5
-    - uses: codecov/codecov-action@v1.2.1
-      with:
-        file: ${{ steps.coverage.outputs.report }}
-        fail_ci_if_error: true
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: nightly # coverage requires unstable features
+          profile: minimal
+          components: llvm-tools-preview
+          default: true
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/grcov
+          key: ${{ runner.os }}-cargo
+      - uses: actions/cache@v2
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-fail-fast --no-default-features --features nightly
+        env:
+          CARGO_TERM_COLOR: always
+          CARGO_INCREMENTAL: "0"
+          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests -Zinstrument-coverage"
+          RUSTDOCFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests -Zinstrument-coverage"
+      - id: coverage
+        uses: actions-rs/grcov@v0.1.5
+      - uses: codecov/codecov-action@v1.2.1
+        with:
+          file: ${{ steps.coverage.outputs.report }}
+          fail_ci_if_error: true
