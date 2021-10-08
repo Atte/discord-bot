@@ -1,9 +1,33 @@
 import * as fs from 'fs';
 import { promisify } from 'util';
 import * as glob from 'glob';
+import * as prettier from 'prettier';
 import { render } from 'preact-render-to-string';
 import { CurrentUserData } from './src/apitypes';
 import App from './src/components/App';
+
+async function write(filepath: string, source: string): Promise<void> {
+    const options = await prettier.resolveConfig(filepath);
+    if (!options) {
+        throw new Error(`Can't resolve Prettier options for ${filepath}`);
+    }
+    await fs.promises.writeFile(
+        filepath,
+        prettier.format(source, {
+            ...options,
+            filepath,
+        }),
+        'utf8',
+    );
+}
+
+async function mapGlobFiles<T>(pattern: string, map: (source: string) => T[]): Promise<T[]> {
+    const fnames = await promisify(glob)(pattern);
+    const resultSets = await Promise.all(fnames.map(async (fname) => map(await fs.promises.readFile(fname, 'utf8'))));
+    return resultSets.flat();
+}
+
+/////////////////
 
 async function renderIndex() {
     const bot: CurrentUserData = {
@@ -23,30 +47,25 @@ async function renderIndex() {
         },
     );
 
-    let html = await fs.promises.readFile('./src/index.template.html', 'utf8');
-    html = html.replace(/<body>[\s\S]*<\/body>/, `<body>${body}</body>`);
-    await fs.promises.writeFile('./src/index.html', html, 'utf8');
-}
-
-async function mapGlobFiles<T>(pattern: string, map: (source: string) => T[]): Promise<T[]> {
-    const fnames = await promisify(glob)(pattern, { nosort: true });
-    const resultSets = await Promise.all(fnames.map(async (fname) => map(await fs.promises.readFile(fname, 'utf8'))));
-    return resultSets.flat();
+    const html = await fs.promises.readFile('./src/index.template.html', 'utf8');
+    await write('./src/index.html', html.replace(/<body>[\s\S]*<\/body>/, `<body>${body}</body>`));
 }
 
 async function renderUikitScript() {
     const icons = await mapGlobFiles('./src/**/*.tsx', (source) =>
         Array.from(source.matchAll(/uk-icon="([^"]+)"/g), (match) => match[1]),
     );
-    const js = `
-        import UIkit from 'uikit';
-        UIkit.icon.add({
-            ${Array.from(new Set(icons))
-                .map((icon) => `'${icon}': require('bundle-text:uikit/src/images/icons/${icon}.svg'),`)
-                .join('\n')}
-        });
-    `;
-    await fs.promises.writeFile('./src/uikit.ts', js, 'utf8');
+    await write(
+        './src/uikit.ts',
+        `
+            import UIkit from 'uikit';
+            UIkit.icon.add({
+                ${Array.from(new Set(icons))
+                    .map((icon) => `'${icon}': require('bundle-text:uikit/src/images/icons/${icon}.svg'),`)
+                    .join('\n')}
+            });
+        `,
+    );
 }
 
 async function renderUikitStyle() {
@@ -76,8 +95,10 @@ async function renderUikitStyle() {
         .filter((name) => used.has(name))
         .map((name) => `@import "uikit/src/less/theme/${name}.less";`);
 
-    await fs.promises.writeFile('./src/uikit.less', usedComponents.concat(usedThemes).join('\n'), 'utf8');
+    await write('./src/uikit.less', usedComponents.concat(usedThemes).join('\n'));
 }
+
+/////////////////
 
 Promise.all([renderIndex(), renderUikitScript(), renderUikitStyle()]).catch((err) => {
     console.error(err);
