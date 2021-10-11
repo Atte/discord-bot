@@ -16,6 +16,7 @@ futures = "0.3"
 itertools = "0.10"
 lazy_static = "1.4"
 log = "0.4"
+maplit = "1.0"
 meval = "0.2"
 nonzero_ext = "0.3"
 rand = "0.8"
@@ -77,6 +78,9 @@ optional = true
 
 [build-dependencies]
 includedir_codegen = "0.6"
+
+[dev-dependencies]
+mock_instant = "0.2"
 
 [features]
 default = []

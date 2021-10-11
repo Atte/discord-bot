@@ -1,6 +1,6 @@
 use super::{
     r#static::rocket_uri_macro_index,
-    util::{HeaderResponder, SecureRequest, ServerTimingMetrics},
+    util::{HeaderResponder, SecureRequest, ServerTimings},
     RateLimiter,
 };
 use crate::config::Config;
@@ -61,14 +61,8 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
         {
             Some(user) => {
                 if first_time {
-                    let mut metrics = request
-                        .guard::<&ServerTimingMetrics>()
-                        .await
-                        .expect("no Metrics in request state")
-                        .write()
-                        .await;
-                    let metric = metrics.entry("ratelimit".to_string()).or_default();
-                    metric.start();
+                    let timings = request.guard::<&ServerTimings>().await.unwrap();
+                    timings.start("ratelimit");
                     request
                         .guard::<&State<RateLimiter>>()
                         .await
@@ -78,7 +72,7 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
                             Jitter::up_to(Duration::from_millis(100)),
                         )
                         .await;
-                    metric.stop();
+                    timings.stop("ratelimit");
                 }
                 Outcome::Success(user)
             }
