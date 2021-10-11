@@ -4,7 +4,8 @@
     "license": "MIT",
     "private": true,
     "scripts": {
-        "build": "yarn run pre-render && parcel build --no-autoinstall ./src/index.html",
+        "build": "yarn run pre-render && yarn run bundle",
+        "bundle": "rm -f dist/*; parcel build --no-autoinstall ./src/index.html",
         "watch": "parcel watch --no-autoinstall --no-hmr ./src/index.html",
         "analyze": "yarn run build --reporter @parcel/reporter-bundle-analyzer",
         "test": "jest",
