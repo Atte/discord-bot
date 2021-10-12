@@ -41,6 +41,7 @@ struct Representations {
     tall: String,
 }
 
+#[derive(Debug)]
 struct ClientKey;
 
 impl TypeMapKey for ClientKey {

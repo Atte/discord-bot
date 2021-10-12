@@ -18,6 +18,7 @@ impl<T> RateLimiter<T>
 where
     T: Clone + Eq + Hash,
 {
+    #[inline]
     pub fn new(quota: governor::Quota) -> Self {
         Self(Governor::<T>::keyed(quota))
     }

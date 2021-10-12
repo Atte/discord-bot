@@ -7,7 +7,7 @@ use rocket::{
     request::{FromRequest, Outcome, Request},
     response::Response,
 };
-use std::{collections::HashMap, sync::Mutex, time::Duration};
+use std::{collections::HashMap, convert::Infallible, sync::Mutex, time::Duration};
 
 #[cfg(test)]
 use mock_instant::Instant;
@@ -18,16 +18,14 @@ use std::time::Instant;
 struct Timer {
     duration: Duration,
     started: Option<Instant>,
-    desc: Option<String>,
 }
 
 impl Timer {
     #[inline]
-    fn new_running(desc: Option<String>) -> Self {
+    fn new_running() -> Self {
         Self {
             duration: Duration::ZERO,
             started: Some(Instant::now()),
-            desc,
         }
     }
 
@@ -36,7 +34,6 @@ impl Timer {
         Self {
             duration: Duration::ZERO,
             started: None,
-            desc: None,
         }
     }
 
@@ -64,15 +61,15 @@ impl Timer {
 pub struct ServerTimings(Mutex<HashMap<String, Timer>>);
 
 impl ServerTimings {
-    fn with_req() -> Self {
-        Self(Mutex::new(
-            hashmap! {"req".to_owned() => Timer::new_running(None)},
-        ))
+    #[inline]
+    fn new() -> Self {
+        Self(Mutex::new(HashMap::new()))
     }
 
-    #[inline]
-    fn empty() -> Self {
-        Self(Mutex::new(HashMap::new()))
+    fn with_total() -> Self {
+        Self(Mutex::new(
+            hashmap! {"total".to_owned() => Timer::new_running()},
+        ))
     }
 
     pub fn start(&self, name: impl Into<String>) {
@@ -82,18 +79,7 @@ impl ServerTimings {
                 .and_modify(|timer| {
                     timer.start();
                 })
-                .or_insert_with(|| Timer::new_running(None));
-        }
-    }
-
-    pub fn start_with_desc(&self, name: impl Into<String>, desc: impl Into<String>) {
-        if let Ok(mut timers) = self.0.lock() {
-            timers
-                .entry(name.into())
-                .and_modify(|timer| {
-                    timer.start();
-                })
-                .or_insert_with(|| Timer::new_running(Some(desc.into())));
+                .or_insert_with(Timer::new_running);
         }
     }
 
@@ -111,11 +97,11 @@ impl ServerTimings {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for &'r ServerTimings {
-    type Error = ();
+    type Error = Infallible;
 
     #[inline]
     async fn from_request(request: &'r Request<'_>) -> Outcome<&'r ServerTimings, Self::Error> {
-        Outcome::Success(request.local_cache(ServerTimings::empty))
+        Outcome::Success(request.local_cache(ServerTimings::new))
     }
 }
 
@@ -134,26 +120,14 @@ impl Fairing for ServerTimingFairing {
 
     #[inline]
     async fn on_request(&self, request: &mut Request<'_>, _data: &mut Data<'_>) {
-        request.local_cache(ServerTimings::with_req);
+        request.local_cache(ServerTimings::with_total);
     }
 
     async fn on_response<'r>(&self, request: &'r Request<'_>, response: &mut Response<'r>) {
-        if let Ok(timers) = request.local_cache(ServerTimings::empty).0.lock() {
+        if let Ok(timers) = request.local_cache(ServerTimings::new).0.lock() {
             let header = timers
                 .iter()
-                .map(|(name, timer)| {
-                    let millis = timer.duration().as_millis();
-                    if let Some(ref desc) = timer.desc {
-                        format!(
-                            "{};desc=\"{}\";dur={}",
-                            name,
-                            desc.replace('"', "\""),
-                            millis
-                        )
-                    } else {
-                        format!("{};dur={}", name, millis)
-                    }
-                })
+                .map(|(name, timer)| format!("{};dur={}", name, timer.duration().as_millis()))
                 .join(", ");
             if !header.is_empty() {
                 response.adjoin_header(Header::new("Server-timing", header));
@@ -174,7 +148,7 @@ mod tests {
     fn index(timings: &ServerTimings) -> &'static str {
         MockClock::advance(Duration::from_secs(1));
         timings.start("internal");
-        timings.start_with_desc("leaking", "not stopped in handler");
+        timings.start("leaking");
         MockClock::advance(Duration::from_millis(100));
         timings.stop("internal");
         MockClock::advance(Duration::from_millis(10));
@@ -183,19 +157,19 @@ mod tests {
 
     #[test]
     fn server_timings() {
-        let timings = ServerTimings::with_req(); // implicitly starts the "req" timer
+        let timings = ServerTimings::with_total(); // implicitly starts the "total" timer
         MockClock::advance(Duration::from_secs(1));
-        timings.start("req"); // noop
+        timings.start("total"); // noop
         MockClock::advance(Duration::from_secs(1));
-        timings.stop("req"); // stops the timer
+        timings.stop("total"); // stops the timer
         MockClock::advance(Duration::from_secs(10));
-        timings.stop("req"); // noop
+        timings.stop("total"); // noop
 
-        timings.start("req"); // restarts the timer
+        timings.start("total"); // restarts the timer
         MockClock::advance(Duration::from_secs(100));
-        timings.stop("req"); // stops the timer
+        timings.stop("total"); // stops the timer
 
-        let duration = timings.0.lock().unwrap().get("req").unwrap().duration();
+        let duration = timings.0.lock().unwrap().get("total").unwrap().duration();
         assert_eq!(duration, Duration::from_secs(102));
     }
 
@@ -218,11 +192,7 @@ mod tests {
             .collect();
         assert_eq!(
             parts,
-            vec![
-                "internal;dur=100",
-                "leaking;desc=\"not stopped in handler\";dur=110",
-                "req;dur=1110",
-            ]
+            vec!["internal;dur=100", "leaking;dur=110", "total;dur=1110",]
         );
     }
 }

@@ -4,6 +4,7 @@ use rocket::{
     response::Responder,
 };
 
+#[derive(Debug)]
 pub struct HeaderResponder<T> {
     inner: T,
     headers: HeaderMap<'static>,
@@ -18,6 +19,7 @@ impl<T> HeaderResponder<T> {
         }
     }
 
+    #[inline]
     pub fn set_header<H>(mut self, header: H) -> Self
     where
         H: Into<Header<'static>>,

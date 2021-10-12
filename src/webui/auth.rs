@@ -18,7 +18,10 @@ use rocket::{
     routes, uri, Build, Rocket, State,
 };
 use serenity::{http::Http, model::oauth2::OAuth2Scope, model::user::CurrentUser};
-use std::ops::{Deref, DerefMut};
+use std::{
+    convert::Infallible,
+    ops::{Deref, DerefMut},
+};
 
 #[derive(Debug)]
 pub struct SessionUser(CurrentUser);
@@ -26,12 +29,14 @@ pub struct SessionUser(CurrentUser);
 impl Deref for SessionUser {
     type Target = CurrentUser;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for SessionUser {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -39,7 +44,7 @@ impl DerefMut for SessionUser {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for &'r SessionUser {
-    type Error = ();
+    type Error = Infallible;
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         request

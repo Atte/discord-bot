@@ -14,18 +14,21 @@ mod log_channel;
 mod stats;
 mod sticky_roles;
 
+#[derive(Debug)]
 pub struct ActivityKey;
 
 impl TypeMapKey for ActivityKey {
     type Value = String;
 }
 
+#[derive(Debug)]
 struct ConfigKey;
 
 impl TypeMapKey for ConfigKey {
     type Value = Config;
 }
 
+#[derive(Debug)]
 struct DbKey;
 
 impl TypeMapKey for DbKey {

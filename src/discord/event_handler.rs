@@ -12,6 +12,7 @@ use serenity::{
     },
 };
 
+#[derive(Debug)]
 pub struct Handler;
 
 // #[async_trait] seems to mess with unused parameter detection,
