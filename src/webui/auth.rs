@@ -1,10 +1,8 @@
 use super::{
     r#static::rocket_uri_macro_index,
-    util::{HeaderResponder, SecureRequest, ServerTimings},
-    RateLimiter,
+    util::{HeaderResponder, RateLimiter, SecureRequest},
 };
 use crate::config::Config;
-use governor::Jitter;
 use log::{error, trace};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
@@ -13,17 +11,16 @@ use oauth2::{
 use rocket::{
     get, head,
     http::{Cookie, CookieJar, Header, SameSite, Status},
+    outcome::IntoOutcome,
     post,
     request::{FromRequest, Outcome, Request},
     response::Redirect,
     routes, uri, Build, Rocket, State,
 };
 use serenity::{http::Http, model::oauth2::OAuth2Scope, model::user::CurrentUser};
-use std::{
-    ops::{Deref, DerefMut},
-    time::Duration,
-};
+use std::ops::{Deref, DerefMut};
 
+#[derive(Debug)]
 pub struct SessionUser(CurrentUser);
 
 impl Deref for SessionUser {
@@ -45,39 +42,28 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
     type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let mut first_time = false;
-        match request
-            .local_cache(|| {
-                request
+        request
+            .local_cache_async(async {
+                let user = request
                     .cookies()
                     .get_private("user")
                     .and_then(|cookie| serde_json::from_str::<CurrentUser>(cookie.value()).ok())
-                    .map(|user| {
-                        first_time = true;
-                        SessionUser(user)
-                    })
-            })
-            .as_ref()
-        {
-            Some(user) => {
-                if first_time {
-                    let timings = request.guard::<&ServerTimings>().await.unwrap();
-                    timings.start("ratelimit");
+                    .map(SessionUser);
+
+                if let Some(ref user) = user {
                     request
-                        .guard::<&State<RateLimiter>>()
+                        .guard::<&State<RateLimiter<u64>>>()
                         .await
                         .expect("no RateLimiter in request state")
-                        .until_key_ready_with_jitter(
-                            &user.id.0,
-                            Jitter::up_to(Duration::from_millis(100)),
-                        )
+                        .apply_to_request(&user.id.0, request)
                         .await;
-                    timings.stop("ratelimit");
                 }
-                Outcome::Success(user)
-            }
-            None => Outcome::Forward(()),
-        }
+
+                user
+            })
+            .await
+            .as_ref()
+            .or_forward(())
     }
 }
 
