@@ -1,10 +1,10 @@
-use super::{json::to_safe_string, util::HeaderResponder};
+use super::util::{json::to_safe_string, HeaderResponder, Json};
 use rocket::{
     get,
     http::{ContentType, Header},
     routes, Build, Rocket, State,
 };
-use serenity::CacheAndHttp;
+use serenity::{model::user::CurrentUser, CacheAndHttp};
 use std::{
     borrow::Cow,
     env, fs,
@@ -16,7 +16,7 @@ use std::{
 include!(concat!(env!("OUT_DIR"), "/webui.rs"));
 
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
-    vega.mount("/", routes![index, path, robots])
+    vega.mount("/", routes![index, path, robots, bot])
 }
 
 fn serve(path: &str) -> Option<(ContentType, Vec<u8>)> {
@@ -59,6 +59,11 @@ pub fn path(path: PathBuf) -> Option<HeaderResponder<(ContentType, Vec<u8>)>> {
             // 1 year
             .set_header(Header::new("Cache-Control", "public, max-age=31536000"))
     })
+}
+
+#[get("/api/bot")]
+pub async fn bot(discord: &State<Arc<CacheAndHttp>>) -> Json<CurrentUser> {
+    Json(discord.cache.current_user().await)
 }
 
 #[get("/")]

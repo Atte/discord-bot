@@ -1,12 +1,12 @@
 use super::{
     r#static::rocket_uri_macro_index,
-    util::{HeaderResponder, RateLimiter, SecureRequest},
+    util::{HeaderResponder, RateLimiter, RequestOrigin},
 };
 use crate::config::Config;
 use log::{error, trace};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, Scope, TokenResponse, TokenUrl,
+    ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use rocket::{
     get, head,
@@ -19,6 +19,7 @@ use rocket::{
 };
 use serenity::{http::Http, model::oauth2::OAuth2Scope, model::user::CurrentUser};
 use std::{
+    borrow::Cow,
     convert::Infallible,
     ops::{Deref, DerefMut},
 };
@@ -89,21 +90,27 @@ pub fn init(vega: Rocket<Build>, config: &Config) -> crate::Result<Rocket<Build>
 
 #[post("/redirect")]
 fn redirect(
-    secure: Option<&SecureRequest>,
+    origin: &RequestOrigin,
     client: &State<BasicClient>,
     cookies: &CookieJar<'_>,
-) -> Redirect {
+) -> Result<Redirect, (Status, &'static str)> {
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new(OAuth2Scope::Identify.to_string()))
+        .set_redirect_uri(Cow::Owned(
+            RedirectUrl::new(format!("{}/api/auth/callback", **origin)).map_err(|err| {
+                error!("authorize_url {:#?}", err);
+                (Status::BadGateway, "unable to form redirect URL")
+            })?,
+        ))
         .url();
     cookies.add_private(
         Cookie::build("csrf_token", csrf_token.secret().to_string())
             .same_site(SameSite::Lax)
-            .secure(secure.is_some())
+            .secure(origin.scheme() == "https")
             .finish(),
     );
-    Redirect::to(auth_url.to_string())
+    Ok(Redirect::to(auth_url.to_string()))
 }
 
 #[head("/callback")]
@@ -113,7 +120,7 @@ const fn callback_head() {}
 async fn callback(
     state: &str,
     code: &str,
-    secure: Option<&SecureRequest>,
+    origin: &RequestOrigin,
     client: &State<BasicClient>,
     cookies: &CookieJar<'_>,
 ) -> Result<Redirect, (Status, &'static str)> {
@@ -129,6 +136,12 @@ async fn callback(
 
     let token = client
         .exchange_code(AuthorizationCode::new(code.to_owned()))
+        .set_redirect_uri(Cow::Owned(
+            RedirectUrl::new(format!("{}/api/auth/callback", **origin)).map_err(|err| {
+                error!("exchange_code {:#?}", err);
+                (Status::BadGateway, "unable to form redirect URL")
+            })?,
+        ))
         .request_async(async_http_client)
         .await
         .map_err(|err| {
@@ -154,7 +167,7 @@ async fn callback(
     cookies.add_private(
         Cookie::build("user", user_string)
             .same_site(SameSite::Strict)
-            .secure(secure.is_some())
+            .secure(origin.scheme() == "https")
             .finish(),
     );
 

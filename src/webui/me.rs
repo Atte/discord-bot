@@ -1,4 +1,4 @@
-use super::{auth::SessionUser, json::Json, BotGuilds};
+use super::{auth::SessionUser, util::Json, BotGuilds};
 use futures::future::join_all;
 use itertools::Itertools;
 use log::trace;

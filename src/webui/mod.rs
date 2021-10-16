@@ -16,7 +16,6 @@ use std::{
 };
 
 mod auth;
-mod json;
 mod me;
 mod r#static;
 mod util;
