@@ -16,6 +16,8 @@ use std::{
 };
 
 mod auth;
+mod bot;
+mod guilds;
 mod me;
 mod r#static;
 mod util;
@@ -138,6 +140,8 @@ impl WebUI {
         let vega = r#static::init(vega);
         let vega = auth::init(vega, &self.config)?;
         let vega = me::init(vega);
+        let vega = bot::init(vega);
+        let vega = guilds::init(vega);
         vega.launch().await?;
         Ok(())
     }

@@ -12,8 +12,8 @@ import { NavLink } from './NavLink';
 
 export default function App({ bot }: { bot: CurrentUserData }) {
     const [childError] = useErrorBoundary();
-    const [user, userError] = useFetch<CurrentUserData>('api/me/user');
-    const [guilds, guildsError] = useFetch<GuildData[]>('api/me/guilds');
+    const [user, userError] = useFetch<CurrentUserData>('api/me');
+    const [guilds, guildsError] = useFetch<GuildData[]>('api/guilds');
 
     useEffect(() => {
         // UIkit only does some additional styling,

@@ -12,7 +12,7 @@ export default function GuildRanks({ guild }: { guild: GuildData }) {
     async function setRole(role: RoleData, on: boolean): Promise<void> {
         setChanging(true);
         try {
-            const response = await fetch(`api/me/guilds/${role.guild_id}/ranks/${role.id}`, {
+            const response = await fetch(`api/guilds/${role.guild_id}/ranks/${role.id}`, {
                 method: on ? 'POST' : 'DELETE',
             });
             if (!response.ok) {

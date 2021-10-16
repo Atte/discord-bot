@@ -10,7 +10,8 @@
         "jsxImportSource": "preact",
         "strict": true,
         "sourceMap": true,
-        "typeRoots": ["./node_modules/@types", "./typings"]
+        "typeRoots": ["./node_modules/@types", "./typings"],
+        "types": ["parcel-env"]
     },
     "typeAcquisition": { "include": ["jest"] }
 }
