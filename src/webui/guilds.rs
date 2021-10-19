@@ -7,13 +7,12 @@ use futures::future::join_all;
 use itertools::Itertools;
 use log::trace;
 use rocket::{delete, get, http::Status, post, put, routes, Build, Rocket, State};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serenity::{
     model::{
         channel::{GuildChannel, Message},
         guild::{Member, Role},
         id::{ChannelId, GuildId, RoleId, UserId},
-        permissions::Permissions,
     },
     CacheAndHttp,
 };
@@ -34,7 +33,7 @@ pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
 pub async fn guild_member(
     guild_id: GuildId,
     user_id: UserId,
-    discord: &Arc<CacheAndHttp>,
+    discord: &CacheAndHttp,
 ) -> Option<Member> {
     if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
         guild.members.get(&user_id).cloned()
@@ -45,7 +44,7 @@ pub async fn guild_member(
 
 pub async fn guild_roles(
     guild_id: GuildId,
-    discord: &Arc<CacheAndHttp>,
+    discord: &CacheAndHttp,
 ) -> Option<HashMap<RoleId, Role>> {
     if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
         Some(guild.roles)
@@ -56,7 +55,7 @@ pub async fn guild_roles(
 
 pub async fn guild_channels(
     guild_id: GuildId,
-    discord: &Arc<CacheAndHttp>,
+    discord: &CacheAndHttp,
 ) -> Option<HashMap<ChannelId, GuildChannel>> {
     if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
         Some(guild.channels)
@@ -67,7 +66,7 @@ pub async fn guild_channels(
 
 async fn guild_rules(
     guild_id: GuildId,
-    discord: &Arc<CacheAndHttp>,
+    discord: &CacheAndHttp,
     config: &Config,
 ) -> Option<Message> {
     let channels = guild_channels(guild_id, discord).await?;
@@ -91,7 +90,7 @@ async fn guild_rules(
 async fn ranks_from_roles(
     guild_id: GuildId,
     roles: impl IntoIterator<Item = Role> + Clone,
-    discord: &Arc<CacheAndHttp>,
+    discord: &CacheAndHttp,
 ) -> Result<impl Iterator<Item = Role>, (Status, &'static str)> {
     let bot_member = guild_id
         .member(discord.clone(), discord.cache.current_user_id().await)
@@ -118,7 +117,7 @@ async fn ranks_from_roles(
 
 async fn ranks_from_guild(
     guild_id: GuildId,
-    discord: &Arc<CacheAndHttp>,
+    discord: &CacheAndHttp,
 ) -> Result<impl Iterator<Item = Role>, (Status, &'static str)> {
     let roles: Vec<_> = guild_roles(guild_id, discord)
         .await
@@ -128,13 +127,13 @@ async fn ranks_from_guild(
     Ok(ranks_from_roles(guild_id, roles, discord).await?)
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct GuildRanksResponse {
     current: Vec<Role>,
     available: Vec<Role>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct GuildsResponse {
     pub id: GuildId,
     pub icon: Option<String>,
@@ -146,29 +145,16 @@ struct GuildsResponse {
 
 #[get("/")]
 async fn guilds(
-    user: &SessionUser,
+    user: SessionUser<'_>,
     discord: &State<Arc<CacheAndHttp>>,
     bot_guilds: &State<BotGuilds>,
     config: &State<Config>,
 ) -> Result<Json<Vec<GuildsResponse>>, (Status, &'static str)> {
     Ok(Json(
         join_all(bot_guilds.iter().map(|(guild_id, guild_info)| async move {
-            let member = guild_member(*guild_id, user.id, discord).await?;
-            let roles: Vec<_> = guild_roles(*guild_id, discord)
-                .await?
-                .into_values()
-                .collect();
-            let admin = roles
-                .iter()
-                .filter_map(|role| {
-                    if role.has_permission(Permissions::ADMINISTRATOR) {
-                        Some(role.id)
-                    } else {
-                        None
-                    }
-                })
-                .any(|role_id| member.roles.contains(&role_id));
-            let (current_ranks, available_ranks) = ranks_from_roles(*guild_id, roles, discord)
+            let member = user.member(*guild_id).await.ok()?;
+            let admin = user.admin(*guild_id).await.is_ok();
+            let (current_ranks, available_ranks) = ranks_from_guild(*guild_id, discord)
                 .await
                 .ok()?
                 .partition(|role| member.roles.contains(&role.id));
@@ -200,7 +186,7 @@ async fn guilds(
 async fn guild_ranks_post(
     guild_id: u64,
     role_id: u64,
-    user: &SessionUser,
+    user: SessionUser<'_>,
     discord: &State<Arc<CacheAndHttp>>,
 ) -> Result<Json<GuildRanksResponse>, (Status, &'static str)> {
     let guild_id = GuildId(guild_id);
@@ -235,7 +221,7 @@ async fn guild_ranks_post(
 async fn guild_ranks_delete(
     guild_id: u64,
     role_id: u64,
-    user: &SessionUser,
+    user: SessionUser<'_>,
     discord: &State<Arc<CacheAndHttp>>,
 ) -> Result<Json<GuildRanksResponse>, (Status, &'static str)> {
     let guild_id = GuildId(guild_id);
@@ -266,14 +252,22 @@ async fn guild_ranks_delete(
     Ok(Json(GuildRanksResponse { current, available }))
 }
 
-#[put("/<guild_id>/rules")]
+#[derive(Debug, Deserialize)]
+struct RulesBody<'r> {
+    content: Option<&'r str>,
+}
+
+#[put("/<guild_id>/rules", data = "<data>")]
 async fn guild_rules_put(
     guild_id: u64,
-    user: &SessionUser,
+    data: rocket::serde::json::Json<RulesBody<'_>>,
+    user: SessionUser<'_>,
     discord: &State<Arc<CacheAndHttp>>,
 ) -> Result<Json<Option<Message>>, (Status, &'static str)> {
     let guild_id = GuildId(guild_id);
     let member = user.admin(guild_id).await?;
+
+    // TODO
 
     Ok(Json(None))
 }

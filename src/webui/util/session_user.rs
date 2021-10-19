@@ -1,54 +1,50 @@
-use super::super::guilds::{guild_member, guild_roles};
-use super::super::BotGuilds;
-use super::{Json, RateLimiter};
-use crate::config::Config;
-use futures::future::join_all;
-use itertools::Itertools;
-use log::trace;
-use rocket::{delete, get, http::Status, post, put, routes, Build, Rocket, State};
-use rocket::{
-    outcome::IntoOutcome,
-    request::{FromRequest, Outcome, Request},
-};
-use serde::Serialize;
-use serenity::model::user::CurrentUser;
-use serenity::{
-    model::{
-        channel::{GuildChannel, Message},
-        guild::{Member, Role},
-        id::{ChannelId, GuildId, RoleId, UserId},
-        permissions::Permissions,
+use super::{
+    super::{
+        guilds::{guild_member, guild_roles},
+        BotGuilds,
     },
+    RateLimiter,
+};
+use rocket::{
+    http::Status,
+    outcome::{try_outcome, IntoOutcome},
+    request::{FromRequest, Outcome, Request},
+    State,
+};
+use serenity::{
+    model::{guild::Member, id::GuildId, permissions::Permissions, user::CurrentUser},
     CacheAndHttp,
 };
-use std::{collections::HashMap, sync::Arc};
-use std::{
-    convert::Infallible,
-    ops::{Deref, DerefMut},
-};
+use std::{ops::Deref, sync::Arc};
 
 pub type AuthError = (Status, &'static str);
 
-pub struct SessionUser {
-    user: CurrentUser,
-    bot_guilds: BotGuilds,
-    discord: Arc<CacheAndHttp>,
+#[derive(Clone, Copy)]
+pub struct SessionUser<'r> {
+    user: &'r CurrentUser,
+    bot_guilds: &'r BotGuilds,
+    discord: &'r CacheAndHttp,
 }
 
-impl SessionUser {
+impl<'r> SessionUser<'r> {
+    #[inline]
+    pub fn into_current_user(self) -> &'r CurrentUser {
+        self.user
+    }
+
     pub async fn member(&self, guild_id: GuildId) -> Result<Member, AuthError> {
         if !self.bot_guilds.contains_key(&guild_id) {
             return Err((Status::BadRequest, "invalid guild"));
         }
 
-        Ok(guild_member(guild_id, self.user.id, &self.discord)
+        Ok(guild_member(guild_id, self.user.id, self.discord)
             .await
             .ok_or((Status::BadGateway, "can't fetch member"))?)
     }
 
     pub async fn admin(&self, guild_id: GuildId) -> Result<Member, AuthError> {
         let member = self.member(guild_id).await?;
-        if guild_roles(guild_id, &self.discord)
+        if guild_roles(guild_id, self.discord)
             .await
             .ok_or((Status::BadGateway, "can't fetch roles"))?
             .into_values()
@@ -68,52 +64,32 @@ impl SessionUser {
     }
 }
 
-impl Deref for SessionUser {
+impl<'r> Deref for SessionUser<'r> {
     type Target = CurrentUser;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.user
+        self.user
     }
 }
 
-impl DerefMut for SessionUser {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.user
+impl<'r> std::fmt::Debug for SessionUser<'r> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SessionUser").field(self.user).finish()
     }
 }
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for &'r SessionUser {
-    type Error = Infallible;
+impl<'r> FromRequest<'r> for SessionUser<'r> {
+    type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        request
+        let user = try_outcome!(request
             .local_cache_async(async {
-                let bot_guilds = request
-                    .guard::<&State<BotGuilds>>()
-                    .await
-                    .succeeded()?
-                    .inner()
-                    .clone();
-
-                let discord = request
-                    .guard::<&State<Arc<CacheAndHttp>>>()
-                    .await
-                    .succeeded()?
-                    .inner()
-                    .clone();
-
                 let user = request
                     .cookies()
                     .get_private("user")
-                    .and_then(|cookie| serde_json::from_str::<CurrentUser>(cookie.value()).ok())
-                    .map(move |user| SessionUser {
-                        user,
-                        bot_guilds,
-                        discord,
-                    });
+                    .and_then(|cookie| serde_json::from_str::<CurrentUser>(cookie.value()).ok());
 
                 if let Some(ref user) = user {
                     request
@@ -128,6 +104,17 @@ impl<'r> FromRequest<'r> for &'r SessionUser {
             })
             .await
             .as_ref()
-            .or_forward(())
+            .or_forward(()));
+
+        let bot_guilds = try_outcome!(request.guard::<&State<BotGuilds>>().await).inner();
+        let discord = try_outcome!(request.guard::<&State<Arc<CacheAndHttp>>>().await)
+            .inner()
+            .as_ref();
+
+        Outcome::Success(SessionUser {
+            user,
+            bot_guilds,
+            discord,
+        })
     }
 }

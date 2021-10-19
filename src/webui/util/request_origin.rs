@@ -12,12 +12,14 @@ pub struct RequestOrigin(Absolute<'static>);
 impl Deref for RequestOrigin {
     type Target = Absolute<'static>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for RequestOrigin {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

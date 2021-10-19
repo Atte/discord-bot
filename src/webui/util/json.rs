@@ -38,7 +38,10 @@ fn stringify_u64(value: Value) -> Value {
 }
 
 /// Serializes numeric values outside the range of `[Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]` as strings.
-pub fn to_safe_string<T: Serialize>(input: T) -> serde_json::Result<String> {
+pub fn to_safe_string<T>(input: T) -> serde_json::Result<String>
+where
+    T: Serialize,
+{
     let value = serde_json::to_value(input)?;
     let value = stringify_u64(value);
     serde_json::to_string(&value)
@@ -48,7 +51,10 @@ pub fn to_safe_string<T: Serialize>(input: T) -> serde_json::Result<String> {
 /// Serializes numeric values outside the range of `[Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]` as strings.
 pub struct Json<T>(pub T);
 
-impl<'r, T: Serialize> Responder<'r, 'static> for Json<T> {
+impl<'r, T> Responder<'r, 'static> for Json<T>
+where
+    T: Serialize,
+{
     fn respond_to(self, request: &'r Request<'_>) -> response::Result<'static> {
         let string = to_safe_string(self.0).map_err(|err| {
             error!("JSON serialization failed: {:#?}", err);

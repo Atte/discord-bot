@@ -7,6 +7,6 @@ pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
 }
 
 #[get("/")]
-fn user(user: &SessionUser) -> Json<&CurrentUser> {
-    Json(&*user)
+fn user(user: SessionUser<'_>) -> Json<&CurrentUser> {
+    Json(user.into_current_user())
 }
