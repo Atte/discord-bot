@@ -1,13 +1,18 @@
-use super::{auth::SessionUser, util::Json, BotGuilds};
+use super::{
+    util::{Json, SessionUser},
+    BotGuilds,
+};
+use crate::config::Config;
 use futures::future::join_all;
 use itertools::Itertools;
 use log::trace;
-use rocket::{delete, get, http::Status, post, routes, Build, Rocket, State};
+use rocket::{delete, get, http::Status, post, put, routes, Build, Rocket, State};
 use serde::Serialize;
 use serenity::{
     model::{
+        channel::{GuildChannel, Message},
         guild::{Member, Role},
-        id::{GuildId, RoleId, UserId},
+        id::{ChannelId, GuildId, RoleId, UserId},
         permissions::Permissions,
     },
     CacheAndHttp,
@@ -17,11 +22,28 @@ use std::{collections::HashMap, sync::Arc};
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
     vega.mount(
         "/api/guilds",
-        routes![guilds, guild_ranks_add, guild_ranks_delete],
+        routes![
+            guilds,
+            guild_ranks_post,
+            guild_ranks_delete,
+            guild_rules_put
+        ],
     )
 }
 
-async fn guild_roles(
+pub async fn guild_member(
+    guild_id: GuildId,
+    user_id: UserId,
+    discord: &Arc<CacheAndHttp>,
+) -> Option<Member> {
+    if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
+        guild.members.get(&user_id).cloned()
+    } else {
+        guild_id.member(discord.clone(), user_id).await.ok()
+    }
+}
+
+pub async fn guild_roles(
     guild_id: GuildId,
     discord: &Arc<CacheAndHttp>,
 ) -> Option<HashMap<RoleId, Role>> {
@@ -32,16 +54,38 @@ async fn guild_roles(
     }
 }
 
-async fn guild_member(
+pub async fn guild_channels(
     guild_id: GuildId,
-    user_id: UserId,
     discord: &Arc<CacheAndHttp>,
-) -> Option<Member> {
+) -> Option<HashMap<ChannelId, GuildChannel>> {
     if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
-        guild.members.get(&user_id).cloned()
+        Some(guild.channels)
     } else {
-        guild_id.member(discord.clone(), user_id).await.ok()
+        guild_id.channels(&discord.http).await.ok()
     }
+}
+
+async fn guild_rules(
+    guild_id: GuildId,
+    discord: &Arc<CacheAndHttp>,
+    config: &Config,
+) -> Option<Message> {
+    let channels = guild_channels(guild_id, discord).await?;
+    for channel_id in &config.discord.rules_channels {
+        if let Some(channel) = channels.get(channel_id) {
+            for message in channel
+                .id
+                .messages(&discord.http, |get| get.limit(10))
+                .await
+                .ok()?
+            {
+                if message.is_own(&discord.cache).await {
+                    return Some(message);
+                }
+            }
+        }
+    }
+    None
 }
 
 async fn ranks_from_roles(
@@ -97,6 +141,7 @@ struct GuildsResponse {
     pub name: String,
     pub admin: bool,
     pub ranks: GuildRanksResponse,
+    pub rules: Option<Message>,
 }
 
 #[get("/")]
@@ -104,6 +149,7 @@ async fn guilds(
     user: &SessionUser,
     discord: &State<Arc<CacheAndHttp>>,
     bot_guilds: &State<BotGuilds>,
+    config: &State<Config>,
 ) -> Result<Json<Vec<GuildsResponse>>, (Status, &'static str)> {
     Ok(Json(
         join_all(bot_guilds.iter().map(|(guild_id, guild_info)| async move {
@@ -130,11 +176,16 @@ async fn guilds(
                 id: guild_info.id,
                 icon: guild_info.icon.clone(),
                 name: guild_info.name.clone(),
+                admin,
                 ranks: GuildRanksResponse {
                     current: current_ranks,
                     available: available_ranks,
                 },
-                admin,
+                rules: if admin {
+                    guild_rules(*guild_id, discord, &*config).await
+                } else {
+                    None
+                },
             })
         }))
         .await
@@ -146,26 +197,19 @@ async fn guilds(
 }
 
 #[post("/<guild_id>/ranks/<role_id>")]
-async fn guild_ranks_add(
+async fn guild_ranks_post(
     guild_id: u64,
     role_id: u64,
     user: &SessionUser,
     discord: &State<Arc<CacheAndHttp>>,
-    bot_guilds: &State<BotGuilds>,
 ) -> Result<Json<GuildRanksResponse>, (Status, &'static str)> {
     let guild_id = GuildId(guild_id);
-    if !bot_guilds.contains_key(&guild_id) {
-        return Err((Status::BadRequest, "invalid guild"));
-    }
+    let mut member = user.member(guild_id).await?;
 
     let role = ranks_from_guild(guild_id, discord)
         .await?
         .find(|role| role.id == role_id)
         .ok_or((Status::BadRequest, "invalid role"))?;
-
-    let mut member = guild_member(guild_id, user.id, discord)
-        .await
-        .ok_or((Status::BadGateway, "can't fetch member"))?;
 
     member
         .add_role(&discord.http, &role)
@@ -193,21 +237,14 @@ async fn guild_ranks_delete(
     role_id: u64,
     user: &SessionUser,
     discord: &State<Arc<CacheAndHttp>>,
-    bot_guilds: &State<BotGuilds>,
 ) -> Result<Json<GuildRanksResponse>, (Status, &'static str)> {
     let guild_id = GuildId(guild_id);
-    if !bot_guilds.contains_key(&guild_id) {
-        return Err((Status::BadRequest, "invalid guild"));
-    }
+    let mut member = user.member(guild_id).await?;
 
     let role = ranks_from_guild(guild_id, discord)
         .await?
         .find(|role| role.id == role_id)
         .ok_or((Status::BadRequest, "invalid role"))?;
-
-    let mut member = guild_member(guild_id, user.id, discord)
-        .await
-        .ok_or((Status::BadGateway, "can't fetch member"))?;
 
     member
         .remove_role(&discord.http, &role)
@@ -227,4 +264,16 @@ async fn guild_ranks_delete(
         .partition(|role| member.roles.contains(&role.id));
 
     Ok(Json(GuildRanksResponse { current, available }))
+}
+
+#[put("/<guild_id>/rules")]
+async fn guild_rules_put(
+    guild_id: u64,
+    user: &SessionUser,
+    discord: &State<Arc<CacheAndHttp>>,
+) -> Result<Json<Option<Message>>, (Status, &'static str)> {
+    let guild_id = GuildId(guild_id);
+    let member = user.admin(guild_id).await?;
+
+    Ok(Json(None))
 }

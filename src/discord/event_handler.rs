@@ -1,10 +1,11 @@
-use super::{limits::ACTIVITY_LENGTH, log_channel, sticky_roles, ActivityKey};
+use super::{get_data, limits::ACTIVITY_LENGTH, log_channel, sticky_roles, ActivityKey, ConfigKey};
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
     model::{
+        channel::Message,
         gateway::{Activity, Ready},
         guild::Member,
         id::{ChannelId, GuildId, MessageId},
@@ -29,17 +30,17 @@ impl EventHandler for Handler {
         }
     }
 
-    /*
     async fn message(&self, ctx: Context, message: Message) {
         if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
-            if config.discord.rules_channels.contains(&message.channel_id) && !message.is_own(&ctx).await {
+            if config.discord.rules_channels.contains(&message.channel_id)
+                && !message.is_own(&ctx).await
+            {
                 if let Err(err) = message.delete(&ctx).await {
                     error!("Unable to delete rules channel spam: {}", err);
                 }
             }
         }
     }
-    */
 
     async fn message_delete(
         &self,

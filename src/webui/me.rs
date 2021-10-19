@@ -1,4 +1,4 @@
-use super::{auth::SessionUser, util::Json};
+use super::util::{Json, SessionUser};
 use rocket::{get, routes, Build, Rocket};
 use serenity::model::user::CurrentUser;
 

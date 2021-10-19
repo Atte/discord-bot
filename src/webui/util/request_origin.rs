@@ -4,7 +4,7 @@ use rocket::{
     outcome::IntoOutcome,
     request::{FromRequest, Outcome, Request},
 };
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 #[derive(Debug)]
 pub struct RequestOrigin(Absolute<'static>);
@@ -14,6 +14,12 @@ impl Deref for RequestOrigin {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for RequestOrigin {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

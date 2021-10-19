@@ -1,6 +1,6 @@
 use super::{
     r#static::rocket_uri_macro_index,
-    util::{HeaderResponder, RateLimiter, RequestOrigin},
+    util::{HeaderResponder, RequestOrigin},
 };
 use crate::config::Config;
 use log::{error, trace};
@@ -11,67 +11,12 @@ use oauth2::{
 use rocket::{
     get, head,
     http::{Cookie, CookieJar, Header, SameSite, Status},
-    outcome::IntoOutcome,
     post,
-    request::{FromRequest, Outcome, Request},
     response::Redirect,
     routes, uri, Build, Rocket, State,
 };
-use serenity::{http::Http, model::oauth2::OAuth2Scope, model::user::CurrentUser};
-use std::{
-    borrow::Cow,
-    convert::Infallible,
-    ops::{Deref, DerefMut},
-};
-
-#[derive(Debug)]
-pub struct SessionUser(CurrentUser);
-
-impl Deref for SessionUser {
-    type Target = CurrentUser;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for SessionUser {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for &'r SessionUser {
-    type Error = Infallible;
-
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        request
-            .local_cache_async(async {
-                let user = request
-                    .cookies()
-                    .get_private("user")
-                    .and_then(|cookie| serde_json::from_str::<CurrentUser>(cookie.value()).ok())
-                    .map(SessionUser);
-
-                if let Some(ref user) = user {
-                    request
-                        .guard::<&State<RateLimiter<u64>>>()
-                        .await
-                        .expect("no RateLimiter in request state")
-                        .apply_to_request(&user.id.0, request)
-                        .await;
-                }
-
-                user
-            })
-            .await
-            .as_ref()
-            .or_forward(())
-    }
-}
+use serenity::{http::Http, model::oauth2::OAuth2Scope};
+use std::borrow::Cow;
 
 pub fn init(vega: Rocket<Build>, config: &Config) -> crate::Result<Rocket<Build>> {
     let client = BasicClient::new(
