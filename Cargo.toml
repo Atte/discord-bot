@@ -4,7 +4,7 @@ description = "Discord bot for BerryTube"
 version = "0.1.0"
 license = "MIT"
 publish = false
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 repository = "https://github.com/Atte/discord-bot"
 

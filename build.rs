@@ -22,7 +22,11 @@ where
 
 fn main() -> io::Result<()> {
     println!("cargo:rerun-if-env-changed=CARGO");
-    if env::var("CARGO").unwrap().ends_with("/rls") {
+    println!("cargo:rerun-if-env-changed=OUT_DIR");
+    let webui_dist = env::var("OUT_DIR").expect("missing env OUT_DIR");
+    if Path::new(&webui_dist).join("webui.rs").exists()
+        && env::var("CARGO").unwrap().ends_with("/rls")
+    {
         println!("cargo:warning=Skipping build script for RLS build!");
         return Ok(());
     }
@@ -44,7 +48,6 @@ fn main() -> io::Result<()> {
         yarn(["install", "--frozen-lockfile"])?;
     }
 
-    let webui_dist = env::var("OUT_DIR").expect("missing env OUT_DIR");
     yarn(["run", "build", "--dist-dir", &webui_dist])?;
 
     includedir_codegen::start("WEBUI_FILES")
