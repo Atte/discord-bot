@@ -75,7 +75,7 @@ impl<'r> Deref for SessionUser<'r> {
 
 impl<'r> std::fmt::Debug for SessionUser<'r> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("SessionUser").field(self.user).finish()
+        f.debug_tuple("SessionUser").field(&self.user.id).finish()
     }
 }
 
@@ -106,15 +106,10 @@ impl<'r> FromRequest<'r> for SessionUser<'r> {
             .as_ref()
             .or_forward(()));
 
-        let bot_guilds = try_outcome!(request.guard::<&State<BotGuilds>>().await).inner();
-        let discord = try_outcome!(request.guard::<&State<Arc<CacheAndHttp>>>().await)
-            .inner()
-            .as_ref();
-
         Outcome::Success(SessionUser {
             user,
-            bot_guilds,
-            discord,
+            bot_guilds: try_outcome!(request.guard::<&State<BotGuilds>>().await),
+            discord: try_outcome!(request.guard::<&State<Arc<CacheAndHttp>>>().await),
         })
     }
 }

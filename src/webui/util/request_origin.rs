@@ -6,7 +6,7 @@ use rocket::{
 };
 use std::ops::{Deref, DerefMut};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RequestOrigin(Absolute<'static>);
 
 impl Deref for RequestOrigin {
