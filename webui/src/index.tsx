@@ -3,26 +3,50 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 import { render, hydrate } from 'preact';
-import { CurrentUserData } from './apitypes';
+import { ApolloClient, InMemoryCache, ApolloProvider, gql } from '@apollo/client';
 import App from './components/App';
+import { GetBot, GetBot_bot } from './__generated__/GetBot';
+
+const client = new ApolloClient({
+    uri: '/api/graphql',
+    cache: new InMemoryCache(),
+});
 
 if (process.env.NODE_ENV === 'development') {
     while (document.body.firstChild) {
         document.body.firstChild.remove();
     }
-    fetch('/api/bot')
+    client
+        .query<GetBot>({
+            query: gql`
+                query GetBot {
+                    bot {
+                        id
+                        name
+                        discriminator
+                        avatar
+                    }
+                }
+            `,
+        })
         .then(async (response) => {
-            if (!response.ok) {
-                throw new Error(`${response.status} ${response.statusText}`);
-            }
-            const bot: CurrentUserData = await response.json();
-            render(<App bot={bot} />, document.body);
+            render(
+                <ApolloProvider client={client}>
+                    <App bot={response.data.bot} />
+                </ApolloProvider>,
+                document.body,
+            );
         })
         .catch((err) => {
             console.error(err);
         });
 } else {
     const botData = document.head.querySelector<HTMLScriptElement>('script[type="application/x-bot-user+json"]');
-    const bot: CurrentUserData = JSON.parse(botData?.textContent!);
-    hydrate(<App bot={bot} />, document.body);
+    const bot: GetBot_bot = JSON.parse(botData?.textContent!);
+    hydrate(
+        <ApolloProvider client={client}>
+            <App bot={bot} />
+        </ApolloProvider>,
+        document.body,
+    );
 }

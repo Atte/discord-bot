@@ -9,10 +9,25 @@ import Spinner from './Spinner';
 import { CurrentUserData, GuildData } from '../apitypes';
 import Guild from './Guild';
 import { NavLink } from './NavLink';
+import { useQuery, gql } from '@apollo/client';
+import { GetBot_bot } from '../__generated__/GetBot';
+import { GetMe } from './__generated__/GetMe';
 
-export default function App({ bot }: { bot: CurrentUserData }) {
+export default function App({ bot }: { bot: GetBot_bot }) {
     const [childError] = useErrorBoundary();
-    const [user, userError] = useFetch<CurrentUserData>('api/me');
+
+    const { data: userData, error: userError } = useQuery<GetMe>(gql`
+        query GetMe {
+            me {
+                id
+                name
+                discriminator
+                avatar
+            }
+        }
+    `);
+    const user = userData?.me;
+
     const [guilds, guildsError] = useFetch<GuildData[]>('api/guilds');
 
     useEffect(() => {
@@ -33,7 +48,7 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                         {bot.avatar && (
                             <DiscordImage type="avatar" user_id={bot.id} user_avatar={bot.avatar} size={32} circle />
                         )}{' '}
-                        {bot.username}
+                        {bot.name}
                     </div>
                 </div>
                 <div class="uk-navbar-right">
@@ -48,7 +63,7 @@ export default function App({ bot }: { bot: CurrentUserData }) {
                                     circle
                                 />
                             )}{' '}
-                            <span class="uk-text-bold">{user.username}</span>#{user.discriminator}
+                            <span class="uk-text-bold">{user.name}</span>#{user.discriminator}
                         </div>
                     )}
                     {(user || guilds) && (

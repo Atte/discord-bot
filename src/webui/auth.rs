@@ -1,7 +1,4 @@
-use super::{
-    r#static::rocket_uri_macro_index,
-    util::{HeaderResponder, RequestOrigin},
-};
+use super::{r#static::rocket_uri_macro_index, util::HeaderResponder};
 use crate::config::Config;
 use log::{error, trace};
 use oauth2::{
@@ -35,15 +32,16 @@ pub fn init(vega: Rocket<Build>, config: &Config) -> crate::Result<Rocket<Build>
 
 #[post("/redirect")]
 fn redirect(
-    origin: &RequestOrigin,
+    config: &State<Config>,
     client: &State<BasicClient>,
     cookies: &CookieJar<'_>,
 ) -> Result<Redirect, (Status, &'static str)> {
+    let origin = config.webui.url.to_string();
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new(OAuth2Scope::Identify.to_string()))
         .set_redirect_uri(Cow::Owned(
-            RedirectUrl::new(format!("{}/api/auth/callback", **origin)).map_err(|err| {
+            RedirectUrl::new(format!("{}/api/auth/callback", origin)).map_err(|err| {
                 error!("authorize_url {:#?}", err);
                 (Status::BadGateway, "unable to form redirect URL")
             })?,
@@ -52,7 +50,7 @@ fn redirect(
     cookies.add_private(
         Cookie::build("csrf_token", csrf_token.secret().to_string())
             .same_site(SameSite::Lax)
-            .secure(origin.scheme() == "https")
+            .secure(origin.starts_with("https://"))
             .finish(),
     );
     Ok(Redirect::to(auth_url.to_string()))
@@ -65,7 +63,7 @@ const fn callback_head() {}
 async fn callback(
     state: &str,
     code: &str,
-    origin: &RequestOrigin,
+    config: &State<Config>,
     client: &State<BasicClient>,
     cookies: &CookieJar<'_>,
 ) -> Result<Redirect, (Status, &'static str)> {
@@ -78,11 +76,11 @@ async fn callback(
             "state parameter doesn't match csrf_token cookie",
         ));
     }
-
+    let origin = config.webui.url.to_string();
     let token = client
         .exchange_code(AuthorizationCode::new(code.to_owned()))
         .set_redirect_uri(Cow::Owned(
-            RedirectUrl::new(format!("{}/api/auth/callback", **origin)).map_err(|err| {
+            RedirectUrl::new(format!("{}/api/auth/callback", origin)).map_err(|err| {
                 error!("exchange_code {:#?}", err);
                 (Status::BadGateway, "unable to form redirect URL")
             })?,
@@ -112,7 +110,7 @@ async fn callback(
     cookies.add_private(
         Cookie::build("user", user_string)
             .same_site(SameSite::Strict)
-            .secure(origin.scheme() == "https")
+            .secure(origin.starts_with("https://"))
             .finish(),
     );
 

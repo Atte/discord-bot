@@ -16,14 +16,14 @@ use std::{
 };
 
 mod auth;
-mod bot;
+mod graphql;
 mod guilds;
-mod me;
 mod r#static;
 mod util;
 
 pub type BotGuilds = HashMap<GuildId, GuildInfo>;
 
+#[derive(Clone)]
 pub struct WebUI {
     config: Config,
     discord: Arc<CacheAndHttp>,
@@ -85,6 +85,7 @@ impl WebUI {
         .manage(self.config.clone())
         .manage(self.discord.clone())
         .manage(self.guilds.clone())
+        .manage(self.clone())
         .manage(util::RateLimiter::<u64>::new(governor::Quota::per_second(nonzero!(
             1_u32
         ))))
@@ -139,9 +140,8 @@ impl WebUI {
         ));
         let vega = r#static::init(vega);
         let vega = auth::init(vega, &self.config)?;
-        let vega = me::init(vega);
-        let vega = bot::init(vega);
         let vega = guilds::init(vega);
+        let vega = graphql::init(vega);
         vega.launch().await?;
         Ok(())
     }

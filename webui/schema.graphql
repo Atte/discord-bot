@@ -1,0 +1,10 @@
+type Query {
+  me: User
+  bot: User!
+}
+type User {
+  id: ID!
+  name: String!
+  discriminator: Int!
+  avatar: String
+}

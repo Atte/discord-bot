@@ -4,7 +4,7 @@
     "license": "MIT",
     "private": true,
     "scripts": {
-        "build": "yarn run pre-render && yarn run bundle",
+        "build": "yarn run graphql-generate && yarn run pre-render && yarn run bundle",
         "bundle": "rm -f dist/*; parcel build --no-autoinstall ./src/index.html",
         "watch": "parcel watch --no-autoinstall --no-hmr ./src/index.html",
         "analyze": "yarn run build --reporter @parcel/reporter-bundle-analyzer",
@@ -12,7 +12,9 @@
         "test": "jest",
         "lint": "eslint .",
         "format": "prettier --write .",
-        "pre-render": "ts-node --prefer-ts-exts --compiler-options '{\"module\":\"CommonJS\"}' ./pre-render.tsx"
+        "pre-render": "ts-node --prefer-ts-exts --compiler-options '{\"module\":\"CommonJS\"}' ./pre-render.tsx",
+        "graphql-download": "rover graph introspect \"$WEBUI_URL/api/graphql\" >schema.graphql",
+        "graphql-generate": "apollo codegen:generate --localSchemaFile=schema.graphql --target=typescript --tagName=gql"
     },
     "targets": {
         "default": {
@@ -20,6 +22,7 @@
         }
     },
     "devDependencies": {
+        "@apollo/rover": "^0.3.0",
         "@parcel/reporter-bundle-analyzer": "^2.0.0-rc.0",
         "@parcel/transformer-inline-string": "^2.0.0-rc.0",
         "@parcel/transformer-less": "^2.0.0-rc.0",
@@ -28,9 +31,11 @@
         "@types/glob": "^7.1.4",
         "@types/history": "^4.7.9",
         "@types/jest": "^27.0.2",
+        "@types/node": "^16.11.4",
         "@types/parcel-env": "^0.0.1",
         "@typescript-eslint/eslint-plugin": "^4.32.0",
         "@typescript-eslint/parser": "^4.32.0",
+        "apollo": "^2.33.6",
         "eslint": "^7.32.0",
         "eslint-config-preact": "^1.1.4",
         "eslint-config-prettier": "^8.3.0",
@@ -48,9 +53,16 @@
         "typescript": "^4.4.3"
     },
     "dependencies": {
+        "@apollo/client": "^3.4.16",
         "history": "^4.10.1",
         "preact": "^10.5.14",
         "preact-router": "^3.2.1",
         "uikit": "^3.7.4"
+    },
+    "alias": {
+        "react": "preact/compat",
+        "react-dom/test-utils": "preact/test-utils",
+        "react-dom": "preact/compat",
+        "react/jsx-runtime": "preact/jsx-runtime"
     }
 }
