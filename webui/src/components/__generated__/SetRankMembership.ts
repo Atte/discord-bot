@@ -10,10 +10,16 @@
 export interface SetRankMembership_setRankMembership {
   __typename: "Rank";
   id: string;
+  /**
+   * Whether the logged in user currently has this rank or not
+   */
   current: boolean;
 }
 
 export interface SetRankMembership {
+  /**
+   * Ensure the logged in user either has or doesn't have the specified rank
+   */
   setRankMembership: SetRankMembership_setRankMembership;
 }
 

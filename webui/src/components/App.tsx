@@ -24,7 +24,6 @@ export default function App({ bot: inlineBot }: { bot?: GetBot_bot }) {
                       bot {
                           id
                           name
-                          discriminator
                           avatar
                       }
                   }
@@ -74,9 +73,7 @@ export default function App({ bot: inlineBot }: { bot?: GetBot_bot }) {
         import('../uikit');
     }, []);
 
-    const needToLogin =
-        (userError instanceof ResponseStatusError && userError.response.status === 404) ||
-        (guildsError instanceof ResponseStatusError && guildsError.response.status === 404);
+    const needToLogin = userError?.message === 'unauthenticated' || guildsError?.message === 'unauthenticated';
 
     return (
         <div class="uk-container">
@@ -101,7 +98,8 @@ export default function App({ bot: inlineBot }: { bot?: GetBot_bot }) {
                                     circle
                                 />
                             )}{' '}
-                            <span class="uk-text-bold">{user.name}</span>#{user.discriminator}
+                            <span class="uk-text-bold">{user.name}</span>#
+                            {user.discriminator.toString().padStart(4, '0')}
                         </div>
                     )}
                     {(user || guilds) && (
@@ -125,7 +123,7 @@ export default function App({ bot: inlineBot }: { bot?: GetBot_bot }) {
                 </div>
             ) : (
                 <>
-                    <Errors errors={[childError, userError, guildsError]}>
+                    <Errors errors={[childError, botError, userError, guildsError]}>
                         <form action="api/auth/clear" method="POST">
                             <button class="uk-button uk-button-primary">
                                 <span uk-icon="refresh" /> Retry

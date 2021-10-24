@@ -3,19 +3,25 @@ schema {
   mutation: Mutation
 }
 type Mutation {
+  """Ensure the logged in user either has or doesn't have the specified rank"""
   setRankMembership(guildId: ID!, rankId: ID!, in: Boolean!): Rank!
 }
 type Rank {
   id: ID!
   name: String!
+  """Whether the logged in user currently has this rank or not"""
   current: Boolean!
 }
 type Guild {
   id: ID!
   name: String!
+  """Guild icon image ID"""
   icon: String
+  """Whether the logged in user is an admin of the guild or not"""
   admin: Boolean!
+  """All bot managed ranks in the guild"""
   ranks: [Rank!]!
+  """The rules message of the guild"""
   rules: Rules
 }
 type Rules {
@@ -23,14 +29,23 @@ type Rules {
   content: String!
 }
 type Query {
+  """The bot's Discord user"""
   bot: User!
+  """The logged in user's Discord user"""
   me: User!
+  """A single guild. Both the bot and the logged in user have to be members."""
   guild(id: ID!): Guild!
+  """All guilds both the bot and the logged in user are in"""
   guilds: [Guild!]!
 }
 type User {
   id: ID!
+  """Part of username before the #"""
   name: String!
+  """Part of username after the #"""
   discriminator: Int!
+  """name#discriminator"""
+  tag: String!
+  """Avatar image ID"""
   avatar: String
 }

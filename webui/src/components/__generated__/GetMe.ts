@@ -10,11 +10,23 @@
 export interface GetMe_me {
   __typename: "User";
   id: string;
+  /**
+   * Part of username before the #
+   */
   name: string;
+  /**
+   * Part of username after the #
+   */
   discriminator: number;
+  /**
+   * Avatar image ID
+   */
   avatar: string | null;
 }
 
 export interface GetMe {
+  /**
+   * The logged in user's Discord user
+   */
   me: GetMe_me;
 }

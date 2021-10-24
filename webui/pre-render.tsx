@@ -43,7 +43,6 @@ async function renderIndex() {
         id: '(BOT_ID)',
         name: '(BOT_NAME)',
         avatar: '(BOT_AVATAR)',
-        discriminator: '(BOT_DISCRIMINATOR)' as unknown as number,
     };
 
     const body = render(

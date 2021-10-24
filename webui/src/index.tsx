@@ -8,7 +8,7 @@ import App from './components/App';
 import { GetBot_bot } from './components/__generated__/GetBot';
 
 const client = new ApolloClient({
-    uri: '/api/graphql',
+    uri: 'api/graphql',
     cache: new InMemoryCache(),
 });
 

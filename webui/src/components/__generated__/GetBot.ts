@@ -10,11 +10,19 @@
 export interface GetBot_bot {
   __typename: "User";
   id: string;
+  /**
+   * Part of username before the #
+   */
   name: string;
-  discriminator: number;
+  /**
+   * Avatar image ID
+   */
   avatar: string | null;
 }
 
 export interface GetBot {
+  /**
+   * The bot's Discord user
+   */
   bot: GetBot_bot;
 }

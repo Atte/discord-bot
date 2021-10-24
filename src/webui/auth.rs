@@ -6,7 +6,7 @@ use oauth2::{
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use rocket::{
-    get, head,
+    get,
     http::{Cookie, CookieJar, Header, SameSite, Status},
     post,
     response::Redirect,
@@ -24,13 +24,12 @@ pub fn init(vega: Rocket<Build>, config: &Config) -> crate::Result<Rocket<Build>
             "https://discord.com/api/oauth2/token".to_string(),
         )?),
     );
-    Ok(vega.manage(client).mount(
-        "/api/auth",
-        routes![redirect, callback, callback_head, clear],
-    ))
+    Ok(vega
+        .manage(client)
+        .mount("/", routes![redirect, callback, clear]))
 }
 
-#[post("/redirect")]
+#[post("/api/auth/redirect")]
 fn redirect(
     config: &State<Config>,
     client: &State<BasicClient>,
@@ -56,10 +55,7 @@ fn redirect(
     Ok(Redirect::to(auth_url.to_string()))
 }
 
-#[head("/callback")]
-const fn callback_head() {}
-
-#[get("/callback?<state>&<code>")]
+#[get("/api/auth/callback?<state>&<code>")]
 async fn callback(
     state: &str,
     code: &str,
@@ -117,7 +113,7 @@ async fn callback(
     Ok(Redirect::to(uri!(index)))
 }
 
-#[post("/clear")]
+#[post("/api/auth/clear")]
 fn clear(cookies: &CookieJar<'_>) -> HeaderResponder<Redirect> {
     cookies.remove_private(Cookie::named("user"));
     HeaderResponder::from(Redirect::to(uri!(index))).set_header(Header::new("Clear-Site-Data", "*"))
