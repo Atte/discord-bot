@@ -2,6 +2,8 @@ use super::{
     graphql::{Context, Schema},
     util::HeaderResponder,
 };
+use lazy_static::lazy_static;
+use regex::{Captures, Regex};
 use rocket::{
     get,
     http::{ContentType, Header, Status},
@@ -68,8 +70,6 @@ pub async fn index(
     schema: &State<Schema>,
     context: Context,
 ) -> Result<HeaderResponder<(ContentType, Vec<u8>)>, (Status, &'static str)> {
-    let (mime, source) = serve("index.html").ok_or((Status::NotFound, "no index document"))?;
-
     let (bot, errors) = juniper::execute(
         "
         query GetBot {
@@ -77,6 +77,7 @@ pub async fn index(
                 id
                 name
                 discriminator
+                tag
                 avatar
             }
         }
@@ -100,46 +101,30 @@ pub async fn index(
         .as_object_value()
         .unwrap();
 
-    let mut source = String::from_utf8_lossy(&source)
-        .replace(
-            "(BOT_ID)",
-            bot.get_field_value("id")
-                .unwrap()
-                .as_string_value()
-                .unwrap(),
-        )
-        .replace(
-            "(BOT_NAME)",
-            bot.get_field_value("name")
-                .unwrap()
-                .as_string_value()
-                .unwrap(),
-        )
-        .replace(
-            "(BOT_DISCRIMINATOR)",
-            &bot.get_field_value("discriminator")
-                .unwrap()
-                .as_scalar()
-                .unwrap()
-                .to_string(),
-        );
-
-    if let Some(avatar) = bot.get_field_value("avatar") {
-        source = source.replace("(BOT_AVATAR)", avatar.as_string_value().unwrap());
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"\(BOT_([A-Z]+)\)").unwrap();
     }
 
-    if let Ok(ref string) = serde_json::to_string(&bot) {
-        source = source.replace(
-            "(BOT_JSON)",
-            &format!(
+    let (mime, source) = serve("index.html").ok_or((Status::NotFound, "no index.html"))?;
+    let source = String::from_utf8(source).expect("invalid UTF-8 in index.html");
+    let source = RE.replace_all(&source, |caps: &Captures| {
+        if &caps[1] == "JSON" {
+            format!(
                 r#"<script type="application/x-bot-user+json">{}</script>"#,
-                string
-            ),
-        );
-    }
+                serde_json::to_string(&bot).unwrap()
+            )
+        } else if let Some(field) = bot.get_field_value(caps[1].to_lowercase()) {
+            field
+                .as_scalar()
+                .expect("non-scalar (BOT_PLACEHOLDER)")
+                .to_string()
+        } else {
+            caps[0].to_string()
+        }
+    });
 
     Ok(
-        HeaderResponder::from((mime, source.into_bytes())).set_header(Header::new(
+        HeaderResponder::from((mime, source.into_owned().into_bytes())).set_header(Header::new(
             "Link",
             r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,
         )),

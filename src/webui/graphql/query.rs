@@ -27,14 +27,22 @@ pub mod types {
             ID::new(self.0.id.0.to_string())
         }
 
+        /// Part of username before the #
         fn name(&self) -> &str {
             &self.0.name
         }
 
+        /// Part of username after the #
         fn discriminator(&self) -> i32 {
             i32::from(self.0.discriminator)
         }
 
+        /// name#discriminator
+        fn tag(&self) -> String {
+            self.0.tag()
+        }
+
+        /// Avatar image ID
         fn avatar(&self) -> &Option<String> {
             &self.0.avatar
         }
@@ -55,6 +63,7 @@ pub mod types {
             &self.role.name
         }
 
+        /// Whether the logged in user currently has this rank or not
         async fn current(&self, context: &Context) -> FieldResult<bool> {
             if let Some(current) = self.current {
                 return Ok(current);
@@ -96,10 +105,12 @@ pub mod types {
             &self.0.name
         }
 
+        /// Guild icon image ID
         fn icon(&self) -> &Option<String> {
             &self.0.icon
         }
 
+        /// Whether the logged in user is an admin of the guild or not
         async fn admin(&self, context: &Context) -> FieldResult<bool> {
             let member = guild_member(
                 self.0.id,
@@ -122,6 +133,7 @@ pub mod types {
             Ok(false)
         }
 
+        /// All bot managed ranks in the guild
         async fn ranks(&self, context: &Context) -> FieldResult<Vec<Rank>> {
             let mut ranks: Vec<_> = ranks_from_guild(self.0.id, &context.webui.discord)
                 .await?
@@ -134,6 +146,7 @@ pub mod types {
             Ok(ranks)
         }
 
+        /// The rules message of the guild
         async fn rules(&self, context: &Context) -> Option<Rules> {
             guild_rules(self.0.id, &context.webui.discord, &context.webui.config)
                 .await
@@ -146,16 +159,19 @@ pub struct Query;
 
 #[graphql_object(Context = Context)]
 impl Query {
+    /// The bot's Discord user
     async fn bot(context: &Context) -> types::User {
         types::User(Cow::Owned(context.webui.discord.cache.current_user().await))
     }
 
+    /// The logged in user's Discord user
     fn me(context: &Context) -> FieldResult<types::User> {
         Ok(types::User(Cow::Borrowed(
             context.user.as_ref().ok_or("unauthenticated")?,
         )))
     }
 
+    /// A single guild. Both the bot and the logged in user have to be members.
     async fn guild(context: &Context, id: ID) -> FieldResult<types::Guild> {
         let info = context
             .webui
@@ -172,6 +188,7 @@ impl Query {
         Ok(types::Guild(info.clone()))
     }
 
+    /// All guilds both the bot and the logged in user are in
     async fn guilds(context: &Context) -> FieldResult<Vec<types::Guild>> {
         let user_id = context.user.as_ref().ok_or("unauthenticated")?.id;
         let mut guilds: Vec<_> = stream::iter(context.webui.guilds.values())
@@ -190,6 +207,7 @@ pub struct Mutation;
 
 #[graphql_object(Context = Context)]
 impl Mutation {
+    /// Ensure the logged in user either has or doesn't have the specified rank
     async fn set_rank_membership(
         context: &Context,
         guild_id: ID,
