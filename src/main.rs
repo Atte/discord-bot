@@ -1,6 +1,5 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
-#![allow(dead_code)] // disabled features cause warning spam otherwise
 
 use anyhow::Result;
 use log::{error, info, warn};
@@ -18,7 +17,6 @@ mod config;
 mod cron;
 mod discord;
 mod migrations;
-mod serialization;
 #[cfg(feature = "webui")]
 mod webui;
 

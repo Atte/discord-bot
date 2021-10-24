@@ -1,25 +1,46 @@
 use super::{util::SessionUser, WebUI};
 use juniper::{EmptySubscription, RootNode};
 use juniper_rocket::GraphQLRequest;
-use rocket::{get, post, response::content::Html, routes, Build, Rocket, State};
+use rocket::{
+    get,
+    outcome::try_outcome,
+    post,
+    request::{FromRequest, Outcome, Request},
+    response::content::Html,
+    routes, Build, Rocket, State,
+};
 use serenity::model::user::CurrentUser;
 
 mod guilds;
 mod query;
-use query::{Mutation, Query};
+pub use query::{types, Mutation, Query};
 
 pub struct Context {
-    webui: WebUI,
-    user: Option<CurrentUser>,
+    pub webui: WebUI,
+    pub user: Option<CurrentUser>,
 }
 
 impl juniper::Context for Context {}
 
-type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>;
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for Context {
+    type Error = ();
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let webui = try_outcome!(request.guard::<&State<WebUI>>().await);
+        let user = request.guard::<Option<SessionUser<'_>>>().await.unwrap(); // Option always results in Success
+        Outcome::Success(Context {
+            webui: webui.inner().clone(),
+            user: user.map(|u| u.into_current_user().clone()),
+        })
+    }
+}
+
+pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>;
 
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
     vega.manage(Schema::new(Query, Mutation, EmptySubscription::new()))
-        .mount("/", routes![graphiql])
+        .mount("/", routes![graphiql, playground])
         .mount("/api", routes![graphql_get, graphql_post])
 }
 
@@ -29,35 +50,26 @@ fn graphiql() -> Html<String> {
     juniper_rocket::graphiql_source("/api/graphql", None)
 }
 
-async fn graphql(
-    request: GraphQLRequest,
-    schema: &State<Schema>,
-    webui: &State<WebUI>,
-    user: Option<SessionUser<'_>>,
-) -> juniper_rocket::GraphQLResponse {
-    let context = Context {
-        webui: webui.inner().clone(),
-        user: user.map(|u| u.into_current_user().clone()),
-    };
-    request.execute(&*schema, &context).await
+#[get("/playground")]
+fn playground() -> Html<String> {
+    // TODO: use uri! macro
+    juniper_rocket::playground_source("/api/graphql", None)
 }
 
 #[get("/graphql?<request>")]
 async fn graphql_get(
     request: GraphQLRequest,
     schema: &State<Schema>,
-    webui: &State<WebUI>,
-    user: Option<SessionUser<'_>>,
+    context: Context,
 ) -> juniper_rocket::GraphQLResponse {
-    graphql(request, schema, webui, user).await
+    request.execute(&*schema, &context).await
 }
 
 #[post("/graphql", data = "<request>")]
 async fn graphql_post(
     request: GraphQLRequest,
     schema: &State<Schema>,
-    webui: &State<WebUI>,
-    user: Option<SessionUser<'_>>,
+    context: Context,
 ) -> juniper_rocket::GraphQLResponse {
-    graphql(request, schema, webui, user).await
+    request.execute(&*schema, &context).await
 }

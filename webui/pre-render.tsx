@@ -1,10 +1,13 @@
+require('module-alias/register');
+
 import * as fs from 'fs';
 import { promisify } from 'util';
 import * as glob from 'glob';
 import * as prettier from 'prettier';
 import { render } from 'preact-render-to-string';
-import { CurrentUserData } from './src/apitypes';
 import App from './src/components/App';
+import { GetBot_bot } from './src/components/__generated__/GetBot';
+import { ApolloClient, ApolloProvider, InMemoryCache } from '@apollo/client';
 
 async function write(filepath: string, source: string): Promise<void> {
     const options = await prettier.resolveConfig(filepath);
@@ -30,17 +33,23 @@ async function mapGlobFiles<T>(pattern: string, map: (source: string) => T[]): P
 /////////////////
 
 async function renderIndex() {
-    const bot: CurrentUserData = {
+    const client = new ApolloClient({
+        ssrMode: true,
+        cache: new InMemoryCache(),
+    });
+
+    const bot: GetBot_bot = {
+        __typename: 'User',
         id: '(BOT_ID)',
-        username: '(BOT_NAME)',
+        name: '(BOT_NAME)',
         avatar: '(BOT_AVATAR)',
-        mfa_enabled: false,
-        bot: true,
         discriminator: '(BOT_DISCRIMINATOR)' as unknown as number,
     };
 
     const body = render(
-        <App bot={bot} />,
+        <ApolloProvider client={client}>
+            <App bot={bot} />
+        </ApolloProvider>,
         {},
         {
             pretty: true,

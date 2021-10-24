@@ -9,40 +9,63 @@ import Spinner from './Spinner';
 import Guild from './Guild';
 import { NavLink } from './NavLink';
 import { useQuery, gql } from '@apollo/client';
-import { GetBot_bot } from '../__generated__/GetBot';
+import { GetBot, GetBot_bot } from './__generated__/GetBot';
 import { GetMe } from './__generated__/GetMe';
 import { GetGuilds } from './__generated__/GetGuilds';
 
-export default function App({ bot }: { bot: GetBot_bot }) {
+export default function App({ bot: inlineBot }: { bot?: GetBot_bot }) {
     const [childError] = useErrorBoundary();
 
-    const { data: userData, error: userError } = useQuery<GetMe>(gql`
-        query GetMe {
-            me {
-                id
-                name
-                discriminator
-                avatar
-            }
-        }
-    `);
-    const user = userData?.me;
+    const { data: botData, error: botError } = inlineBot
+        ? { data: { bot: inlineBot }, error: undefined }
+        : useQuery<GetBot>(
+              gql`
+                  query GetBot {
+                      bot {
+                          id
+                          name
+                          discriminator
+                          avatar
+                      }
+                  }
+              `,
+              { ssr: false },
+          );
+    const bot = botData?.bot;
 
-    const { data: guildsData, error: guildsError } = useQuery<GetGuilds>(gql`
-        query GetGuilds {
-            guilds {
-                id
-                name
-                icon
-                admin
-                ranks {
+    const { data: userData, error: userError } = useQuery<GetMe>(
+        gql`
+            query GetMe {
+                me {
                     id
                     name
-                    current
+                    discriminator
+                    avatar
                 }
             }
-        }
-    `);
+        `,
+        { ssr: false },
+    );
+    const user = userData?.me;
+
+    const { data: guildsData, error: guildsError } = useQuery<GetGuilds>(
+        gql`
+            query GetGuilds {
+                guilds {
+                    id
+                    name
+                    icon
+                    admin
+                    ranks {
+                        id
+                        name
+                        current
+                    }
+                }
+            }
+        `,
+        { ssr: false },
+    );
     const guilds = guildsData?.guilds;
 
     useEffect(() => {
@@ -60,10 +83,10 @@ export default function App({ bot }: { bot: GetBot_bot }) {
             <nav class="uk-navbar-container uk-flex-wrap uk-navbar" uk-navbar>
                 <div class="uk-navbar-left">
                     <div class="uk-navbar-item uk-logo">
-                        {bot.avatar && (
+                        {bot?.avatar && (
                             <DiscordImage type="avatar" user_id={bot.id} user_avatar={bot.avatar} size={32} circle />
                         )}{' '}
-                        {bot.name}
+                        {bot && bot.name}
                     </div>
                 </div>
                 <div class="uk-navbar-right">

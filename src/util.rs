@@ -1,3 +1,5 @@
+#![allow(dead_code)] // which utilities get used depends on crate features
+
 use conv::ConvUtil;
 use itertools::Itertools;
 use std::time::Duration;

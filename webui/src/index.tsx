@@ -3,9 +3,9 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 import { render, hydrate } from 'preact';
-import { ApolloClient, InMemoryCache, ApolloProvider, gql } from '@apollo/client';
+import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 import App from './components/App';
-import { GetBot, GetBot_bot } from './__generated__/GetBot';
+import { GetBot_bot } from './components/__generated__/GetBot';
 
 const client = new ApolloClient({
     uri: '/api/graphql',
@@ -26,28 +26,10 @@ if (inlineBot && process.env.NODE_ENV !== 'development') {
     while (document.body.firstChild) {
         document.body.firstChild.remove();
     }
-    client
-        .query<GetBot>({
-            query: gql`
-                query GetBot {
-                    bot {
-                        id
-                        name
-                        discriminator
-                        avatar
-                    }
-                }
-            `,
-        })
-        .then(async (response) => {
-            render(
-                <ApolloProvider client={client}>
-                    <App bot={response.data.bot} />
-                </ApolloProvider>,
-                document.body,
-            );
-        })
-        .catch((err) => {
-            console.error(err);
-        });
+    render(
+        <ApolloProvider client={client}>
+            <App />
+        </ApolloProvider>,
+        document.body,
+    );
 }

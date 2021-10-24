@@ -15,7 +15,7 @@ use serenity::model::{
 };
 use std::borrow::Cow;
 
-mod types {
+pub mod types {
     #[allow(clippy::wildcard_imports)]
     use super::*;
 

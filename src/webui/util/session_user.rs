@@ -1,14 +1,11 @@
 use super::RateLimiter;
 use rocket::{
-    http::Status,
     outcome::{try_outcome, IntoOutcome},
     request::{FromRequest, Outcome, Request},
     State,
 };
 use serenity::model::user::CurrentUser;
 use std::ops::Deref;
-
-pub type AuthError = (Status, &'static str);
 
 #[derive(Clone, Copy, Debug)]
 pub struct SessionUser<'r>(&'r CurrentUser);

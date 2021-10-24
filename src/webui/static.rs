@@ -1,15 +1,17 @@
-use super::util::{json::to_safe_string, HeaderResponder};
+use super::{
+    graphql::{Context, Schema},
+    util::HeaderResponder,
+};
 use rocket::{
     get,
-    http::{ContentType, Header},
+    http::{ContentType, Header, Status},
     routes, Build, Rocket, State,
 };
-use serenity::CacheAndHttp;
 use std::{
     borrow::Cow,
+    collections::HashMap,
     env, fs,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 // defines const WEBUI_FILES
@@ -63,21 +65,70 @@ pub fn path(path: PathBuf) -> Option<HeaderResponder<(ContentType, Vec<u8>)>> {
 
 #[get("/")]
 pub async fn index(
-    discord: &State<Arc<CacheAndHttp>>,
-) -> Option<HeaderResponder<(ContentType, Vec<u8>)>> {
-    let bot = discord.cache.current_user().await;
-    let (mime, source) = serve("index.html")?;
+    schema: &State<Schema>,
+    context: Context,
+) -> Result<HeaderResponder<(ContentType, Vec<u8>)>, (Status, &'static str)> {
+    let (mime, source) = serve("index.html").ok_or((Status::NotFound, "no index document"))?;
 
-    let mut source = String::from_utf8_lossy(&source)
-        .replace("(BOT_ID)", &bot.id.to_string())
-        .replace("(BOT_NAME)", &bot.name)
-        .replace("(BOT_DISCRIMINATOR)", &bot.discriminator.to_string());
+    let (bot, errors) = juniper::execute(
+        "
+        query GetBot {
+            bot {
+                id
+                name
+                discriminator
+                avatar
+            }
+        }
+        ",
+        Some("GetBot"),
+        &*schema,
+        &HashMap::new(),
+        &context,
+    )
+    .await
+    .map_err(|_| (Status::InternalServerError, "unable to get bot user"))?;
 
-    if let Some(ref avatar) = bot.avatar {
-        source = source.replace("(BOT_AVATAR)", avatar);
+    if !errors.is_empty() {
+        return Err((Status::InternalServerError, "error getting bot user"));
     }
 
-    if let Ok(ref string) = to_safe_string(&bot) {
+    let bot = bot.into_object().unwrap();
+    let bot = bot
+        .get_field_value("bot")
+        .unwrap()
+        .as_object_value()
+        .unwrap();
+
+    let mut source = String::from_utf8_lossy(&source)
+        .replace(
+            "(BOT_ID)",
+            bot.get_field_value("id")
+                .unwrap()
+                .as_string_value()
+                .unwrap(),
+        )
+        .replace(
+            "(BOT_NAME)",
+            bot.get_field_value("name")
+                .unwrap()
+                .as_string_value()
+                .unwrap(),
+        )
+        .replace(
+            "(BOT_DISCRIMINATOR)",
+            &bot.get_field_value("discriminator")
+                .unwrap()
+                .as_scalar()
+                .unwrap()
+                .to_string(),
+        );
+
+    if let Some(avatar) = bot.get_field_value("avatar") {
+        source = source.replace("(BOT_AVATAR)", avatar.as_string_value().unwrap());
+    }
+
+    if let Ok(ref string) = serde_json::to_string(&bot) {
         source = source.replace(
             "(BOT_JSON)",
             &format!(
@@ -87,7 +138,7 @@ pub async fn index(
         );
     }
 
-    Some(
+    Ok(
         HeaderResponder::from((mime, source.into_bytes())).set_header(Header::new(
             "Link",
             r#"<https://cdn.discordapp.com>; rel="preconnect"; crossorigin="anonymous""#,

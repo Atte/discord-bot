@@ -21,34 +21,32 @@ where
 }
 
 fn main() -> io::Result<()> {
-    println!("cargo:rerun-if-env-changed=CARGO");
+    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=OUT_DIR");
     let webui_dist = env::var("OUT_DIR").expect("missing env OUT_DIR");
-    if Path::new(&webui_dist).join("webui.rs").exists()
-        && env::var("CARGO").unwrap().ends_with("/rls")
-    {
-        println!("cargo:warning=Skipping build script for RLS build!");
-        return Ok(());
-    }
 
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_WEBUI");
     if env::var_os("CARGO_FEATURE_WEBUI").is_none() {
         return Ok(());
     }
 
+    println!("cargo:rerun-if-env-changed=CARGO");
     println!("cargo:rerun-if-env-changed=WEBUI_PASSTHROUGH");
-    if env::var_os("WEBUI_PASSTHROUGH").is_some() {
+    if Path::new(&webui_dist).join("webui.rs").exists()
+        && env::var("CARGO").unwrap().ends_with("/rls")
+    {
+        println!("cargo:warning=Skipping build script for RLS build!");
+    } else if env::var_os("WEBUI_PASSTHROUGH").is_some() {
         println!("cargo:warning=Skipping build script because WEBUI_PASSTHROUGH is enabled!");
-        return Ok(());
+    } else {
+        println!("cargo:rerun-if-changed={}", SOURCE_DIR);
+
+        if !Path::new(SOURCE_DIR).join("node_modules").exists() {
+            yarn(["install", "--frozen-lockfile"])?;
+        }
+
+        yarn(["run", "build", "--dist-dir", &webui_dist])?;
     }
-
-    println!("cargo:rerun-if-changed={}", SOURCE_DIR);
-
-    if !Path::new(SOURCE_DIR).join("node_modules").exists() {
-        yarn(["install", "--frozen-lockfile"])?;
-    }
-
-    yarn(["run", "build", "--dist-dir", &webui_dist])?;
 
     includedir_codegen::start("WEBUI_FILES")
         .dir(webui_dist, Compression::None)
