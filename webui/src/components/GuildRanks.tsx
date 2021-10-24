@@ -1,54 +1,60 @@
-import { useState } from 'preact/hooks';
-import { GuildData, RoleData } from '../apitypes';
-import { sortByKey } from '../util';
+import { gql, useMutation } from '@apollo/client';
 import Errors from './Errors';
 import Spinner from './Spinner';
+import { GetGuilds_guilds } from './__generated__/GetGuilds';
+import { SetRankMembership, SetRankMembershipVariables } from './__generated__/SetRankMembership';
 
-export default function GuildRanks({ guild }: { guild: GuildData }) {
-    const [ranks, setRanks] = useState(guild.ranks);
-    const [ranksError, setRanksError] = useState<Error | undefined>(undefined);
-    const [changing, setChanging] = useState(false);
-
-    async function setRole(role: RoleData, on: boolean): Promise<void> {
-        setChanging(true);
-        try {
-            const response = await fetch(`api/guilds/${role.guild_id}/ranks/${role.id}`, {
-                method: on ? 'POST' : 'DELETE',
-            });
-            if (!response.ok) {
-                throw new Error(response.statusText);
+export default function GuildRanks({ guild }: { guild: GetGuilds_guilds }) {
+    const [setRankMembership, { loading, error }] = useMutation<SetRankMembership, SetRankMembershipVariables>(
+        gql`
+            mutation SetRankMembership($guildId: ID!, $rankId: ID!, $in: Boolean!) {
+                setRankMembership(guildId: $guildId, rankId: $rankId, in: $in) {
+                    id
+                    current
+                }
             }
-            setRanks(await response.json());
-        } catch (err) {
-            setRanksError(err as Error);
-        } finally {
-            setChanging(false);
-        }
-    }
+        `,
+        {
+            optimisticResponse(variables) {
+                return {
+                    setRankMembership: {
+                        __typename: 'Rank',
+                        id: variables.rankId,
+                        current: variables.in,
+                    },
+                };
+            },
+        },
+    );
 
     return (
         <>
-            <Errors errors={[ranksError]} />
+            <Errors errors={[error]} />
             <form>
-                {ranks ? (
+                {guild.ranks ? (
                     <ul class="uk-list uk-column-1-2@s uk-column-1-3@m uk-column-1-4@l uk-column-1-5@xl uk-animation-slide-top-small">
-                        {ranks.current
-                            .concat(ranks.available)
-                            .sort(sortByKey((guild) => guild.name))
-                            .map((role) => (
-                                <li key={role.id} style="break-inside: avoid">
-                                    <label style="cursor: pointer">
-                                        <input
-                                            class="uk-checkbox"
-                                            type="checkbox"
-                                            disabled={changing}
-                                            checked={ranks.current.includes(role)}
-                                            onChange={() => setRole(role, !ranks.current.includes(role))}
-                                        />{' '}
-                                        {role.name}
-                                    </label>
-                                </li>
-                            ))}
+                        {guild.ranks.map((rank) => (
+                            <li key={rank.id} style="break-inside: avoid">
+                                <label style="cursor: pointer">
+                                    <input
+                                        class="uk-checkbox"
+                                        type="checkbox"
+                                        disabled={loading}
+                                        checked={rank.current}
+                                        onChange={() =>
+                                            setRankMembership({
+                                                variables: {
+                                                    guildId: guild.id,
+                                                    rankId: rank.id,
+                                                    in: !rank.current,
+                                                },
+                                            })
+                                        }
+                                    />{' '}
+                                    {rank.name}
+                                </label>
+                            </li>
+                        ))}
                     </ul>
                 ) : (
                     <Spinner class="uk-text-center" />

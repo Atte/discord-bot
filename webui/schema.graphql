@@ -1,6 +1,32 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+type Mutation {
+  setRankMembership(guildId: ID!, rankId: ID!, in: Boolean!): Rank!
+}
+type Rank {
+  id: ID!
+  name: String!
+  current: Boolean!
+}
+type Guild {
+  id: ID!
+  name: String!
+  icon: String
+  admin: Boolean!
+  ranks: [Rank!]!
+  rules: Rules
+}
+type Rules {
+  id: ID!
+  content: String!
+}
 type Query {
-  me: User
   bot: User!
+  me: User!
+  guild(id: ID!): Guild!
+  guilds: [Guild!]!
 }
 type User {
   id: ID!

@@ -1,17 +1,17 @@
 import Router, { Route } from 'preact-router';
 import { useEffect, useErrorBoundary } from 'preact/hooks';
 import { createHashHistory } from 'history';
-import { ResponseStatusError, useFetch } from '../util';
+import { ResponseStatusError } from '../util';
 import DiscordImage from './DiscordImage';
 import Redirect from './Redirect';
 import Errors from './Errors';
 import Spinner from './Spinner';
-import { CurrentUserData, GuildData } from '../apitypes';
 import Guild from './Guild';
 import { NavLink } from './NavLink';
 import { useQuery, gql } from '@apollo/client';
 import { GetBot_bot } from '../__generated__/GetBot';
 import { GetMe } from './__generated__/GetMe';
+import { GetGuilds } from './__generated__/GetGuilds';
 
 export default function App({ bot }: { bot: GetBot_bot }) {
     const [childError] = useErrorBoundary();
@@ -28,7 +28,22 @@ export default function App({ bot }: { bot: GetBot_bot }) {
     `);
     const user = userData?.me;
 
-    const [guilds, guildsError] = useFetch<GuildData[]>('api/guilds');
+    const { data: guildsData, error: guildsError } = useQuery<GetGuilds>(gql`
+        query GetGuilds {
+            guilds {
+                id
+                name
+                icon
+                admin
+                ranks {
+                    id
+                    name
+                    current
+                }
+            }
+        }
+    `);
+    const guilds = guildsData?.guilds;
 
     useEffect(() => {
         // UIkit only does some additional styling,

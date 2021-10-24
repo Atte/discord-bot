@@ -13,7 +13,7 @@
         "lint": "eslint .",
         "format": "prettier --write .",
         "pre-render": "ts-node --prefer-ts-exts --compiler-options '{\"module\":\"CommonJS\"}' ./pre-render.tsx",
-        "graphql-download": "rover graph introspect \"$WEBUI_URL/api/graphql\" >schema.graphql",
+        "graphql-download": "npx -p @apollo/rover rover graph introspect \"$WEBUI_URL/api/graphql\" >schema.graphql",
         "graphql-generate": "apollo codegen:generate --localSchemaFile=schema.graphql --target=typescript --tagName=gql"
     },
     "targets": {

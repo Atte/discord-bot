@@ -16,5 +16,5 @@ export interface GetMe_me {
 }
 
 export interface GetMe {
-  me: GetMe_me | null;
+  me: GetMe_me;
 }

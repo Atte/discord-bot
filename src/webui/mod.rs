@@ -17,7 +17,6 @@ use std::{
 
 mod auth;
 mod graphql;
-mod guilds;
 mod r#static;
 mod util;
 
@@ -140,7 +139,6 @@ impl WebUI {
         ));
         let vega = r#static::init(vega);
         let vega = auth::init(vega, &self.config)?;
-        let vega = guilds::init(vega);
         let vega = graphql::init(vega);
         vega.launch().await?;
         Ok(())

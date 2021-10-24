@@ -12,7 +12,17 @@ const client = new ApolloClient({
     cache: new InMemoryCache(),
 });
 
-if (process.env.NODE_ENV === 'development') {
+const inlineSource = document.head.querySelector<HTMLScriptElement>('script[type="application/x-bot-user+json"]');
+const inlineBot: GetBot_bot = inlineSource?.textContent && JSON.parse(inlineSource.textContent);
+
+if (inlineBot && process.env.NODE_ENV !== 'development') {
+    hydrate(
+        <ApolloProvider client={client}>
+            <App bot={inlineBot} />
+        </ApolloProvider>,
+        document.body,
+    );
+} else {
     while (document.body.firstChild) {
         document.body.firstChild.remove();
     }
@@ -40,13 +50,4 @@ if (process.env.NODE_ENV === 'development') {
         .catch((err) => {
             console.error(err);
         });
-} else {
-    const botData = document.head.querySelector<HTMLScriptElement>('script[type="application/x-bot-user+json"]');
-    const bot: GetBot_bot = JSON.parse(botData?.textContent!);
-    hydrate(
-        <ApolloProvider client={client}>
-            <App bot={bot} />
-        </ApolloProvider>,
-        document.body,
-    );
 }
