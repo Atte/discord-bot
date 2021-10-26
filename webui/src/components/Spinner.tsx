@@ -1,6 +1,8 @@
+import { memo } from 'preact/compat';
 import { useMediaQuery } from '../util';
 
-export default function Spinner(props: { class?: string; ratio?: number }) {
+export default memo(Spinner);
+function Spinner(props: { class?: string; ratio?: number }) {
     const reducedMotion = useMediaQuery('(prefers-reduced-motion)');
     return (
         <div class={props.class}>

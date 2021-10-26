@@ -1,3 +1,4 @@
+import { memo } from 'preact/compat';
 import { unreachable, useMediaQuery } from '../util';
 
 interface UserAvatar {
@@ -19,7 +20,8 @@ type DiscordImageProps = (UserAvatar | GuildIcon) & {
     size: 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096;
 };
 
-export default function DiscordImage(props: DiscordImageProps) {
+export default memo(DiscordImage);
+function DiscordImage(props: DiscordImageProps) {
     const reducedMotion = useMediaQuery('(prefers-reduced-motion)');
 
     let ids: string[];
@@ -31,7 +33,7 @@ export default function DiscordImage(props: DiscordImageProps) {
             ids = [props.guild_id, props.guild_icon];
             break;
         default:
-            unreachable(props);
+            return unreachable(props);
     }
 
     const animate = props.animated && ids[ids.length - 1].startsWith('a_') && !reducedMotion;

@@ -1,6 +1,8 @@
 import { ComponentChildren } from 'preact';
+import { memo } from 'preact/compat';
 
-export default function Errors({ errors, children }: { errors: (Error | undefined)[]; children?: ComponentChildren }) {
+export default memo(Errors);
+function Errors({ errors, children }: { errors: (Error | undefined)[]; children?: ComponentChildren }) {
     return (
         <>
             {errors

@@ -6,8 +6,8 @@ import * as glob from 'glob';
 import * as prettier from 'prettier';
 import { render } from 'preact-render-to-string';
 import App from './src/components/App';
-import { GetBot_bot } from './src/components/__generated__/GetBot';
-import { ApolloClient, ApolloProvider, InMemoryCache } from '@apollo/client';
+import { GetBot, GetBot_bot } from './src/components/__generated__/GetBot';
+import { ApolloClient, ApolloProvider, gql, InMemoryCache } from '@apollo/client';
 
 async function write(filepath: string, source: string): Promise<void> {
     const options = await prettier.resolveConfig(filepath);
@@ -37,17 +37,29 @@ async function renderIndex() {
         ssrMode: true,
         cache: new InMemoryCache(),
     });
-
-    const bot: GetBot_bot = {
-        __typename: 'User',
-        id: '(BOT_ID)',
-        name: '(BOT_NAME)',
-        avatar: '(BOT_AVATAR)',
-    };
+    client.cache.writeQuery<GetBot>({
+        query: gql`
+            query GetBot {
+                bot {
+                    id
+                    name
+                    avatar
+                }
+            }
+        `,
+        data: {
+            bot: {
+                __typename: 'User',
+                id: '(BOT_ID)',
+                name: '(BOT_NAME)',
+                avatar: '(BOT_AVATAR)',
+            },
+        },
+    });
 
     const body = render(
         <ApolloProvider client={client}>
-            <App bot={bot} />
+            <App />
         </ApolloProvider>,
         {},
         {

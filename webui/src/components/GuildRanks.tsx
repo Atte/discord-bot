@@ -1,10 +1,12 @@
 import { gql, useMutation } from '@apollo/client';
+import { memo } from 'preact/compat';
 import Errors from './Errors';
 import Spinner from './Spinner';
 import { GetGuilds_guilds } from './__generated__/GetGuilds';
 import { SetRankMembership, SetRankMembershipVariables } from './__generated__/SetRankMembership';
 
-export default function GuildRanks({ guild }: { guild: GetGuilds_guilds }) {
+export default memo(GuildRanks);
+function GuildRanks({ guild }: { guild: GetGuilds_guilds }) {
     const [setRankMembership, { loading, error }] = useMutation<SetRankMembership, SetRankMembershipVariables>(
         gql`
             mutation SetRankMembership($guildId: ID!, $rankId: ID!, $in: Boolean!) {

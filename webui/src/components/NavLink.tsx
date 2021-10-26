@@ -1,7 +1,9 @@
 import { ComponentChildren } from 'preact';
 import Match from 'preact-router/match';
+import { memo } from 'preact/compat';
 
-export function NavLink({ path, children }: { path: string; children: ComponentChildren }) {
+export default memo(NavLink);
+function NavLink({ path, children }: { path: string; children: ComponentChildren }) {
     return (
         <Match path={`${path}/:rest*`}>
             {({ matches }: { matches: boolean }) => (

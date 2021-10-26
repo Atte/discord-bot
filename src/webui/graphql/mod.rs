@@ -40,10 +40,7 @@ pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>
 
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
     vega.manage(Schema::new(Query, Mutation, EmptySubscription::new()))
-        .mount(
-            "/",
-            routes![graphiql, playground, graphql_get, graphql_post],
-        )
+        .mount("/", routes![graphiql, graphql_get, graphql_post])
 }
 
 #[get("/graphiql")]
@@ -51,10 +48,12 @@ fn graphiql() -> Html<String> {
     juniper_rocket::graphiql_source(&uri!(graphql_post).to_string(), None)
 }
 
+/*
 #[get("/playground")]
 fn playground() -> Html<String> {
     juniper_rocket::playground_source(&uri!(graphql_post).to_string(), None)
 }
+*/
 
 #[get("/api/graphql?<request>")]
 async fn graphql_get(

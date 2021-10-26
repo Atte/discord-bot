@@ -2,11 +2,13 @@ import Router, { Route } from 'preact-router';
 import { createHashHistory } from 'history';
 import GuildRanks from './GuildRanks';
 import Redirect from './Redirect';
-import { NavLink } from './NavLink';
-import { GuildRules } from './GuildRules';
+import NavLink from './NavLink';
+import GuildRules from './GuildRules';
 import { GetGuilds_guilds } from './__generated__/GetGuilds';
+import { memo } from 'preact/compat';
 
-export default function Guild({ guild }: { guild: GetGuilds_guilds }) {
+export default memo(Guild);
+function Guild({ guild }: { guild: GetGuilds_guilds }) {
     const path = `/guilds/${encodeURIComponent(guild.name)}`;
     return (
         <div class="uk-padding-small uk-animation-fade uk-animation-fast">

@@ -12,13 +12,10 @@ const client = new ApolloClient({
     cache: new InMemoryCache(),
 });
 
-const inlineSource = document.head.querySelector<HTMLScriptElement>('script[type="application/x-bot-user+json"]');
-const inlineBot: GetBot_bot = inlineSource?.textContent && JSON.parse(inlineSource.textContent);
-
-if (inlineBot && process.env.NODE_ENV !== 'development') {
+if (process.env.NODE_ENV !== 'development') {
     hydrate(
         <ApolloProvider client={client}>
-            <App bot={inlineBot} />
+            <App />
         </ApolloProvider>,
         document.body,
     );

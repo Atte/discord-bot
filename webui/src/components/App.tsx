@@ -1,71 +1,13 @@
-import Router, { Route } from 'preact-router';
 import { useEffect, useErrorBoundary } from 'preact/hooks';
-import { createHashHistory } from 'history';
-import { ResponseStatusError } from '../util';
-import DiscordImage from './DiscordImage';
-import Redirect from './Redirect';
 import Errors from './Errors';
-import Spinner from './Spinner';
-import Guild from './Guild';
-import { NavLink } from './NavLink';
-import { useQuery, gql } from '@apollo/client';
-import { GetBot, GetBot_bot } from './__generated__/GetBot';
-import { GetMe } from './__generated__/GetMe';
-import { GetGuilds } from './__generated__/GetGuilds';
+import NavbarBot from './NavbarBot';
+import NavbarUser from './NavbarUser';
+import Guilds from './Guilds';
+import { memo } from 'preact/compat';
 
-export default function App({ bot: inlineBot }: { bot?: GetBot_bot }) {
+export default memo(App);
+function App() {
     const [childError] = useErrorBoundary();
-
-    const { data: botData, error: botError } = inlineBot
-        ? { data: { bot: inlineBot }, error: undefined }
-        : useQuery<GetBot>(
-              gql`
-                  query GetBot {
-                      bot {
-                          id
-                          name
-                          avatar
-                      }
-                  }
-              `,
-              { ssr: false },
-          );
-    const bot = botData?.bot;
-
-    const { data: userData, error: userError } = useQuery<GetMe>(
-        gql`
-            query GetMe {
-                me {
-                    id
-                    name
-                    discriminator
-                    avatar
-                }
-            }
-        `,
-        { ssr: false },
-    );
-    const user = userData?.me;
-
-    const { data: guildsData, error: guildsError } = useQuery<GetGuilds>(
-        gql`
-            query GetGuilds {
-                guilds {
-                    id
-                    name
-                    icon
-                    admin
-                    ranks {
-                        id
-                        name
-                        current
-                    }
-                }
-            }
-        `,
-        { ssr: false },
-    );
-    const guilds = guildsData?.guilds;
 
     useEffect(() => {
         // UIkit only does some additional styling,
@@ -73,47 +15,19 @@ export default function App({ bot: inlineBot }: { bot?: GetBot_bot }) {
         import('../uikit');
     }, []);
 
-    const needToLogin = userError?.message === 'unauthenticated' || guildsError?.message === 'unauthenticated';
-
     return (
         <div class="uk-container">
             <nav class="uk-navbar-container uk-flex-wrap uk-navbar" uk-navbar>
                 <div class="uk-navbar-left">
                     <div class="uk-navbar-item uk-logo">
-                        {bot?.avatar && (
-                            <DiscordImage type="avatar" user_id={bot.id} user_avatar={bot.avatar} size={32} circle />
-                        )}{' '}
-                        {bot && bot.name}
+                        <NavbarBot />
                     </div>
                 </div>
                 <div class="uk-navbar-right">
-                    {user && (
-                        <div class="uk-navbar-item uk-animation-fade uk-animation-fast">
-                            {user.avatar && (
-                                <DiscordImage
-                                    type="avatar"
-                                    user_id={user.id}
-                                    user_avatar={user.avatar}
-                                    size={32}
-                                    circle
-                                />
-                            )}{' '}
-                            <span class="uk-text-bold">{user.name}</span>#
-                            {user.discriminator.toString().padStart(4, '0')}
-                        </div>
-                    )}
-                    {(user || guilds) && (
-                        <div class="uk-navbar-item uk-animation-fade uk-animation-fast">
-                            <form action="api/auth/clear" method="POST">
-                                <button class="uk-button uk-button-primary">
-                                    <span uk-icon="sign-out" /> Sign out
-                                </button>
-                            </form>
-                        </div>
-                    )}
+                    <NavbarUser />
                 </div>
             </nav>
-            {needToLogin ? (
+            {childError?.message === 'unauthenticated' ? (
                 <div class="uk-padding-small">
                     <form action="api/auth/redirect" method="POST">
                         <button class="uk-button uk-button-primary uk-animation-fade uk-animation-fast">
@@ -122,53 +36,15 @@ export default function App({ bot: inlineBot }: { bot?: GetBot_bot }) {
                     </form>
                 </div>
             ) : (
-                <>
-                    <Errors errors={[childError, botError, userError, guildsError]}>
-                        <form action="api/auth/clear" method="POST">
-                            <button class="uk-button uk-button-primary">
-                                <span uk-icon="refresh" /> Retry
-                            </button>
-                        </form>
-                    </Errors>
-                    {guilds ? (
-                        <div class="uk-padding-small uk-animation-fade uk-animation-fast">
-                            <ul class="uk-margin-remove-bottom uk-tab" uk-tab>
-                                {guilds.map((guild) => (
-                                    <NavLink key={guild.id} path={`/guilds/${encodeURIComponent(guild.name)}`}>
-                                        {guild.icon && (
-                                            <DiscordImage
-                                                type="icon"
-                                                guild_id={guild.id}
-                                                guild_icon={guild.icon}
-                                                size={32}
-                                                squircle
-                                            />
-                                        )}{' '}
-                                        {guild.name}
-                                    </NavLink>
-                                ))}
-                            </ul>
-                            <Router history={createHashHistory()}>
-                                {guilds.map((guild) => (
-                                    <Route
-                                        key={guild.id}
-                                        path={`/guilds/${encodeURIComponent(guild.name)}/:rest*`}
-                                        component={Guild}
-                                        guild={guild}
-                                    />
-                                ))}
-                                <Route
-                                    default
-                                    component={Redirect}
-                                    to={`/guilds/${encodeURIComponent(guilds[0].name)}`}
-                                />
-                            </Router>
-                        </div>
-                    ) : (
-                        <Spinner class="uk-padding-small" ratio={3} />
-                    )}
-                </>
+                <Errors errors={[childError]}>
+                    <form action="api/auth/clear" method="POST">
+                        <button class="uk-button uk-button-primary">
+                            <span uk-icon="refresh" /> Retry
+                        </button>
+                    </form>
+                </Errors>
             )}
+            <Guilds />
         </div>
     );
 }
