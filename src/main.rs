@@ -1,4 +1,10 @@
-#![deny(clippy::all, clippy::pedantic)]
+#![warn(
+    clippy::pedantic,
+    future_incompatible,
+    nonstandard_style,
+    rust_2018_idioms,
+    unused
+)]
 #![allow(clippy::module_name_repetitions)]
 
 use anyhow::Result;

@@ -24,7 +24,7 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     let original_input = args.message().trim();
-    let input = DICE_RE.replace_all(original_input, |caps: &Captures| {
+    let input = DICE_RE.replace_all(original_input, |caps: &Captures<'_>| {
         let distribution = Uniform::new(
             1_usize,
             caps.name("sides")
