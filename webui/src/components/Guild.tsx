@@ -6,6 +6,7 @@ import NavLink from './NavLink';
 import GuildRules from './GuildRules';
 import { GetGuilds_guilds } from './__generated__/GetGuilds';
 import { memo } from 'preact/compat';
+import GuildStats from './GuildStats';
 
 export default memo(Guild);
 function Guild({ guild }: { guild: GetGuilds_guilds }) {
@@ -21,11 +22,17 @@ function Guild({ guild }: { guild: GetGuilds_guilds }) {
                         <span uk-icon="file-text" /> Rules
                     </NavLink>
                 )}
+                {guild.admin && false && (
+                    <NavLink path={`${path}/stats`}>
+                        <span uk-icon="comments" /> Statistics
+                    </NavLink>
+                )}
             </ul>
             <div class="uk-card uk-card-default uk-card-body">
                 <Router history={createHashHistory()}>
                     <Route path={`${path}/ranks`} component={GuildRanks} guild={guild} />
                     <Route path={`${path}/rules`} component={GuildRules} guild={guild} />
+                    <Route path={`${path}/rulestats`} component={GuildStats} guild={guild} />
                     <Route default component={Redirect} to={`${path}/ranks`} />
                 </Router>
             </div>

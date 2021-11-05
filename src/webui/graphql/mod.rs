@@ -31,7 +31,7 @@ impl<'r> FromRequest<'r> for Context {
         let user = request.guard::<Option<SessionUser<'_>>>().await.unwrap(); // Option always results in Success
         Outcome::Success(Context {
             webui: webui.inner().clone(),
-            user: user.map(|u| u.into_current_user().clone()),
+            user: user.map(|u| (*u).clone()),
         })
     }
 }

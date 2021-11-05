@@ -40,13 +40,14 @@ async fn main() -> Result<()> {
     migrations::mongo(&db).await?;
 
     info!("Spawning Discord...");
-    let mut discord = discord::Discord::try_new(config.clone(), db).await?;
+    let mut discord = discord::Discord::try_new(config.clone(), db.clone()).await?;
 
     #[cfg(feature = "webui")]
     {
         info!("Spawning web UI...");
         let webui =
-            webui::WebUI::try_new(config.clone(), discord.client.cache_and_http.clone()).await?;
+            webui::WebUI::try_new(config.clone(), discord.client.cache_and_http.clone(), db)
+                .await?;
         tokio::spawn(async move {
             loop {
                 if let Err(report) = webui.run().await {

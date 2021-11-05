@@ -2,10 +2,14 @@ use super::{
     guilds::{guild_member, guild_roles, guild_rules, ranks_from_guild},
     Context,
 };
-use futures::stream::{self, StreamExt};
+use crate::discord::STATS_COLLECTION_NAME;
+use chrono::{DateTime, Utc};
+use futures::stream::{self, StreamExt, TryStreamExt};
 use juniper::{FieldResult, ID};
-use juniper_codegen::graphql_object;
+use juniper_codegen::{graphql_object, GraphQLObject};
 use log::trace;
+use mongodb::bson::doc;
+use serde::Deserialize;
 use serenity::model::{
     channel::Message,
     guild::{GuildInfo, Role},
@@ -93,6 +97,112 @@ pub mod types {
         }
     }
 
+    #[derive(GraphQLObject, Deserialize)]
+    pub struct ChannelStats {
+        id: ID,
+        name: String,
+        names: Vec<String>,
+        #[serde(with = "mongodb::bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+        first_message: DateTime<Utc>,
+        #[serde(with = "mongodb::bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+        last_message: DateTime<Utc>,
+        message_count: i32,
+        emoji_count: i32,
+        channel_mention_count: i32,
+        role_mention_count: i32,
+        user_mention_count: i32,
+    }
+
+    #[derive(GraphQLObject, Deserialize)]
+    pub struct MemberStats {
+        id: ID,
+        tag: String,
+        tags: Vec<String>,
+        nick: String,
+        nicks: Vec<String>,
+        #[serde(with = "mongodb::bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+        first_message: DateTime<Utc>,
+        #[serde(with = "mongodb::bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+        last_message: DateTime<Utc>,
+        message_count: i32,
+        emoji_count: i32,
+        channel_mention_count: i32,
+        role_mention_count: i32,
+        user_mention_count: i32,
+    }
+
+    #[derive(GraphQLObject, Deserialize)]
+    pub struct EmojiStats {
+        id: ID,
+        name: String,
+        names: Vec<String>,
+        #[serde(with = "mongodb::bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+        first_message: DateTime<Utc>,
+        #[serde(with = "mongodb::bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+        last_message: DateTime<Utc>,
+        use_count: i32,
+    }
+
+    pub struct Stats(pub GuildId);
+
+    #[graphql_object(Context = Context)]
+    impl Stats {
+        fn id(&self) -> ID {
+            ID::new(self.0 .0.to_string())
+        }
+
+        async fn channels(&self, context: &Context) -> FieldResult<Vec<ChannelStats>> {
+            Ok(context
+                .webui
+                .db
+                .collection(STATS_COLLECTION_NAME)
+                .find(
+                    doc! {
+                        "type": "channel",
+                        "guild_id": self.0 .0.to_string(),
+                    },
+                    None,
+                )
+                .await?
+                .try_collect()
+                .await?)
+        }
+
+        async fn members(&self, context: &Context) -> FieldResult<Vec<MemberStats>> {
+            Ok(context
+                .webui
+                .db
+                .collection(STATS_COLLECTION_NAME)
+                .find(
+                    doc! {
+                        "type": "member",
+                        "guild_id": self.0 .0.to_string(),
+                    },
+                    None,
+                )
+                .await?
+                .try_collect()
+                .await?)
+        }
+
+        async fn emojis(&self, context: &Context) -> FieldResult<Vec<EmojiStats>> {
+            Ok(context
+                .webui
+                .db
+                .collection(STATS_COLLECTION_NAME)
+                .find(
+                    doc! {
+                        "type": "emoji",
+                        "guild_id": self.0 .0.to_string(),
+                    },
+                    None,
+                )
+                .await?
+                .try_collect()
+                .await?)
+        }
+    }
+
     pub struct Guild(pub GuildInfo);
 
     #[graphql_object(Context = Context)]
@@ -152,6 +262,11 @@ pub mod types {
                 .await
                 .map(Rules)
         }
+
+        /// Statistics for the guild
+        async fn stats(&self) -> Stats {
+            Stats(self.0.id)
+        }
     }
 }
 
@@ -160,12 +275,12 @@ pub struct Query;
 #[graphql_object(Context = Context)]
 impl Query {
     /// The bot's Discord user
-    async fn bot(context: &Context) -> types::User {
+    async fn bot(context: &Context) -> types::User<'_> {
         types::User(Cow::Owned(context.webui.discord.cache.current_user().await))
     }
 
     /// The logged in user's Discord user
-    fn me(context: &Context) -> FieldResult<types::User> {
+    fn me(context: &Context) -> FieldResult<types::User<'_>> {
         Ok(types::User(Cow::Borrowed(
             context.user.as_ref().ok_or("unauthenticated")?,
         )))

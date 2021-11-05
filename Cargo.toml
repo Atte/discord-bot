@@ -11,6 +11,8 @@ repository = "https://github.com/Atte/discord-bot"
 [dependencies]
 bytes = "1.0"
 conv = "0.3"
+derivative = "2.2"
+derive_more = "0.99"
 env_logger = "0.9"
 futures = "0.3"
 itertools = "0.10"

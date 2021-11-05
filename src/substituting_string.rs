@@ -1,11 +1,22 @@
+use derivative::Derivative;
+use derive_more::{AsRef, Display};
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::{de, ser};
-use std::{borrow, cmp, convert, env, fmt, hash};
+use std::{borrow, env, fmt};
 
-#[derive(Debug, Clone)]
+#[derive(Derivative, Debug, Clone, Display, AsRef)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[display(fmt = "{}", resolved)]
 pub struct SubstitutingString {
+    #[derivative(
+        PartialEq = "ignore",
+        PartialOrd = "ignore",
+        Ord = "ignore",
+        Hash = "ignore"
+    )]
     raw: String,
+    #[as_ref(forward)]
     resolved: String,
 }
 
@@ -29,20 +40,6 @@ impl SubstitutingString {
     }
 }
 
-impl fmt::Display for SubstitutingString {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.resolved)
-    }
-}
-
-impl PartialEq for SubstitutingString {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.resolved.eq(&other.resolved)
-    }
-}
-
 impl<T> PartialEq<T> for SubstitutingString
 where
     String: PartialEq<T>,
@@ -50,42 +47,6 @@ where
     #[inline]
     fn eq(&self, other: &T) -> bool {
         self.resolved.eq(other)
-    }
-}
-
-impl Eq for SubstitutingString {}
-
-impl Ord for SubstitutingString {
-    #[inline]
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.resolved.cmp(&other.resolved)
-    }
-}
-
-impl PartialOrd for SubstitutingString {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl hash::Hash for SubstitutingString {
-    #[inline]
-    fn hash<H>(&self, mut state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        self.resolved.hash(&mut state);
-    }
-}
-
-impl<S: ?Sized> convert::AsRef<S> for SubstitutingString
-where
-    String: AsRef<S>,
-{
-    #[inline]
-    fn as_ref(&self) -> &S {
-        self.resolved.as_ref()
     }
 }
 

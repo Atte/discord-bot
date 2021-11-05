@@ -27,10 +27,15 @@ pub struct WebUI {
     config: Config,
     discord: Arc<CacheAndHttp>,
     guilds: BotGuilds,
+    db: mongodb::Database,
 }
 
 impl WebUI {
-    pub async fn try_new(config: Config, discord: Arc<CacheAndHttp>) -> Result<Self> {
+    pub async fn try_new(
+        config: Config,
+        discord: Arc<CacheAndHttp>,
+        db: mongodb::Database,
+    ) -> Result<Self> {
         let guilds = discord
             .http
             .get_current_user()
@@ -50,6 +55,7 @@ impl WebUI {
             config,
             discord,
             guilds,
+            db,
         })
     }
 

@@ -83,7 +83,12 @@ pub async fn mongo(db: &Database) -> Result<()> {
     mongo_number_array_to_string_array(db, "sticky-roles", "role_ids").await?;
 
     info!("Building MongoDB indexes...");
-    mongo_ensure_indexes(db, "stats", vec![(doc! { "type": 1, "id": 1 }, true)]).await?;
+    mongo_ensure_indexes(
+        db,
+        "stats",
+        vec![(doc! { "type": 1, "id": 1, "guild_id": 1 }, true)],
+    )
+    .await?;
     mongo_ensure_indexes(
         db,
         "sticky-roles",

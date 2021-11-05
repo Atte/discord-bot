@@ -107,7 +107,7 @@ pub async fn index(
 
     let (mime, source) = serve("index.html").ok_or((Status::NotFound, "no index.html"))?;
     let source = String::from_utf8(source).expect("invalid UTF-8 in index.html");
-    let source = RE.replace_all(&source, |caps: &Captures| {
+    let source = RE.replace_all(&source, |caps: &Captures<'_>| {
         if &caps[1] == "JSON" {
             format!(
                 r#"<script type="application/x-bot-user+json">{}</script>"#,

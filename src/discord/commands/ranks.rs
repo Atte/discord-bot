@@ -5,6 +5,7 @@ use super::super::{
 };
 use crate::util::ellipsis_string;
 use anyhow::{anyhow, Result};
+use derivative::Derivative;
 use itertools::Itertools;
 use serenity::{
     client::Context,
@@ -19,35 +20,17 @@ use serenity::{
 use std::{cmp::Ordering, collections::HashSet, io::Write};
 use tabwriter::TabWriter;
 
-#[derive(Debug, Clone)]
+pub fn cmp_roles(a: &Role, b: &Role) -> Option<Ordering> {
+    a.name.to_lowercase().partial_cmp(&b.name.to_lowercase())
+}
+
+#[derive(Derivative, Debug, Clone)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
 struct Rank {
+    #[derivative(PartialOrd(compare_with = "cmp_roles"))]
     role: Role,
+    #[derivative(PartialEq = "ignore", PartialOrd = "ignore", Ord = "ignore")]
     members: Vec<Member>,
-}
-
-impl PartialEq for Rank {
-    #[inline]
-    fn eq(&self, other: &Rank) -> bool {
-        self.role.eq(&other.role)
-    }
-}
-
-impl Eq for Rank {}
-
-impl PartialOrd for Rank {
-    #[inline]
-    fn partial_cmp(&self, other: &Rank) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Rank {
-    fn cmp(&self, other: &Rank) -> Ordering {
-        self.role
-            .name
-            .to_lowercase()
-            .cmp(&other.role.name.to_lowercase())
-    }
 }
 
 #[derive(Debug, Clone)]

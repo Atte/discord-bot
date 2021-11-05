@@ -12,6 +12,14 @@ type Rank {
   """Whether the logged in user currently has this rank or not"""
   current: Boolean!
 }
+type Stats {
+  id: ID!
+  channels: [ChannelStats!]!
+  members: [MemberStats!]!
+  emojis: [EmojiStats!]!
+}
+"""DateTime"""
+scalar DateTimeUtc
 type Guild {
   id: ID!
   name: String!
@@ -23,10 +31,32 @@ type Guild {
   ranks: [Rank!]!
   """The rules message of the guild"""
   rules: Rules
+  """Statistics for the guild"""
+  stats: Stats!
 }
 type Rules {
   id: ID!
   content: String!
+}
+type ChannelStats {
+  id: ID!
+  name: String!
+  names: [String!]!
+  firstMessage: DateTimeUtc!
+  lastMessage: DateTimeUtc!
+  messageCount: Int!
+  emojiCount: Int!
+  channelMentionCount: Int!
+  roleMentionCount: Int!
+  userMentionCount: Int!
+}
+type EmojiStats {
+  id: ID!
+  name: String!
+  names: [String!]!
+  firstMessage: DateTimeUtc!
+  lastMessage: DateTimeUtc!
+  useCount: Int!
 }
 type Query {
   """The bot's Discord user"""
@@ -37,6 +67,20 @@ type Query {
   guild(id: ID!): Guild!
   """All guilds both the bot and the logged in user are in"""
   guilds: [Guild!]!
+}
+type MemberStats {
+  id: ID!
+  tag: String!
+  tags: [String!]!
+  nick: String!
+  nicks: [String!]!
+  firstMessage: DateTimeUtc!
+  lastMessage: DateTimeUtc!
+  messageCount: Int!
+  emojiCount: Int!
+  channelMentionCount: Int!
+  roleMentionCount: Int!
+  userMentionCount: Int!
 }
 type User {
   id: ID!

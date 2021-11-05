@@ -14,6 +14,8 @@ mod log_channel;
 mod stats;
 mod sticky_roles;
 
+pub use stats::COLLECTION_NAME as STATS_COLLECTION_NAME;
+
 #[derive(Debug)]
 pub struct ActivityKey;
 

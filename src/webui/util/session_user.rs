@@ -1,30 +1,14 @@
 use super::RateLimiter;
+use derive_more::Deref;
 use rocket::{
     outcome::{try_outcome, IntoOutcome},
     request::{FromRequest, Outcome, Request},
     State,
 };
 use serenity::model::user::CurrentUser;
-use std::ops::Deref;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Deref)]
 pub struct SessionUser<'r>(&'r CurrentUser);
-
-impl<'r> SessionUser<'r> {
-    #[inline]
-    pub fn into_current_user(self) -> &'r CurrentUser {
-        self.0
-    }
-}
-
-impl<'r> Deref for SessionUser<'r> {
-    type Target = CurrentUser;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for SessionUser<'r> {

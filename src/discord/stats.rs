@@ -15,7 +15,7 @@ use serenity::{
     },
 };
 
-const COLLECTION_NAME: &str = "stats";
+pub const COLLECTION_NAME: &str = "stats";
 
 #[allow(clippy::too_many_lines)]
 pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
@@ -72,6 +72,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
             doc! {
                 "type": "channel",
                 "id": channel.id.to_string(),
+                "guild_id": channel.guild_id.to_string(),
             },
             doc! {
                 "$set": {
@@ -99,17 +100,18 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
     collection
         .update_one(
             doc! {
-                "type": "user",
+                "type": "member",
                 "id": msg.author.id.to_string(),
+                "guild_id": channel.guild_id.to_string(),
             },
             doc! {
                 "$set": {
-                    "name": &msg.author.name,
-                    "discriminator": i32::from(msg.author.discriminator),
+                    "tag": &msg.author.tag(),
                     "nick": &nick,
                     "last_message": now,
                 },
                 "$addToSet": {
+                    "tags": &msg.author.tag(),
                     "nicks": nick,
                 },
                 "$setOnInsert": {
@@ -133,11 +135,15 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                 doc! {
                     "type": "emoji",
                     "id": id.to_string(),
+                    "guild_id": channel.guild_id.to_string(),
                 },
                 doc! {
                     "$set": {
                         "name": name,
                         "last_message": now,
+                    },
+                    "$addToSet": {
+                        "names": name,
                     },
                     "$setOnInsert": {
                         "first_message": now,
