@@ -18,6 +18,9 @@ pub struct Config {
     pub cron: CronConfig,
     #[cfg(feature = "berrytube")]
     pub berrytube: BerrytubeConfig,
+    #[cfg(feature = "teamup")]
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
+    pub teamup: HashMap<GuildId, TeamupConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -34,10 +37,14 @@ pub struct DiscordConfig {
     pub client_id: SubstitutingString,
     #[cfg(feature = "webui")]
     pub client_secret: SubstitutingString,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub owners: HashSet<UserId>,
     pub blocked_users: HashSet<UserId>,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub command_channels: HashSet<ChannelId>,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub log_channels: HashSet<ChannelId>,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub rules_channels: HashSet<ChannelId>,
 }
 
@@ -45,24 +52,38 @@ pub struct DiscordConfig {
 pub struct GibConfig {
     pub endpoint: SubstitutingString,
     pub user_agent: SubstitutingString,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub shy_artists: HashSet<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct WebUIConfig {
     pub url: SubstitutingString,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub guilds: HashSet<GuildId>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CronConfig {
     pub rate: u64,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub delete_old_messages: HashMap<ChannelId, i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BerrytubeConfig {
     pub url: SubstitutingString,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TeamupConfig {
+    pub api_key: SubstitutingString,
+    pub calendar_key: SubstitutingString,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
+    pub recurring_subcalendars: HashSet<u64>,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
+    pub oneoff_subcalendars: HashSet<u64>,
+    pub location: SubstitutingString,
 }
 
 impl Config {

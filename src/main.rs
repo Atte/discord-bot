@@ -23,6 +23,8 @@ mod config;
 mod cron;
 mod discord;
 mod migrations;
+#[cfg(feature = "teamup")]
+mod teamup;
 #[cfg(feature = "webui")]
 mod webui;
 
@@ -94,6 +96,23 @@ async fn main() -> Result<()> {
                 sleep(Duration::from_secs(10)).await;
             }
         });
+    }
+
+    #[cfg(feature = "teamup")]
+    {
+        for (guild_id, config) in config.teamup {
+            info!("Spawning Teamup for {}...", guild_id);
+            let mut teamup =
+                teamup::Teamup::try_new(guild_id, config, discord.client.cache_and_http.clone())?;
+            tokio::spawn(async move {
+                loop {
+                    if let Err(report) = teamup.run().await {
+                        error!("Teamup error: {:#?}", report);
+                    }
+                    sleep(Duration::from_secs(60 * 60)).await;
+                }
+            });
+        }
     }
 
     info!("Running Discord...");

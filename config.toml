@@ -45,3 +45,19 @@ rate = 300 # 5 minutes
 
 [berrytube]
 url = "https://socket.berrytube.tv/sse?events=videoChange,videoStatus"
+
+# test
+[teamup.324598323489013770]
+api_key = "$TEAMUP_API_KEY"
+calendar_key = "ks1vk8rt2qcy3vpk6j"
+recurring_subcalendars = [3929506]
+oneoff_subcalendars = [3929522]
+location = "https://berrytube.tv/"
+
+# BT
+# [teamup.130763680160677888]
+# api_key = "$TEAMUP_API_KEY"
+# calendar_key = "ks1vk8rt2qcy3vpk6j"
+# recurring_subcalendars = [3929506]
+# oneoff_subcalendars = [3929522]
+# location = "https://berrytube.tv/"

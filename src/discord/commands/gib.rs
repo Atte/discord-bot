@@ -11,7 +11,6 @@ use mongodb::{
 };
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
-use serde_aux::field_attributes::deserialize_default_from_null;
 use serenity::{
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
@@ -29,7 +28,7 @@ struct SearchResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Image {
     id: i64,
-    #[serde(deserialize_with = "deserialize_default_from_null")]
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     tags: Vec<String>,
     source_url: Option<String>,
     first_seen_at: Option<String>,
