@@ -103,8 +103,9 @@ async fn main() -> Result<()> {
         for (guild_id, config) in config.teamup {
             info!("Spawning Teamup for {}...", guild_id);
             let mut teamup =
-                teamup::Teamup::try_new(guild_id, config, discord.client.cache_and_http.clone())?;
+                teamup::Teamup::new(guild_id, config, discord.client.cache_and_http.clone());
             tokio::spawn(async move {
+                sleep(Duration::from_secs(5)).await;
                 loop {
                     if let Err(report) = teamup.run().await {
                         error!("Teamup error: {:#?}", report);
