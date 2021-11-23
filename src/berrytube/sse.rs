@@ -1,4 +1,4 @@
-use anyhow::{Context, Error, Result};
+use color_eyre::eyre::{Result, WrapErr};
 use futures::{Stream, StreamExt};
 use reqwest::{Client, IntoUrl};
 use std::{io::BufRead, time::Duration};
@@ -36,7 +36,7 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
     let mut buffer: Vec<u8> = Vec::new();
     let lines = bytes.flat_map(move |chunk| {
         match chunk {
-            Err(err) => return futures::stream::iter(vec![Err(Error::new(err))]),
+            Err(err) => return futures::stream::iter(vec![Err(err.into())]),
             Ok(chunk) => buffer.extend(chunk),
         }
 
@@ -47,7 +47,7 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
                 let remainder = buffer.split_off(index);
                 let lines: Vec<Result<String>> = buffer
                     .lines()
-                    .map(|line| line.with_context(|| "line decode error"))
+                    .map(|line| line.wrap_err("line decode error"))
                     .collect();
                 buffer = remainder;
                 futures::stream::iter(lines)
@@ -61,7 +61,7 @@ pub async fn stream_sse_events(url: impl IntoUrl) -> Result<impl Stream<Item = R
         .flat_map(move |line| {
             match line {
                 // timeout
-                Err(err) => futures::stream::iter(vec![Err(Error::new(err))]),
+                Err(err) => futures::stream::iter(vec![Err(err.into())]),
                 // some other error
                 Ok(Err(err)) => futures::stream::iter(vec![Err(err)]),
                 // empty line (event delimiter)

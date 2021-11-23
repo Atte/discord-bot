@@ -1,6 +1,6 @@
 use super::{get_data, DbKey};
-use anyhow::{bail, Result};
 use chrono::Utc;
+use color_eyre::eyre::{bail, Result};
 use lazy_static::lazy_static;
 use mongodb::{
     bson::{doc, Document},

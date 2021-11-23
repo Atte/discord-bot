@@ -36,7 +36,7 @@ impl EventHandler for Handler {
                 && !message.is_own(&ctx).await
             {
                 if let Err(err) = message.delete(&ctx).await {
-                    error!("Unable to delete rules channel spam: {}", err);
+                    error!("Unable to delete rules channel spam: {:?}", err);
                 }
             }
         }
@@ -54,7 +54,7 @@ impl EventHandler for Handler {
                 if let Err(err) =
                     log_channel::message_deleted(&ctx, channel_id, guild_id, message).await
                 {
-                    error!("Unable to log message deletion: {}", err);
+                    error!("Unable to log message deletion: {:?}", err);
                 }
             }
         }
@@ -73,7 +73,7 @@ impl EventHandler for Handler {
                     if let Err(err) =
                         log_channel::message_deleted(&ctx, channel_id, guild_id, message).await
                     {
-                        error!("Unable to log message deletion: {}", err);
+                        error!("Unable to log message deletion: {:?}", err);
                     }
                 }
             }
@@ -82,10 +82,10 @@ impl EventHandler for Handler {
 
     async fn guild_member_addition(&self, ctx: Context, guild_id: GuildId, member: Member) {
         if let Err(err) = log_channel::member_added(&ctx, guild_id, &member.user).await {
-            error!("Unable to log member addition: {}", err);
+            error!("Unable to log member addition: {:?}", err);
         }
         if let Err(err) = sticky_roles::apply_stickies(&ctx, &member).await {
-            error!("Unable to apply stickies: {}", err);
+            error!("Unable to apply stickies: {:?}", err);
         }
     }
 
@@ -97,7 +97,7 @@ impl EventHandler for Handler {
         _member: Option<Member>,
     ) {
         if let Err(err) = log_channel::member_removed(&ctx, guild_id, &user).await {
-            error!("Unable to log member removal: {}", err);
+            error!("Unable to log member removal: {:?}", err);
         }
     }
 
@@ -109,10 +109,10 @@ impl EventHandler for Handler {
     ) {
         if let Err(err) = log_channel::member_updated(&ctx, old_member.as_ref(), &new_member).await
         {
-            error!("Unable to log member update: {}", err);
+            error!("Unable to log member update: {:?}", err);
         }
         if let Err(err) = sticky_roles::save_stickies(&ctx, &new_member).await {
-            error!("Unable to save stickies: {}", err);
+            error!("Unable to save stickies: {:?}", err);
         }
     }
 }

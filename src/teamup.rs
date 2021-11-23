@@ -1,6 +1,6 @@
 use crate::config::TeamupConfig;
-use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
+use color_eyre::eyre::Result;
 use log::{info, trace};
 use reqwest::{
     header::{HeaderMap, HeaderValue},
@@ -23,7 +23,7 @@ struct TeamupEventsResponse {
 #[derive(Debug, Clone, Deserialize)]
 struct TeamupEvent {
     id: String,
-    series_id: Option<u64>,
+    series_id: Option<String>,
     start_dt: DateTime<Utc>,
     end_dt: DateTime<Utc>,
     title: String,

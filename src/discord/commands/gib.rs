@@ -64,7 +64,7 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             .connect_timeout(Duration::from_secs(10))
             .build()
             // simplify error to a `String` to make it `impl Clone`
-            .map_err(|err| format!("Unable to create reqwest::Client: {}", err))
+            .map_err(|err| format!("Unable to create reqwest::Client: {:?}", err))
     })
     .await?;
 

@@ -1,5 +1,5 @@
 use crate::SubstitutingString;
-use anyhow::Result;
+use color_eyre::eyre::Result;
 use serde::Deserialize;
 use serenity::model::id::{ChannelId, GuildId, UserId};
 use std::{

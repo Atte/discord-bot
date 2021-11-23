@@ -1,7 +1,7 @@
 #![allow(clippy::let_unit_value, clippy::needless_pass_by_value)]
 
 use crate::config::Config;
-use anyhow::Result;
+use color_eyre::eyre::Result;
 use itertools::Itertools;
 use nonzero_ext::nonzero;
 use rocket::{data::ToByteUnit, fairing::AdHoc, http::Header, shield::Shield};

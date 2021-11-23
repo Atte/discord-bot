@@ -10,6 +10,7 @@ repository = "https://github.com/Atte/discord-bot"
 
 [dependencies]
 bytes = "1.0"
+color-eyre = "0.5"
 conv = "0.3"
 derivative = "2.2"
 derive_more = "0.99"
@@ -64,10 +65,6 @@ features = ["fs", "macros", "rt", "sync", "time", "rt-multi-thread"]
 [dependencies.tokio-stream]
 version = "0.1"
 optional = true
-
-[dependencies.anyhow]
-version = "1.0"
-features = ["backtrace"]
 
 # needed by includedir
 [dependencies.phf]

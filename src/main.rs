@@ -7,7 +7,7 @@
 )]
 #![allow(clippy::module_name_repetitions)]
 
-use anyhow::Result;
+use color_eyre::eyre::Result;
 use log::{error, info, warn};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -31,6 +31,7 @@ mod webui;
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
+    color_eyre::install()?;
 
     let config = config::Config::from_file(
         std::env::var("CONFIG_PATH").unwrap_or_else(|_| String::from("config.toml")),
@@ -53,7 +54,7 @@ async fn main() -> Result<()> {
         tokio::spawn(async move {
             loop {
                 if let Err(report) = webui.run().await {
-                    error!("Web UI error: {:#?}", report);
+                    error!("Web UI error: {:?}", report);
                 } else {
                     warn!("Web UI ended!");
                 }
@@ -70,7 +71,7 @@ async fn main() -> Result<()> {
             tokio::spawn(async move {
                 loop {
                     if let Err(report) = cron.run().await {
-                        error!("Cron error: {:#?}", report);
+                        error!("Cron error: {:?}", report);
                     }
                     sleep(Duration::from_secs(cron.rate)).await;
                 }
@@ -89,7 +90,7 @@ async fn main() -> Result<()> {
         tokio::spawn(async move {
             loop {
                 if let Err(report) = berrytube.run().await {
-                    error!("Berrytube error: {:#?}", report);
+                    error!("Berrytube error: {:?}", report);
                 } else {
                     warn!("Berrytube ended!");
                 }
@@ -108,7 +109,7 @@ async fn main() -> Result<()> {
                 sleep(Duration::from_secs(5)).await;
                 loop {
                     if let Err(report) = teamup.run().await {
-                        error!("Teamup error: {:#?}", report);
+                        error!("Teamup error: {:?}", report);
                     }
                     sleep(Duration::from_secs(60 * 60)).await;
                 }
@@ -119,7 +120,7 @@ async fn main() -> Result<()> {
     info!("Running Discord...");
     loop {
         if let Err(report) = discord.run().await {
-            error!("Discord error: {:#?}", report);
+            error!("Discord error: {:?}", report);
         } else {
             warn!("Discord ended!");
         }

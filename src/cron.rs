@@ -1,6 +1,6 @@
 use crate::config::CronConfig;
-use anyhow::Result;
 use chrono::{Duration, Utc};
+use color_eyre::eyre::Result;
 use log::info;
 use serenity::{
     model::id::{ChannelId, MessageId},

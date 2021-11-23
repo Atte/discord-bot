@@ -1,6 +1,6 @@
 use super::{get_data, limits::EMBED_DESC_LENGTH, ConfigKey};
 use crate::util::ellipsis_string;
-use anyhow::{Error, Result};
+use color_eyre::eyre::{Error, Result};
 use serenity::{
     builder::CreateEmbed,
     client::Context,

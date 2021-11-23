@@ -71,14 +71,14 @@ impl Berrytube {
                             }
                             self.latest_change = Some(video_change);
                             if let Err(err) = self.update_title().await {
-                                warn!("Error updating BT title after videoChange: {}", err);
+                                warn!("Error updating BT title after videoChange: {:?}", err);
                             }
                         }
                     } else if event == "videoStatus" {
                         if let Ok(video_status) = serde_json::from_str::<VideoStatusEvent>(&data) {
                             self.latest_status = Some(video_status);
                             if let Err(err) = self.update_title().await {
-                                warn!("Error updating BT title after videoStatus: {}", err);
+                                warn!("Error updating BT title after videoStatus: {:?}", err);
                             }
                         }
                     }

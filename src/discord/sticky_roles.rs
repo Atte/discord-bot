@@ -1,5 +1,5 @@
 use super::{get_data, DbKey};
-use anyhow::Result;
+use color_eyre::eyre::Result;
 use log::info;
 use mongodb::{
     bson::{doc, Document},

@@ -15,7 +15,7 @@ use rocket::{
 use serenity::{http::Http, model::oauth2::OAuth2Scope};
 use std::borrow::Cow;
 
-pub fn init(vega: Rocket<Build>, config: &Config) -> crate::Result<Rocket<Build>> {
+pub fn init(vega: Rocket<Build>, config: &Config) -> color_eyre::eyre::Result<Rocket<Build>> {
     let client = BasicClient::new(
         ClientId::new(config.discord.client_id.to_string()),
         Some(ClientSecret::new(config.discord.client_secret.to_string())),
@@ -41,7 +41,7 @@ fn redirect(
         .add_scope(Scope::new(OAuth2Scope::Identify.to_string()))
         .set_redirect_uri(Cow::Owned(
             RedirectUrl::new(format!("{}/api/auth/callback", origin)).map_err(|err| {
-                error!("authorize_url {:#?}", err);
+                error!("authorize_url {:?}", err);
                 (Status::BadGateway, "unable to form redirect URL")
             })?,
         ))
@@ -77,24 +77,24 @@ async fn callback(
         .exchange_code(AuthorizationCode::new(code.to_owned()))
         .set_redirect_uri(Cow::Owned(
             RedirectUrl::new(format!("{}/api/auth/callback", origin)).map_err(|err| {
-                error!("exchange_code {:#?}", err);
+                error!("exchange_code {:?}", err);
                 (Status::BadGateway, "unable to form redirect URL")
             })?,
         ))
         .request_async(async_http_client)
         .await
         .map_err(|err| {
-            error!("exchange_code {:#?}", err);
+            error!("exchange_code {:?}", err);
             (Status::BadGateway, "unable to exchange code for token")
         })?;
 
     let api = Http::new_with_token(&format!("Bearer {}", token.access_token().secret()));
     let user = api.get_current_user().await.map_err(|err| {
-        error!("get_current_user {:#?}", err);
+        error!("get_current_user {:?}", err);
         (Status::BadGateway, "unable to get current user information")
     })?;
     let user_string = serde_json::to_string(&user).map_err(|err| {
-        error!("to_string(user) {:#?}", err);
+        error!("to_string(user) {:?}", err);
         (
             Status::InternalServerError,
             "unable to stringify current user",
