@@ -1,18 +1,20 @@
 use crate::config::TeamupConfig;
 use chrono::{DateTime, Duration, Utc};
-use color_eyre::eyre::Result;
+use color_eyre::{
+    eyre::{eyre, Result},
+    Section, SectionExt,
+};
 use log::{info, trace};
-use reqwest::{
-    header::{HeaderMap, HeaderValue},
-    Method, Url,
-};
+use reqwest::{header::HeaderValue, Method};
 use serde::{Deserialize, Serialize};
-use serenity::{
-    model::id::{GuildId, MessageId},
-    CacheAndHttp,
-};
-use std::{collections::HashSet, io::Read, sync::Arc};
+use serde_repr::{Deserialize_repr, Serialize_repr};
+use serenity::{model::id::GuildId, CacheAndHttp};
+use std::time::Duration as StdDuration;
+use std::{collections::HashMap, sync::Arc};
+use tokio::time::sleep;
 use tokio::try_join;
+
+const RATE_LIMIT: StdDuration = StdDuration::from_secs(10);
 
 #[derive(Debug, Clone, Deserialize)]
 struct TeamupEventsResponse {
@@ -27,7 +29,8 @@ struct TeamupEvent {
     start_dt: DateTime<Utc>,
     end_dt: DateTime<Utc>,
     title: String,
-    notes: String,
+    #[serde(deserialize_with = "serde_with::rust::string_empty_as_none::deserialize")]
+    notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +45,7 @@ struct DiscordEvent {
     privacy_level: Option<DiscordEventPrivacyLevel>,
     scheduled_start_time: DateTime<Utc>,
     scheduled_end_time: Option<DateTime<Utc>>,
+    #[serde(deserialize_with = "serde_with::rust::string_empty_as_none::deserialize")]
     description: Option<String>,
     #[serde(deserialize_with = "serde_with::rust::default_on_error::deserialize")]
     entity_type: Option<DiscordEventEntityType>,
@@ -52,12 +56,14 @@ struct DiscordEventEntityMetadata {
     location: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
 enum DiscordEventPrivacyLevel {
     GuildOnly = 2,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
 enum DiscordEventEntityType {
     StageInstance = 1,
     Voice = 2,
@@ -88,7 +94,7 @@ impl Teamup {
         subcalendars: impl Iterator<Item = u64>,
     ) -> Result<impl Iterator<Item = TeamupEvent>> {
         let now = Utc::now();
-        let response: TeamupEventsResponse = self
+        let response = self
             .client
             .get(format!(
                 "https://api.teamup.com/{}/events",
@@ -110,19 +116,25 @@ impl Teamup {
             )
             .send()
             .await?
-            .json()
+            .error_for_status()?
+            .text()
             .await?;
+
+        let response: TeamupEventsResponse = serde_json::from_str(&response)
+            .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))?;
+
         Ok(response.events.into_iter().filter(move |event| {
-            event.end_dt < now
-                || (event.series_id.is_some() && (event.start_dt - now) > Duration::days(7))
+            event.end_dt > now
+                && (event.series_id.is_none() || event.start_dt < (now + Duration::days(6)))
         }))
     }
 
-    fn discord_request(
+    async fn discord_request(
         &self,
         method: Method,
         event_id: Option<&str>,
-    ) -> Result<reqwest::RequestBuilder> {
+        f: impl FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
+    ) -> Result<String> {
         let url = if let Some(event_id) = event_id {
             format!(
                 "https://discord.com/api/v9/guilds/{}/scheduled-events/{}",
@@ -134,47 +146,48 @@ impl Teamup {
                 self.guild_id
             )
         };
+
         let request = self.client.request(method, url).header(
             "Authorization",
-            HeaderValue::from_str(&format!("Bot {}", self.discord.http.token))?,
+            HeaderValue::from_str(&self.discord.http.token)?,
         );
-        Ok(request)
+
+        let response = f(request).send().await?;
+
+        if let Err(err) = response.error_for_status_ref() {
+            let text = response.text().await?;
+            Err(eyre!(err).with_section(|| text.header("Response:")))
+        } else {
+            Ok(response.text().await?)
+        }
     }
 
     async fn fetch_discord_events(&self) -> Result<impl Iterator<Item = DiscordEvent>> {
-        let response: Vec<DiscordEvent> = self
-            .discord_request(Method::GET, None)?
-            .send()
-            .await?
-            .json()
-            .await?;
+        let response = self.discord_request(Method::GET, None, |r| r).await?;
+
+        let response: Vec<DiscordEvent> = serde_json::from_str(&response)
+            .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))?;
 
         let bot_id = self.discord.cache.current_user_id().await.to_string();
         Ok(response
             .into_iter()
-            // TODO
-            .filter(move |event| true || event.creator_id == bot_id))
+            .filter(move |event| event.creator_id == bot_id))
     }
 
     async fn create_discord_event(&self, event: &DiscordEvent) -> Result<()> {
-        self.discord_request(Method::POST, None)?
-            .json(event)
-            .send()
+        self.discord_request(Method::POST, None, |r| r.json(event))
             .await?;
         Ok(())
     }
 
     async fn modify_discord_event(&self, event: &DiscordEvent) -> Result<()> {
-        self.discord_request(Method::PATCH, Some(&event.id))?
-            .json(event)
-            .send()
+        self.discord_request(Method::PATCH, Some(&event.id), |r| r.json(event))
             .await?;
         Ok(())
     }
 
     async fn delete_discord_event(&self, event_id: &str) -> Result<()> {
-        self.discord_request(Method::DELETE, Some(&event_id))?
-            .send()
+        self.discord_request(Method::DELETE, Some(&event_id), |r| r)
             .await?;
         Ok(())
     }
@@ -192,12 +205,44 @@ impl Teamup {
             ),
         )?;
 
-        for discord_event in discord_events {
-            trace!("{:#?}", discord_event);
-        }
+        let mut discord_events: HashMap<String, DiscordEvent> = discord_events
+            .map(|event| (event.id.clone(), event))
+            .collect();
 
         for calendar_event in recurring_calendar_events.chain(oneoff_calendar_events) {
-            trace!("{:#?}", calendar_event);
+            if let Some(existing_event) = discord_events
+                .values()
+                .find(|event| {
+                    event.name == calendar_event.title
+                        && event.scheduled_start_time == calendar_event.start_dt
+                })
+                .cloned()
+            {
+                discord_events.remove(&existing_event.id);
+            } else if calendar_event.start_dt > Utc::now() + Duration::minutes(1) {
+                sleep(RATE_LIMIT).await;
+                info!("Creating event: {}", calendar_event.title);
+                self.create_discord_event(&DiscordEvent {
+                    id: "serialization skipped".to_owned(),
+                    creator_id: "serialization skipped".to_owned(),
+                    entity_metadata: Some(DiscordEventEntityMetadata {
+                        location: Some("https://berrytube.tv".to_owned()),
+                    }),
+                    name: calendar_event.title,
+                    privacy_level: Some(DiscordEventPrivacyLevel::GuildOnly),
+                    scheduled_start_time: calendar_event.start_dt,
+                    scheduled_end_time: Some(calendar_event.end_dt),
+                    description: calendar_event.notes,
+                    entity_type: Some(DiscordEventEntityType::External),
+                })
+                .await?;
+            }
+        }
+
+        for discord_event in discord_events.into_values() {
+            sleep(RATE_LIMIT).await;
+            info!("Deleting event: {}", discord_event.name);
+            self.delete_discord_event(&discord_event.id).await?;
         }
 
         Ok(())

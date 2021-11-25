@@ -36,6 +36,10 @@ void = "1.0"
 version = "1.11"
 features = ["chrono"]
 
+[dependencies.serde_repr]
+version = "0.1"
+optional = true
+
 [dependencies.oauth2]
 version = "4.1"
 optional = true
@@ -103,4 +107,4 @@ webui = ["rocket", "oauth2", "phf", "includedir", "governor", "juniper", "junipe
 webui-https = ["webui", "rocket/tls"]
 berrytube = ["reqwest/stream", "tokio-stream"]
 cron = []
-teamup = []
+teamup = ["serde_repr"]
