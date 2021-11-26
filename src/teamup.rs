@@ -14,7 +14,7 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::time::sleep;
 use tokio::try_join;
 
-const RATE_LIMIT: StdDuration = StdDuration::from_secs(10);
+const RATE_LIMIT: StdDuration = StdDuration::from_secs(15);
 
 #[derive(Debug, Clone, Deserialize)]
 struct TeamupEventsResponse {
