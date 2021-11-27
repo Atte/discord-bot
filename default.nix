@@ -3,7 +3,7 @@
 , lib ? pkgs.lib
 }:
 
-with import (fetchTarball "https://github.com/hercules-ci/gitignore.nix/archive/master.tar.gz") { inherit lib; };
+with import (fetchTarball "https://github.com/hercules-ci/gitignore.nix/tarball/5b9e0ff9d3b551234b4f3eb3983744fa354b17f1") { inherit lib; };
 
 pkgs.rustPlatform.buildRustPackage {
   pname = "discord-bot";
