@@ -1,5 +1,6 @@
 {
-    "include": ["src/**/*", "typings/**/*", "__tests__/**/*", "pre-render.tsx"],
+    "include": ["src/**/*", "typings/**/*", "__tests__/**/*"],
+    "typeAcquisition": { "include": ["jest"] },
     "compilerOptions": {
         "target": "ES2019",
         "lib": ["ES2019"],
@@ -13,5 +14,10 @@
         "typeRoots": ["./node_modules/@types", "./typings"],
         "types": ["parcel-env"]
     },
-    "typeAcquisition": { "include": ["jest"] }
+    "ts-node": {
+        "compilerOptions": {
+            "module": "CommonJS",
+            "types": ["node"]
+        }
+    }
 }

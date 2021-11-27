@@ -12,7 +12,8 @@ export default memo(NavbarBot);
 function NavbarBot() {
     const { data, error } = inlineBot
         ? { data: { bot: inlineBot }, error: undefined }
-        : useQuery<GetBot>(
+        : // eslint-disable-next-line react-hooks/rules-of-hooks -- `inlineBot` is static, so the condition always evaluates the same way
+          useQuery<GetBot>(
               gql`
                   query GetBot {
                       bot {

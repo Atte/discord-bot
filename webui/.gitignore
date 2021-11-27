@@ -18,3 +18,4 @@
 !.yarn/versions
 
 .proxyrc.json
+/yarn-error.log

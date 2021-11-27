@@ -5,7 +5,6 @@ if (process.env.NODE_ENV === 'development') {
 import { render, hydrate } from 'preact';
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 import App from './components/App';
-import { GetBot_bot } from './components/__generated__/GetBot';
 
 const client = new ApolloClient({
     uri: 'api/graphql',

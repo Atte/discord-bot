@@ -8,5 +8,9 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "[rust]": {
         "editor.defaultFormatter": "rust-lang.rust"
-    }
+    },
+    "[nix]": {
+        "editor.defaultFormatter": "jnoortheen.nix-ide"
+    },
+    "nixEnvSelector.nixFile": "${workspaceRoot}/default.nix"
 }
