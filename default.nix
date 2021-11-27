@@ -1,9 +1,14 @@
 { features ? [ ]
-, pkgs ? import (fetchTarball "channel:nixpkgs-unstable") { }
+, pkgs ? import <nixpkgs-unstable> { } # need unstable for `cargoLock.lockFile`
 , lib ? pkgs.lib
 }:
 
-with import (fetchTarball "https://github.com/hercules-ci/gitignore.nix/tarball/5b9e0ff9d3b551234b4f3eb3983744fa354b17f1") { inherit lib; };
+with import
+  (fetchTarball {
+    url = "https://github.com/hercules-ci/gitignore.nix/tarball/5b9e0ff9d3b551234b4f3eb3983744fa354b17f1";
+    sha256 = "01l4phiqgw9xgaxr6jr456qmww6kzghqrnbc7aiiww3h6db5vw53";
+  })
+{ inherit lib; };
 
 pkgs.rustPlatform.buildRustPackage {
   pname = "discord-bot";
