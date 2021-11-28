@@ -21,4 +21,15 @@ pkgs.rustPlatform.buildRustPackage {
   buildType = "debug";
 
   nativeBuildInputs = [ pkgs.yarn ];
+
+  preConfigure =
+    let webui = pkgs.mkYarnPackage {
+      name = "discord-bot-webui";
+      src = gitignoreSource ./webui;
+      packageJSON = ./webui/package.json;
+      yarnLock = ./webui/yarn.lock;
+    }; in
+    if builtins.any (lib.hasPrefix "webui") features
+    then "cp -r ${webui}/libexec/discord-bot-webui/node_modules webui/"
+    else "";
 }

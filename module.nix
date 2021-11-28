@@ -43,7 +43,8 @@ in
 
     systemd.services.discord-bot = {
       wantedBy = [ "multi-user.target" ];
-      after = [ "network.target" ];
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
       serviceConfig = {
         User = cfg.user;
         ExecStart = "${cfg.package}/bin/discord-bot";
