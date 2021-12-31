@@ -50,7 +50,7 @@ features = ["secrets", "json"]
 optional = true
 
 [dependencies.mongodb]
-version = "2.0.0-beta.2"
+version = "2.0.2"
 features = ["bson-chrono-0_4"]
 
 [dependencies.chrono]
