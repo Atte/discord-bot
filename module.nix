@@ -22,6 +22,11 @@ in
       default = "discord-bot";
     };
 
+    group = lib.mkOption {
+      type = lib.types.str;
+      default = "discord-bot";
+    };
+
     port = lib.mkOption {
       type = lib.types.int;
       default = 56456;
@@ -39,7 +44,11 @@ in
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [ cfg.package ];
 
-    users.users."${cfg.user}".isSystemUser = lib.mkDefault true;
+    users.users."${cfg.user}" = {
+      isSystemUser = lib.mkDefault true;
+      group = cfg.group;
+    };
+    users.groups."${cfg.group}" = { };
 
     systemd.services.discord-bot = {
       wantedBy = [ "multi-user.target" ];
