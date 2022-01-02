@@ -12,5 +12,5 @@
     "[nix]": {
         "editor.defaultFormatter": "jnoortheen.nix-ide"
     },
-    "nixEnvSelector.nixFile": "${workspaceRoot}/default.nix"
+    "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix"
 }
