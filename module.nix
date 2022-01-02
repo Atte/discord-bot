@@ -1,4 +1,4 @@
-{ lib, config, ... }:
+{ pkgs, lib, config, ... }:
 
 let
   cfg = config.services.discord-bot;
@@ -9,7 +9,10 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = import ./default.nix { features = cfg.features; };
+      default = import ./default.nix {
+        features = cfg.features;
+        inherit pkgs lib;
+      };
     };
 
     features = lib.mkOption {

@@ -1,5 +1,5 @@
 { features ? [ ]
-, pkgs ? import <nixpkgs-unstable> { } # need unstable for `cargoLock.lockFile`
+, pkgs ? import <nixpkgs> { }
 , lib ? pkgs.lib
 }:
 

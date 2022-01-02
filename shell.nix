@@ -1,6 +1,7 @@
-let pkgs = import <nixpkgs-unstable> { };
-in pkgs.mkShell {
-    buildInputs = with pkgs; [ cargo rustc rustfmt rls ];
+{ pkgs ? import <nixpkgs> { } }:
 
-    RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
+pkgs.mkShell {
+  buildInputs = with pkgs; [ cargo rustc rustfmt rls yarn ];
+
+  RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
 }
