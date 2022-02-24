@@ -1,8 +1,9 @@
 /target
-/.envrc
+/.env
 **/*.rs.bk
 /run.sh
 /secret_key
 /Rocket.toml
 *.pem
 /result
+/.direnv
