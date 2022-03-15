@@ -17,6 +17,7 @@ use tokio::try_join;
 const RATE_LIMIT: StdDuration = StdDuration::from_secs(15);
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
 enum TeamupId {
     String(String),
     Number(u64),
