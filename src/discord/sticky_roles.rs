@@ -1,5 +1,6 @@
 use super::{get_data, DbKey};
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{eyre, Result};
+use itertools::Itertools;
 use log::info;
 use mongodb::{
     bson::{doc, Document},
@@ -9,6 +10,7 @@ use serenity::{
     client::Context,
     model::{guild::Member, id::RoleId},
 };
+use std::collections::HashSet;
 
 const COLLECTION_NAME: &str = "sticky-roles";
 
@@ -49,11 +51,36 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<()> {
         )
         .await?
     {
+        let guild = member
+            .guild_id
+            .to_guild_cached(&ctx)
+            .await
+            .ok_or_else(|| eyre!("Guild not found!"))?;
+
+        let bot_roles: HashSet<RoleId> = guild
+            .member(&ctx, ctx.cache.current_user_id().await)
+            .await?
+            .roles(&ctx)
+            .await
+            .ok_or_else(|| eyre!("Roles for bot not found!"))?
+            .into_iter()
+            .map(|role| role.id)
+            .collect();
+        let guild_role_ids: HashSet<RoleId> = guild
+            .roles
+            .values()
+            .sorted_by_key(|role| role.position)
+            .rev()
+            .take_while(|role| !bot_roles.contains(&role.id))
+            .map(|role| role.id)
+            .collect();
+
         #[allow(clippy::cast_sign_loss)]
         let role_ids: Vec<RoleId> = entry
             .get_array("role_ids")?
             .iter()
             .filter_map(|i| i.as_str().and_then(|s| s.parse().ok()).map(RoleId))
+            .filter(|id| guild_role_ids.contains(id))
             .collect();
         info!("Restoring roles: {:?}", role_ids);
 

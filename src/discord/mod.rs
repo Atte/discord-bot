@@ -66,7 +66,7 @@ impl Discord {
     pub async fn try_new(config: Config, db: mongodb::Database) -> Result<Self> {
         let framework = StandardFramework::new()
             .configure(|c| {
-                c.prefix(config.discord.command_prefix.as_ref())
+                c.prefix(config.discord.command_prefix.to_string())
                     .owners(config.discord.owners.clone())
                     .blocked_users(config.discord.blocked_users.clone())
                     .allowed_channels(config.discord.command_channels.clone())
