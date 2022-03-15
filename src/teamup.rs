@@ -4,7 +4,7 @@ use color_eyre::{
     eyre::{eyre, Result},
     Section, SectionExt,
 };
-use log::{info, trace};
+use log::info;
 use reqwest::{header::HeaderValue, Method};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -17,6 +17,12 @@ use tokio::try_join;
 const RATE_LIMIT: StdDuration = StdDuration::from_secs(15);
 
 #[derive(Debug, Clone, Deserialize)]
+enum TeamupId {
+    String(String),
+    Number(u64),
+}
+
+#[derive(Debug, Clone, Deserialize)]
 struct TeamupEventsResponse {
     timestamp: u64,
     events: Vec<TeamupEvent>,
@@ -24,8 +30,8 @@ struct TeamupEventsResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 struct TeamupEvent {
-    id: String,
-    series_id: Option<String>,
+    id: TeamupId,
+    series_id: Option<TeamupId>,
     start_dt: DateTime<Utc>,
     end_dt: DateTime<Utc>,
     title: String,

@@ -1,7 +1,7 @@
 { pkgs ? import <nixpkgs> { } }:
 
 pkgs.mkShell {
-  buildInputs = with pkgs; [ cargo rustc rustfmt rls yarn niv ];
+  buildInputs = with pkgs; [ cargo rustc rustfmt rls clippy yarn niv ];
 
   RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
 }
