@@ -35,7 +35,7 @@ pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
     Ok(())
 }
 
-pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<()> {
+pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<bool> {
     let collection = get_data::<DbKey>(ctx)
         .await?
         .collection::<Document>(COLLECTION_NAME);
@@ -80,11 +80,16 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<()> {
             .filter_map(|i| i.as_str().and_then(|s| s.parse().ok()).map(RoleId))
             .filter(|id| guild_role_ids.contains(id))
             .collect();
-        info!("Restoring roles: {:?}", role_ids);
 
-        let mut user_role_ids: Vec<RoleId> = member.roles.clone();
-        user_role_ids.extend(role_ids);
-        member.edit(&ctx, |edit| edit.roles(user_role_ids)).await?;
+        if !role_ids.is_empty() {
+            info!("Restoring roles: {:?}", role_ids);
+
+            let mut user_role_ids: Vec<RoleId> = member.roles.clone();
+            user_role_ids.extend(role_ids);
+            member.edit(&ctx, |edit| edit.roles(user_role_ids)).await?;
+
+            return Ok(true);
+        }
     }
-    Ok(())
+    Ok(false)
 }

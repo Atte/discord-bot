@@ -12,5 +12,6 @@
     "[nix]": {
         "editor.defaultFormatter": "jnoortheen.nix-ide"
     },
-    "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix"
+    "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
+    "rust.all_features": true
 }

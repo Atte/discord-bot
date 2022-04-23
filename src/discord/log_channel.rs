@@ -94,7 +94,7 @@ pub async fn message_deleted(
 
 pub async fn member_added(ctx: &Context, guild_id: GuildId, user: &User) -> Result<()> {
     send_log(ctx, guild_id, |embed| {
-        embed.color(Colour::RED);
+        embed.color(Colour::DARK_GREEN);
         embed.author(|author| author.name(user.tag()).icon_url(user.face()));
         embed.description(
             MessageBuilder::new()
@@ -138,7 +138,7 @@ pub async fn member_updated(
 
     if old_name != new_name {
         send_log(ctx, new_member.guild_id, |embed| {
-            embed.color(Colour::RED);
+            embed.color(Colour::DARK_BLUE);
             embed.author(|author| {
                 author
                     .name(new_member.user.tag())
@@ -160,5 +160,24 @@ pub async fn member_updated(
         })
         .await?;
     }
+    Ok(())
+}
+
+pub async fn rules_accepted(ctx: &Context, guild_id: GuildId, user: &User) -> Result<()> {
+    send_log(ctx, guild_id, |embed| {
+        embed.color(Colour::DARK_GREEN);
+        embed.author(|author| author.name(user.tag()).icon_url(user.face()));
+        embed.description(
+            MessageBuilder::new()
+                .push_bold(
+                    MessageBuilder::new()
+                        .mention(user)
+                        .push(" accepted the rules")
+                        .build(),
+                )
+                .build(),
+        );
+    })
+    .await?;
     Ok(())
 }

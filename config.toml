@@ -24,6 +24,10 @@ log_channels = [
 rules_channels = [
     893945120880222278, # test
 ]
+rules_roles = [
+    967412631411503104, # test
+]
+rules_url = "https://berrytube.tv/rules/"
 
 [gib]
 endpoint = "https://derpibooru.org/api/v1/json/search/images?sf=random&filter_id=152796"

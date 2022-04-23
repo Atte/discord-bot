@@ -1,7 +1,7 @@
 use crate::SubstitutingString;
 use color_eyre::eyre::Result;
 use serde::Deserialize;
-use serenity::model::id::{ChannelId, GuildId, UserId};
+use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -45,7 +45,12 @@ pub struct DiscordConfig {
     #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub log_channels: HashSet<ChannelId>,
     #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
+    pub clean_channels: HashSet<ChannelId>,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
     pub rules_channels: HashSet<ChannelId>,
+    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
+    pub rules_roles: HashSet<RoleId>,
+    pub rules_url: Option<SubstitutingString>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

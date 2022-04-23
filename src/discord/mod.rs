@@ -12,6 +12,7 @@ mod event_handler;
 mod hooks;
 pub mod limits;
 mod log_channel;
+mod rules_check;
 mod stats;
 mod sticky_roles;
 
