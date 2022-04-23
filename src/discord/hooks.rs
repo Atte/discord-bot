@@ -24,7 +24,7 @@ pub async fn unrecognised_command(ctx: &Context, msg: &Message, _command_name: &
 }
 
 #[hook]
-pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) {
+pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, command: &str) {
     match error {
         DispatchError::CheckFailed(desc, reason) => {
             warn!("Custom check failed: {} ({:?})", desc, reason);
@@ -40,8 +40,8 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) 
                 )
                 .await;
         }
-        DispatchError::CommandDisabled(something) => {
-            warn!("Refused to dispatch disabled command: {}", something);
+        DispatchError::CommandDisabled => {
+            warn!("Refused to dispatch disabled command: {}", command);
         }
         DispatchError::BlockedUser => {
             warn!("Refused to dispatch for blocked user");

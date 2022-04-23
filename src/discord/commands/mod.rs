@@ -60,6 +60,6 @@ async fn help_command(
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
+    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await?;
     Ok(())
 }

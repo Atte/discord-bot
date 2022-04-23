@@ -175,7 +175,7 @@ impl Teamup {
         let response: Vec<DiscordEvent> = serde_json::from_str(&response)
             .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))?;
 
-        let bot_id = self.discord.cache.current_user_id().await.to_string();
+        let bot_id = self.discord.cache.current_user_id().to_string();
         Ok(response
             .into_iter()
             .filter(move |event| event.creator_id == bot_id))

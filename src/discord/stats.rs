@@ -1,6 +1,6 @@
 use super::{get_data, DbKey};
 use chrono::Utc;
-use color_eyre::eyre::{bail, Result};
+use color_eyre::eyre::{eyre, Result};
 use lazy_static::lazy_static;
 use mongodb::{
     bson::{doc, Document},
@@ -10,7 +10,7 @@ use regex::Regex;
 use serenity::{
     client::Context,
     model::{
-        channel::{Channel, Message},
+        channel::Message,
         id::{ChannelId, EmojiId, RoleId, UserId},
     },
 };
@@ -30,11 +30,11 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
             .expect("Invalid regex for EMOJI_RE");
     }
 
-    let channel = match msg.channel(&ctx).await {
-        Some(Channel::Guild(inner)) => inner,
-        Some(_) => bail!("Not a guild channel"),
-        None => bail!("Channel not in cache"),
-    };
+    let channel = msg
+        .channel(&ctx)
+        .await?
+        .guild()
+        .ok_or_else(|| eyre!("Not a guild channel!"))?;
 
     let nick = msg
         .author_nick(&ctx)

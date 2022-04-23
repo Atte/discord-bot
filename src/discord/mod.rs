@@ -1,8 +1,9 @@
 use crate::config::Config;
 use color_eyre::eyre::{eyre, Result};
 use serenity::{
-    client::{bridge::gateway::GatewayIntents, Client, Context},
+    client::{Client, Context},
     framework::StandardFramework,
+    model::gateway::GatewayIntents,
     prelude::TypeMapKey,
 };
 
@@ -81,9 +82,8 @@ impl Discord {
             .group(&commands::MISC_GROUP)
             .help(&commands::HELP_COMMAND);
 
-        let client = Client::builder(&config.discord.token)
+        let client = Client::builder(&config.discord.token, GatewayIntents::all())
             .cache_settings(|c| c.max_messages(1024))
-            .intents(GatewayIntents::all())
             .event_handler(event_handler::Handler)
             .framework(framework)
             .type_map_insert::<ActivityKey>(String::new())

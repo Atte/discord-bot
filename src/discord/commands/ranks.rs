@@ -47,13 +47,11 @@ impl Ranks {
         let guild = guild_id
             .into()
             .to_guild_cached(&ctx)
-            .await
             .ok_or_else(|| eyre!("Guild not found!"))?;
         let cutoff_position = guild
-            .member(&ctx, ctx.cache.current_user_id().await)
+            .member(&ctx, ctx.cache.current_user_id())
             .await?
             .roles(&ctx)
-            .await
             .ok_or_else(|| eyre!("Roles for bot not found!"))?
             .into_iter()
             .map(|role| role.position)

@@ -14,10 +14,10 @@ pub async fn guild_member(
     user_id: UserId,
     discord: &CacheAndHttp,
 ) -> Option<Member> {
-    if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
+    if let Some(guild) = guild_id.to_guild_cached(&discord.cache) {
         guild.members.get(&user_id).cloned()
     } else {
-        guild_id.member(discord.clone(), user_id).await.ok()
+        guild_id.member(discord, user_id).await.ok()
     }
 }
 
@@ -25,7 +25,7 @@ pub async fn guild_roles(
     guild_id: GuildId,
     discord: &CacheAndHttp,
 ) -> Option<HashMap<RoleId, Role>> {
-    if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
+    if let Some(guild) = guild_id.to_guild_cached(&discord.cache) {
         Some(guild.roles)
     } else {
         guild_id.roles(&discord.http).await.ok()
@@ -36,8 +36,16 @@ pub async fn guild_channels(
     guild_id: GuildId,
     discord: &CacheAndHttp,
 ) -> Option<HashMap<ChannelId, GuildChannel>> {
-    if let Some(guild) = guild_id.to_guild_cached(&discord.cache).await {
-        Some(guild.channels)
+    if let Some(guild) = guild_id.to_guild_cached(&discord.cache) {
+        Some(
+            guild
+                .channels
+                .into_iter()
+                .filter_map(|(id, channel)| {
+                    channel.guild().map(|guild_channel| (id, guild_channel))
+                })
+                .collect(),
+        )
     } else {
         guild_id.channels(&discord.http).await.ok()
     }
@@ -57,7 +65,7 @@ pub async fn guild_rules(
                 .await
                 .ok()?
             {
-                if message.is_own(&discord.cache).await {
+                if message.is_own(&discord.cache) {
                     return Some(message);
                 }
             }
@@ -72,7 +80,7 @@ async fn ranks_from_roles(
     discord: &CacheAndHttp,
 ) -> Result<impl Iterator<Item = Role>, &'static str> {
     let bot_member = guild_id
-        .member(discord.clone(), discord.cache.current_user_id().await)
+        .member(discord, discord.cache.current_user_id())
         .await
         .map_err(|_| "can't fetch bot member")?;
 

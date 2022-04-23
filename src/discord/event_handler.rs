@@ -32,8 +32,7 @@ impl EventHandler for Handler {
 
     async fn message(&self, ctx: Context, message: Message) {
         if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
-            if config.discord.rules_channels.contains(&message.channel_id)
-                && !message.is_own(&ctx).await
+            if config.discord.rules_channels.contains(&message.channel_id) && !message.is_own(&ctx)
             {
                 if let Err(err) = message.delete(&ctx).await {
                     error!("Unable to delete rules channel spam: {:?}", err);
@@ -50,7 +49,7 @@ impl EventHandler for Handler {
         guild_id: Option<GuildId>,
     ) {
         if let Some(guild_id) = guild_id {
-            if let Some(message) = ctx.cache.message(channel_id, message_id).await {
+            if let Some(message) = ctx.cache.message(channel_id, message_id) {
                 if let Err(err) =
                     log_channel::message_deleted(&ctx, channel_id, guild_id, message).await
                 {
@@ -69,7 +68,7 @@ impl EventHandler for Handler {
     ) {
         if let Some(guild_id) = guild_id {
             for message_id in messages_ids {
-                if let Some(message) = ctx.cache.message(channel_id, message_id).await {
+                if let Some(message) = ctx.cache.message(channel_id, message_id) {
                     if let Err(err) =
                         log_channel::message_deleted(&ctx, channel_id, guild_id, message).await
                     {
@@ -80,8 +79,8 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_member_addition(&self, ctx: Context, guild_id: GuildId, member: Member) {
-        if let Err(err) = log_channel::member_added(&ctx, guild_id, &member.user).await {
+    async fn guild_member_addition(&self, ctx: Context, member: Member) {
+        if let Err(err) = log_channel::member_added(&ctx, member.guild_id, &member.user).await {
             error!("Unable to log member addition: {:?}", err);
         }
         if let Err(err) = sticky_roles::apply_stickies(&ctx, &member).await {

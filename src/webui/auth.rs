@@ -88,7 +88,7 @@ async fn callback(
             (Status::BadGateway, "unable to exchange code for token")
         })?;
 
-    let api = Http::new_with_token(&format!("Bearer {}", token.access_token().secret()));
+    let api = Http::new(&format!("Bearer {}", token.access_token().secret()));
     let user = api.get_current_user().await.map_err(|err| {
         error!("get_current_user {:?}", err);
         (Status::BadGateway, "unable to get current user information")

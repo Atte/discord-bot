@@ -276,7 +276,7 @@ pub struct Query;
 impl Query {
     /// The bot's Discord user
     async fn bot(context: &Context) -> types::User<'_> {
-        types::User(Cow::Owned(context.webui.discord.cache.current_user().await))
+        types::User(Cow::Owned(context.webui.discord.cache.current_user()))
     }
 
     /// The logged in user's Discord user

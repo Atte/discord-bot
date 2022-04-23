@@ -35,7 +35,7 @@ impl Cron {
             let delete_message_ids: Vec<MessageId> = messages
                 .iter()
                 .filter_map(|msg| {
-                    if msg.timestamp < now && (now - msg.timestamp) > max_age {
+                    if *msg.timestamp < now && (now - *msg.timestamp) > max_age {
                         Some(msg.id)
                     } else {
                         None
