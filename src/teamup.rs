@@ -187,14 +187,8 @@ impl Teamup {
         Ok(())
     }
 
-    async fn modify_discord_event(&self, event: &DiscordEvent) -> Result<()> {
-        self.discord_request(Method::PATCH, Some(&event.id), |r| r.json(event))
-            .await?;
-        Ok(())
-    }
-
     async fn delete_discord_event(&self, event_id: &str) -> Result<()> {
-        self.discord_request(Method::DELETE, Some(&event_id), |r| r)
+        self.discord_request(Method::DELETE, Some(event_id), |r| r)
             .await?;
         Ok(())
     }
