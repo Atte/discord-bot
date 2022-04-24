@@ -102,3 +102,11 @@ impl Config {
         Ok(Self::from_str(&source)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+    async fn test_config() {
+        super::Config::from_file("config.toml").await.unwrap();
+    }
+}

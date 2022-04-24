@@ -21,6 +21,7 @@ log_channels = [
     409294723572957185, # BT
     842082195018481684, # BTCon 2021
 ]
+clean_channels = []
 rules_channels = [
     893945120880222278, # test
 ]
