@@ -8,7 +8,7 @@ use log::info;
 use reqwest::{header::HeaderValue, Method};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use serenity::{model::id::GuildId, CacheAndHttp};
+use serenity::CacheAndHttp;
 use std::time::Duration as StdDuration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::time::sleep;
@@ -78,7 +78,6 @@ enum DiscordEventEntityType {
 }
 
 pub struct Teamup {
-    guild_id: GuildId,
     config: TeamupConfig,
     discord: Arc<CacheAndHttp>,
     client: reqwest::Client,
@@ -86,11 +85,10 @@ pub struct Teamup {
 
 impl Teamup {
     #[inline]
-    pub fn new(guild_id: GuildId, config: TeamupConfig, discord: Arc<CacheAndHttp>) -> Self {
+    pub fn new(config: TeamupConfig, discord: Arc<CacheAndHttp>) -> Self {
         Self {
-            guild_id,
-            discord,
             config,
+            discord,
             client: reqwest::Client::new(),
         }
     }
@@ -145,12 +143,12 @@ impl Teamup {
         let url = if let Some(event_id) = event_id {
             format!(
                 "https://discord.com/api/v9/guilds/{}/scheduled-events/{}",
-                self.guild_id, event_id
+                self.config.guild, event_id
             )
         } else {
             format!(
                 "https://discord.com/api/v9/guilds/{}/scheduled-events",
-                self.guild_id
+                self.config.guild
             )
         };
 

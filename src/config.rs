@@ -20,7 +20,7 @@ pub struct Config {
     pub berrytube: BerrytubeConfig,
     #[cfg(feature = "teamup")]
     #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
-    pub teamup: HashMap<GuildId, TeamupConfig>,
+    pub teamup: Vec<TeamupConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -82,6 +82,7 @@ pub struct BerrytubeConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct TeamupConfig {
+    pub guild: GuildId,
     pub api_key: SubstitutingString,
     pub calendar_key: SubstitutingString,
     #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
