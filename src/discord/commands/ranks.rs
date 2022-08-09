@@ -6,7 +6,7 @@ use super::super::{
 use crate::util::ellipsis_string;
 use color_eyre::eyre::{eyre, Result};
 use derivative::Derivative;
-use itertools::Itertools;
+use itertools::{EitherOrBoth, Itertools};
 use serenity::{
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
@@ -239,12 +239,26 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
 
     let rank_list = {
         let mut tw = TabWriter::new(Vec::new());
-        for mut chunk in &ranks.member_counts().into_iter().chunks(2) {
-            if let Some((name, count)) = chunk.next() {
-                write!(&mut tw, "{} ({})", name, count)?;
-            }
-            for (name, count) in chunk {
-                write!(&mut tw, "\t{} ({})", name, count)?;
+        let counts = ranks.member_counts();
+        for row in counts
+            .iter()
+            .take((counts.len() + 1) / 2)
+            .zip_longest(counts.iter().skip((counts.len() + 1) / 2))
+        {
+            match row {
+                EitherOrBoth::Both((left_name, left_count), (right_name, right_count)) => {
+                    write!(
+                        &mut tw,
+                        "{} ({})\t{} ({})",
+                        left_name, left_count, right_name, right_count
+                    )?;
+                }
+                EitherOrBoth::Left((name, count)) => {
+                    write!(&mut tw, "{} ({})", name, count)?;
+                }
+                EitherOrBoth::Right((name, count)) => {
+                    write!(&mut tw, "\t{} ({})", name, count)?;
+                }
             }
             writeln!(&mut tw)?;
         }
