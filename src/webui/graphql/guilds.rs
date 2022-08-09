@@ -111,5 +111,5 @@ pub async fn ranks_from_guild(
         .ok_or("can't find roles for guild")?
         .into_values()
         .collect();
-    Ok(ranks_from_roles(guild_id, roles, discord).await?)
+    ranks_from_roles(guild_id, roles, discord).await
 }

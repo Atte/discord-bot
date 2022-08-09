@@ -100,7 +100,7 @@ impl Config {
 
     pub async fn from_file(path: impl AsRef<Path>) -> Result<Config> {
         let source = tokio::fs::read_to_string(path).await?;
-        Ok(Self::from_str(&source)?)
+        Self::from_str(&source)
     }
 }
 

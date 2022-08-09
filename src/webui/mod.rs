@@ -146,7 +146,7 @@ impl WebUI {
         let vega = r#static::init(vega);
         let vega = auth::init(vega, &self.config)?;
         let vega = graphql::init(vega);
-        vega.launch().await?;
+        let _vega = vega.launch().await?;
         Ok(())
     }
 }

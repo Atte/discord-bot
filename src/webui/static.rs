@@ -20,6 +20,7 @@ use std::{
 include!(concat!(env!("OUT_DIR"), "/webui.rs"));
 
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
+    #[allow(clippy::no_effect_underscore_binding)] // within `routes!`
     vega.mount("/", routes![index, path, robots])
 }
 

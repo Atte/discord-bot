@@ -6,7 +6,7 @@ use rocket::{
     outcome::try_outcome,
     post,
     request::{FromRequest, Outcome, Request},
-    response::content::Html,
+    response::content::RawHtml,
     routes, uri, Build, Rocket, State,
 };
 use serenity::model::user::CurrentUser;
@@ -39,18 +39,19 @@ impl<'r> FromRequest<'r> for Context {
 pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<Context>>;
 
 pub fn init(vega: Rocket<Build>) -> Rocket<Build> {
+    #[allow(clippy::no_effect_underscore_binding)] // within `routes!`
     vega.manage(Schema::new(Query, Mutation, EmptySubscription::new()))
         .mount("/", routes![graphiql, graphql_get, graphql_post])
 }
 
 #[get("/graphiql")]
-fn graphiql() -> Html<String> {
+fn graphiql() -> RawHtml<String> {
     juniper_rocket::graphiql_source(&uri!(graphql_post).to_string(), None)
 }
 
 /*
 #[get("/playground")]
-fn playground() -> Html<String> {
+fn playground() -> RawHtml<String> {
     juniper_rocket::playground_source(&uri!(graphql_post).to_string(), None)
 }
 */

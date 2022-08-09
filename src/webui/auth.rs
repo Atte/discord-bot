@@ -12,7 +12,7 @@ use rocket::{
     response::Redirect,
     routes, uri, Build, Rocket, State,
 };
-use serenity::{http::Http, model::oauth2::OAuth2Scope};
+use serenity::{http::Http, model::application::oauth::Scope as OAuth2Scope};
 use std::borrow::Cow;
 
 pub fn init(vega: Rocket<Build>, config: &Config) -> color_eyre::eyre::Result<Rocket<Build>> {
@@ -24,6 +24,7 @@ pub fn init(vega: Rocket<Build>, config: &Config) -> color_eyre::eyre::Result<Ro
             "https://discord.com/api/oauth2/token".to_string(),
         )?),
     );
+    #[allow(clippy::no_effect_underscore_binding)] // within `routes!`
     Ok(vega
         .manage(client)
         .mount("/", routes![redirect, callback, clear]))

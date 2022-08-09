@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    let mongo_client = mongodb::Client::with_uri_str(config.mongodb.uri.to_string()).await?;
+    let mongo_client = mongodb::Client::with_uri_str(&config.mongodb.uri).await?;
     let db = mongo_client.database(config.mongodb.database.as_ref());
     migrations::mongo(&db).await?;
 

@@ -24,8 +24,8 @@ async fn send_log(
             Ok(Channel::Guild(channel)) if channel.guild_id == guild_id => {
                 channel_id
                     .send_message(&ctx, |builder| {
-                        builder.embed(|mut embed| {
-                            create_embed(&mut embed);
+                        builder.embed(|embed| {
+                            create_embed(embed);
                             embed
                         })
                     })

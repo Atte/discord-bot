@@ -25,13 +25,13 @@ enum TeamupId {
 
 #[derive(Debug, Clone, Deserialize)]
 struct TeamupEventsResponse {
-    timestamp: u64,
+    // timestamp: u64,
     events: Vec<TeamupEvent>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 struct TeamupEvent {
-    id: TeamupId,
+    // id: TeamupId,
     series_id: Option<TeamupId>,
     start_dt: DateTime<Utc>,
     end_dt: DateTime<Utc>,
