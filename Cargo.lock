@@ -249,7 +249,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_json",
- "time 0.3.12",
+ "time 0.3.13",
  "uuid 1.1.2",
 ]
 
@@ -387,7 +387,7 @@ dependencies = [
  "rand 0.8.5",
  "sha2",
  "subtle",
- "time 0.3.12",
+ "time 0.3.13",
  "version_check",
 ]
 
@@ -2049,7 +2049,7 @@ dependencies = [
  "serde_json",
  "state",
  "tempfile",
- "time 0.3.12",
+ "time 0.3.13",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -2098,7 +2098,7 @@ dependencies = [
  "smallvec",
  "stable-pattern",
  "state",
- "time 0.3.12",
+ "time 0.3.13",
  "tokio",
  "tokio-rustls",
  "uncased",
@@ -2365,7 +2365,7 @@ dependencies = [
  "serde-value",
  "serde_json",
  "static_assertions",
- "time 0.3.12",
+ "time 0.3.13",
  "tokio",
  "tracing",
  "typemap_rev",
@@ -2601,12 +2601,11 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.12"
+version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74b7cc93fc23ba97fde84f7eea56c55d1ba183f495c6715defdfc7b9cb8c870f"
+checksum = "db76ff9fa4b1458b3c7f077f3ff9887394058460d21e634355b273aaf11eea45"
 dependencies = [
  "itoa",
- "js-sys",
  "libc",
  "num_threads",
  "serde",
