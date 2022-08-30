@@ -164,6 +164,7 @@ async fn handle_joinleave(
 }
 
 #[command]
+#[aliases(gain)]
 #[description("Join a rank")]
 #[min_args(1)]
 #[delimiters(',')]
