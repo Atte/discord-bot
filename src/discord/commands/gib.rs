@@ -18,6 +18,7 @@ use serenity::{
     prelude::TypeMapKey,
 };
 use std::time::Duration;
+use serde_with::{serde_as, DefaultOnNull};
 
 #[derive(Debug, Clone, Deserialize)]
 struct SearchResponse {
@@ -25,10 +26,11 @@ struct SearchResponse {
     total: usize,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Image {
     id: i64,
-    #[serde(deserialize_with = "serde_with::rust::default_on_null::deserialize")]
+    #[serde_as(as = "DefaultOnNull")]
     tags: Vec<String>,
     source_url: Option<String>,
     first_seen_at: Option<String>,

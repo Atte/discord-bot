@@ -33,7 +33,7 @@ toml = "0.5"
 void = "1.0"
 
 [dependencies.serde_with]
-version = "1.11"
+version = "2.0.0"
 features = ["chrono"]
 
 [dependencies.serde_repr]
