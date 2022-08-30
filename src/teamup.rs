@@ -13,6 +13,7 @@ use std::time::Duration as StdDuration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::time::sleep;
 use tokio::try_join;
+use serde_with::{serde_as, DefaultOnError, NoneAsEmptyString};
 
 const RATE_LIMIT: StdDuration = StdDuration::from_secs(15);
 
@@ -29,6 +30,7 @@ struct TeamupEventsResponse {
     events: Vec<TeamupEvent>,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 struct TeamupEvent {
     // id: TeamupId,
@@ -36,10 +38,11 @@ struct TeamupEvent {
     start_dt: DateTime<Utc>,
     end_dt: DateTime<Utc>,
     title: String,
-    #[serde(deserialize_with = "serde_with::rust::string_empty_as_none::deserialize")]
+    #[serde_as(as = "NoneAsEmptyString")]
     notes: Option<String>,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct DiscordEvent {
     #[serde(skip_serializing)]
@@ -48,13 +51,13 @@ struct DiscordEvent {
     creator_id: String,
     entity_metadata: Option<DiscordEventEntityMetadata>,
     name: String,
-    #[serde(deserialize_with = "serde_with::rust::default_on_error::deserialize")]
+    #[serde_as(as = "DefaultOnError")]
     privacy_level: Option<DiscordEventPrivacyLevel>,
     scheduled_start_time: DateTime<Utc>,
     scheduled_end_time: Option<DateTime<Utc>>,
-    #[serde(deserialize_with = "serde_with::rust::string_empty_as_none::deserialize")]
+    #[serde_as(as = "NoneAsEmptyString")]
     description: Option<String>,
-    #[serde(deserialize_with = "serde_with::rust::default_on_error::deserialize")]
+    #[serde_as(as = "DefaultOnError")]
     entity_type: Option<DiscordEventEntityType>,
 }
 
