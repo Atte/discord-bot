@@ -29,29 +29,31 @@
       };
     in
     {
-      packages.default = pkgs.rustPlatform.buildRustPackage rec {
-        pname = "discord-bot";
-        version = "0.1.0";
+      packages.default = pkgs.lib.makeOverridable
+        ({ features }: pkgs.rustPlatform.buildRustPackage {
+          pname = "discord-bot";
+          version = "0.1.0";
 
-        src = gitignore.lib.gitignoreSource ./.;
-        cargoLock.lockFile = ./Cargo.lock;
+          src = gitignore.lib.gitignoreSource ./.;
+          cargoLock.lockFile = ./Cargo.lock;
 
-        buildFeatures = [ ];
-        buildType = "debug";
+          buildFeatures = features;
+          buildType = "debug";
 
-        nativeBuildInputs = [ pkgs.yarn ];
+          nativeBuildInputs = [ pkgs.yarn ];
 
-        preConfigure =
-          let webui = pkgs.mkYarnPackage {
-            name = "discord-bot-webui";
-            src = gitignore.gitignoreSource ./webui;
-            packageJSON = ./webui/package.json;
-            yarnLock = ./webui/yarn.lock;
-          }; in
-          if builtins.any (pkgs.lib.hasPrefix "webui") buildFeatures
-          then "cp -r ${webui}/libexec/discord-bot-webui/node_modules webui/"
-          else "";
-      };
+          preConfigure =
+            let webui = pkgs.mkYarnPackage {
+              name = "discord-bot-webui";
+              src = gitignore.lib.gitignoreSource ./webui;
+              packageJSON = ./webui/package.json;
+              yarnLock = ./webui/yarn.lock;
+            }; in
+            if builtins.any (pkgs.lib.hasPrefix "webui") features
+            then "cp -r ${webui}/libexec/discord-bot-webui/node_modules webui/"
+            else "";
+        })
+        { features = [ ]; };
 
       devShells.default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [

@@ -10,7 +10,7 @@ in
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.discord-bot.override {
-        buildFeatures = cfg.features;
+        features = cfg.features;
       };
     };
 
