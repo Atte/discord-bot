@@ -9,9 +9,8 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = import ./default.nix {
-        features = cfg.features;
-        inherit pkgs lib;
+      default = pkgs.discord-bot.override {
+        buildFeatures = cfg.features;
       };
     };
 
