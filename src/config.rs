@@ -1,12 +1,12 @@
 use crate::SubstitutingString;
 use color_eyre::eyre::Result;
 use serde::Deserialize;
+use serde_with::{serde_as, DefaultOnNull};
 use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
 };
-use serde_with::{serde_as, DefaultOnNull};
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
@@ -23,6 +23,8 @@ pub struct Config {
     #[cfg(feature = "teamup")]
     #[serde_as(as = "DefaultOnNull")]
     pub teamup: Vec<TeamupConfig>,
+    #[cfg(feature = "openai")]
+    pub openai: OpenAiConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -97,6 +99,13 @@ pub struct TeamupConfig {
     #[serde_as(as = "DefaultOnNull")]
     pub oneoff_subcalendars: HashSet<u64>,
     pub location: SubstitutingString,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, Deserialize)]
+pub struct OpenAiConfig {
+    pub api_key: SubstitutingString,
+    pub prompt: SubstitutingString,
 }
 
 impl Config {

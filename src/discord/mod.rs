@@ -7,6 +7,12 @@ use serenity::{
     prelude::TypeMapKey,
 };
 
+#[cfg(feature = "openai")]
+use crate::openai::{OpenAi, OpenAiKey};
+
+#[cfg(feature = "openai")]
+use std::sync::Arc;
+
 mod commands;
 mod event_handler;
 mod hooks;
@@ -65,7 +71,11 @@ pub struct Discord {
 }
 
 impl Discord {
-    pub async fn try_new(config: Config, db: mongodb::Database) -> Result<Self> {
+    pub async fn try_new(
+        config: Config,
+        db: mongodb::Database,
+        #[cfg(feature = "openai")] openai: OpenAi,
+    ) -> Result<Self> {
         let framework = StandardFramework::new()
             .configure(|c| {
                 c.prefix(config.discord.command_prefix.to_string())
@@ -83,16 +93,20 @@ impl Discord {
             .group(&commands::MISC_GROUP)
             .help(&commands::HELP_COMMAND);
 
-        let client = Client::builder(&config.discord.token, GatewayIntents::all())
+        let builder = Client::builder(&config.discord.token, GatewayIntents::all())
             .cache_settings(|c| c.max_messages(1024))
             .event_handler(event_handler::Handler)
             .framework(framework)
             .type_map_insert::<ActivityKey>(String::new())
             .type_map_insert::<ConfigKey>(config)
-            .type_map_insert::<DbKey>(db)
-            .await?;
+            .type_map_insert::<DbKey>(db);
 
-        Ok(Self { client })
+        #[cfg(feature = "openai")]
+        let builder = builder.type_map_insert::<OpenAiKey>(Arc::new(openai));
+
+        Ok(Self {
+            client: builder.await?,
+        })
     }
 
     pub async fn run(&mut self) -> Result<()> {

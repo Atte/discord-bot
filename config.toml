@@ -68,3 +68,9 @@ calendar_key = "ks1vk8rt2qcy3vpk6j"
 recurring_subcalendars = [3929506]
 oneoff_subcalendars = [3929522]
 location = "https://berrytube.tv/"
+
+[openai]
+api_key = "$OPENAI_API_KEY"
+prompt = """
+You are {botname}. Use an adverserial tone. Answer concisely. Current date: {date}
+"""

@@ -23,10 +23,14 @@ mod config;
 mod cron;
 mod discord;
 mod migrations;
+#[cfg(feature = "openai")]
+mod openai;
 #[cfg(feature = "teamup")]
 mod teamup;
 #[cfg(feature = "webui")]
 mod webui;
+#[cfg(feature = "openai")]
+mod word_chunks;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -42,8 +46,17 @@ async fn main() -> Result<()> {
     let db = mongo_client.database(config.mongodb.database.as_ref());
     migrations::mongo(&db).await?;
 
+    #[cfg(feature = "openai")]
+    let openai = openai::OpenAi::new(&config.openai);
+
     info!("Spawning Discord...");
-    let mut discord = discord::Discord::try_new(config.clone(), db.clone()).await?;
+    let mut discord = discord::Discord::try_new(
+        config.clone(),
+        db.clone(),
+        #[cfg(feature = "openai")]
+        openai,
+    )
+    .await?;
 
     #[cfg(feature = "webui")]
     {

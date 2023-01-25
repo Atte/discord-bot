@@ -18,10 +18,10 @@
     },
     "flake-utils": {
       "locked": {
-        "lastModified": 1667395993,
-        "narHash": "sha256-nuEHfE/LcWyuSWnS8t12N1wc105Qtau+/OdUAjtQ0rA=",
-        "path": "/nix/store/sk4ga2wy0b02k7pnzakwq4r3jdknda4g-source",
-        "rev": "5aed5285a952e0b949eb3ba02c12fa4fcfef535f",
+        "lastModified": 1676283394,
+        "narHash": "sha256-XX2f9c3iySLCw54rJ/CZs+ZK6IQy7GXNY4nSOyu2QG4=",
+        "path": "/nix/store/fy3x5qk811q1kjilcv1416p311pfh1a5-source",
+        "rev": "3db36a8b464d0c4532ba1c7dda728f4576d6d073",
         "type": "path"
       },
       "original": {
@@ -51,10 +51,10 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1675115703,
-        "narHash": "sha256-4zetAPSyY0D77x+Ww9QBe8RHn1akvIvHJ/kgg8kGDbk=",
-        "path": "/nix/store/ckj6flydv9mmxnr5c8rj0zir5rwakqy7-source",
-        "rev": "2caf4ef5005ecc68141ecb4aac271079f7371c44",
+        "lastModified": 1677063315,
+        "narHash": "sha256-qiB4ajTeAOVnVSAwCNEEkoybrAlA+cpeiBxLobHndE8=",
+        "path": "/nix/store/369wr4laqdqzh5brq1g7nfc1pbfh23sn-source",
+        "rev": "988cc958c57ce4350ec248d2d53087777f9e1949",
         "type": "path"
       },
       "original": {
@@ -81,11 +81,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1676169013,
-        "narHash": "sha256-mhUWa6TUg6Qjba1OdxPuW1ctCuU4O4lSObVc6UUUE0E=",
+        "lastModified": 1677638104,
+        "narHash": "sha256-vbdOoDYnQ1QYSchMb3fYGCLYeta3XwmGvMrlXchST5s=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "ef4cd733dc6b595cab5092f5004a489c5fd80b07",
+        "rev": "f388187efb41ce4195b2f4de0b6bb463d3cd0a76",
         "type": "github"
       },
       "original": {
