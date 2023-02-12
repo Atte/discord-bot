@@ -31,6 +31,7 @@
         inherit system;
         overlays = [ (import rust-overlay) ];
       };
+      nodejs = pkgs.nodejs-16_x;
     in
     {
       packages.default = pkgs.lib.makeOverridable
@@ -44,7 +45,9 @@
           buildFeatures = features;
           buildType = "debug";
 
-          nativeBuildInputs = [ pkgs.yarn ];
+          nativeBuildInputs = with pkgs; [
+            (yarn.override { inherit nodejs; })
+          ];
 
           preConfigure =
             let webui = pkgs.mkYarnPackage {
@@ -63,10 +66,10 @@
         nativeBuildInputs = with pkgs; [
           (rust-bin.stable.latest.default.override {
             extensions = [ "rust-analyzer" "rust-src" ];
-            targets = [ "wasm32-wasi" ];
           })
           cargo-outdated
-          yarn
+          nodejs
+          (yarn.override { inherit nodejs; })
         ];
       };
     });

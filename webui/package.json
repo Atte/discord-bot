@@ -71,5 +71,6 @@
     "_moduleAliases": {
         "react": "node_modules/preact/compat/dist/compat.js",
         "react-dom": "node_modules/preact/compat/dist/compat.js"
-    }
+    },
+    "packageManager": "yarn@3.4.1"
 }
