@@ -82,7 +82,7 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<bool> {
             .collect();
 
         if !role_ids.is_empty() {
-            info!("Restoring roles: {:?}", role_ids);
+            info!("Restoring roles: {role_ids:?}");
 
             let mut user_role_ids: Vec<RoleId> = member.roles.clone();
             user_role_ids.extend(role_ids);

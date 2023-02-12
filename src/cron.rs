@@ -46,13 +46,13 @@ impl Cron {
             match delete_message_ids.len() {
                 0 => { /* nothing to delete */ }
                 1 => {
-                    info!("Deleting an obsolete message from {}", channel_id);
+                    info!("Deleting an obsolete message from {channel_id}");
                     channel_id
                         .delete_message(&self.discord.http, delete_message_ids[0])
                         .await?;
                 }
                 len => {
-                    info!("Deleting {} obsolete messages from {}", len, channel_id);
+                    info!("Deleting {len} obsolete messages from {channel_id}");
                     channel_id
                         .delete_messages(&self.discord.http, delete_message_ids)
                         .await?;

@@ -38,7 +38,7 @@ impl EventHandler for Handler {
             if config.discord.clean_channels.contains(&message.channel_id) && !message.is_own(&ctx)
             {
                 if let Err(err) = message.delete(&ctx).await {
-                    error!("Unable to delete clean channel spam: {:?}", err);
+                    error!("Unable to delete clean channel spam: {err:?}");
                 }
             }
         }
@@ -56,7 +56,7 @@ impl EventHandler for Handler {
                 if let Err(err) =
                     log_channel::message_deleted(&ctx, channel_id, guild_id, message).await
                 {
-                    error!("Unable to log message deletion: {:?}", err);
+                    error!("Unable to log message deletion: {err:?}");
                 }
             }
         }
@@ -75,7 +75,7 @@ impl EventHandler for Handler {
                     if let Err(err) =
                         log_channel::message_deleted(&ctx, channel_id, guild_id, message).await
                     {
-                        error!("Unable to log message deletion: {:?}", err);
+                        error!("Unable to log message deletion: {err:?}");
                     }
                 }
             }
@@ -84,17 +84,17 @@ impl EventHandler for Handler {
 
     async fn guild_member_addition(&self, ctx: Context, member: Member) {
         if let Err(err) = log_channel::member_added(&ctx, member.guild_id, &member.user).await {
-            error!("Unable to log member addition: {:?}", err);
+            error!("Unable to log member addition: {err:?}");
         }
         match sticky_roles::apply_stickies(&ctx, &member).await {
             Ok(true) => { /* user has been here before */ }
             Ok(false) => {
                 if let Err(err) = rules_check::post_welcome(ctx, member).await {
-                    error!("Unable to send welcome message: {:?}", err);
+                    error!("Unable to send welcome message: {err:?}");
                 }
             }
             Err(err) => {
-                error!("Unable to apply stickies: {:?}", err);
+                error!("Unable to apply stickies: {err:?}");
             }
         }
     }
@@ -107,7 +107,7 @@ impl EventHandler for Handler {
         _member: Option<Member>,
     ) {
         if let Err(err) = log_channel::member_removed(&ctx, guild_id, &user).await {
-            error!("Unable to log member removal: {:?}", err);
+            error!("Unable to log member removal: {err:?}");
         }
     }
 
@@ -119,16 +119,16 @@ impl EventHandler for Handler {
     ) {
         if let Err(err) = log_channel::member_updated(&ctx, old_member.as_ref(), &new_member).await
         {
-            error!("Unable to log member update: {:?}", err);
+            error!("Unable to log member update: {err:?}");
         }
         if let Err(err) = sticky_roles::save_stickies(&ctx, &new_member).await {
-            error!("Unable to save stickies: {:?}", err);
+            error!("Unable to save stickies: {err:?}");
         }
     }
 
     async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
         if let Err(err) = rules_check::handle_reaction(ctx, reaction).await {
-            error!("Error handling rule reaction: {:?}", err);
+            error!("Error handling rule reaction: {err:?}");
         }
     }
 }

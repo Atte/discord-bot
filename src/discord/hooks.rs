@@ -10,7 +10,7 @@ use serenity::{
 #[hook]
 pub async fn normal_message(ctx: &Context, msg: &Message) {
     if let Err(err) = update_stats(ctx, msg).await {
-        error!("Error in update_stats for normal_message: {:?}", err);
+        error!("Error in update_stats for normal_message: {err:?}");
     }
 }
 
@@ -27,7 +27,7 @@ pub async fn unrecognised_command(ctx: &Context, msg: &Message, _command_name: &
 pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, command: &str) {
     match error {
         DispatchError::CheckFailed(desc, reason) => {
-            warn!("Custom check failed: {} ({:?})", desc, reason);
+            warn!("Custom check failed: {desc} ({reason:?})");
         }
         DispatchError::Ratelimited(wait) => {
             let _result = msg
@@ -41,7 +41,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, 
                 .await;
         }
         DispatchError::CommandDisabled => {
-            warn!("Refused to dispatch disabled command: {}", command);
+            warn!("Refused to dispatch disabled command: {command}");
         }
         DispatchError::BlockedUser => {
             warn!("Refused to dispatch for blocked user");
@@ -65,10 +65,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, 
             warn!("Refused to dispatch command due to lacking role");
         }
         DispatchError::LackingPermissions(perms) => {
-            warn!(
-                "Refused to dispatch command due to lacking permissions: {:?}",
-                perms
-            );
+            warn!("Refused to dispatch command due to lacking permissions: {perms:?}");
         }
         DispatchError::NotEnoughArguments { min, given } => {
             let _result = msg
@@ -97,7 +94,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, 
                 .await;
         }
         err => {
-            error!("Dispatch error: {:?}", err);
+            error!("Dispatch error: {err:?}");
         }
     }
 }
