@@ -38,8 +38,8 @@ pub async fn post_welcome(ctx: Context, member: Member) -> Result<()> {
                         .mention(&member)
                         .push_line_safe(":")
                         .push_bold_line_safe(format!("Welcome to {}!", &guild.name))
-                        .push_line_safe(format!("To access all the channels, please confirm you have read and accepted the rules: <{}>", url))
-                        .push_safe(format!("Confirm by clicking the {} reaction on this message.", EMOJI))
+                        .push_line_safe(format!("To access all the channels, please confirm you have read and accepted the rules: <{url}>"))
+                        .push_safe(format!("Confirm by clicking the {EMOJI} reaction on this message."))
                         .build()
                 )
             }).await?;

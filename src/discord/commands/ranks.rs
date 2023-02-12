@@ -46,12 +46,12 @@ impl Ranks {
     async fn from_guild(ctx: &Context, guild_id: impl Into<GuildId>) -> Result<Self> {
         let guild = guild_id
             .into()
-            .to_guild_cached(&ctx)
+            .to_guild_cached(ctx)
             .ok_or_else(|| eyre!("Guild not found!"))?;
         let cutoff_position = guild
             .member(&ctx, ctx.cache.current_user_id())
             .await?
-            .roles(&ctx)
+            .roles(ctx)
             .ok_or_else(|| eyre!("Roles for bot not found!"))?
             .into_iter()
             .map(|role| role.position)
@@ -144,7 +144,7 @@ async fn handle_joinleave(
     let mut response = MessageBuilder::new();
     for arg in args.iter::<String>().map(Result::unwrap) {
         let name = arg.trim();
-        if let Some(rank) = ranks.by_name(&name) {
+        if let Some(rank) = ranks.by_name(name) {
             if user_role_ids.contains(&rank.role.id) {
                 if on_leave(&rank, &mut response) {
                     user_role_ids.remove(&rank.role.id);
@@ -250,15 +250,14 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
                 EitherOrBoth::Both((left_name, left_count), (right_name, right_count)) => {
                     write!(
                         &mut tw,
-                        "{} ({})\t{} ({})",
-                        left_name, left_count, right_name, right_count
+                        "{left_name} ({left_count})\t{right_name} ({right_count})"
                     )?;
                 }
                 EitherOrBoth::Left((name, count)) => {
-                    write!(&mut tw, "{} ({})", name, count)?;
+                    write!(&mut tw, "{name} ({count})")?;
                 }
                 EitherOrBoth::Right((name, count)) => {
-                    write!(&mut tw, "\t{} ({})", name, count)?;
+                    write!(&mut tw, "\t{name} ({count})")?;
                 }
             }
             writeln!(&mut tw)?;
@@ -274,8 +273,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
                     .title("Ranks")
                     .footer(|footer| {
                         footer.text(format!(
-                            "Use {0}join and {0}leave to change your ranks",
-                            prefix
+                            "Use {prefix}join and {prefix}leave to change your ranks"
                         ))
                     })
                     .description(ellipsis_string(
@@ -293,8 +291,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
         ctx,
         if user_ranks.is_empty() {
             format!(
-                "You currently have no ranks. Use the {}join command to join some.",
-                prefix
+                "You currently have no ranks. Use the {prefix}join command to join some."
             )
         } else {
             ellipsis_string(

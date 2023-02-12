@@ -7,7 +7,7 @@ use std::{borrow, env, fmt};
 
 #[derive(Derivative, Debug, Clone, Display, AsRef)]
 #[derivative(PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[display(fmt = "{}", resolved)]
+#[display(fmt = "{resolved}")]
 pub struct SubstitutingString {
     #[derivative(
         PartialEq = "ignore",

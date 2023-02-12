@@ -76,7 +76,7 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             }
             msg.reply(ctx, response).await?
         }
-        Err(err) => msg.reply(ctx, format!("{:?}", err)).await?,
+        Err(err) => msg.reply(ctx, format!("{err:?}")).await?,
     };
     Ok(())
 }

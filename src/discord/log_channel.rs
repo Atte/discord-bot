@@ -86,7 +86,7 @@ pub async fn message_deleted(
             EMBED_DESC_LENGTH,
         ));
         embed.footer(|footer| footer.text("Originally posted"));
-        embed.timestamp(&message.timestamp);
+        embed.timestamp(message.timestamp);
     })
     .await?;
     Ok(())

@@ -105,7 +105,7 @@ pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, 
 #[hook]
 pub async fn after(ctx: &Context, msg: &Message, command: &str, error: Result<(), CommandError>) {
     if let Err(err) = error {
-        println!("Error during {}: {:?}", command, err);
+        println!("Error during {command}: {err:?}");
         let _result = msg.reply(&ctx, "Something went horribly wrong!").await;
     }
 }

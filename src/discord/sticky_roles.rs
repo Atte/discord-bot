@@ -53,13 +53,13 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<bool> {
     {
         let guild = member
             .guild_id
-            .to_guild_cached(&ctx)
+            .to_guild_cached(ctx)
             .ok_or_else(|| eyre!("Guild not found!"))?;
 
         let bot_roles: HashSet<RoleId> = guild
             .member(&ctx, ctx.cache.current_user_id())
             .await?
-            .roles(&ctx)
+            .roles(ctx)
             .ok_or_else(|| eyre!("Roles for bot not found!"))?
             .into_iter()
             .map(|role| role.id)

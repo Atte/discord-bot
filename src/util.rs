@@ -110,9 +110,9 @@ pub fn format_duration_short(duration: &Duration) -> String {
     let secs = duration.as_secs() % 60;
 
     if hours > 0 {
-        format!("{}:{:02}:{:02}", hours, mins, secs)
+        format!("{hours}:{mins:02}:{secs:02}")
     } else {
-        format!("{}:{:02}", mins, secs)
+        format!("{mins}:{secs:02}")
     }
 }
 

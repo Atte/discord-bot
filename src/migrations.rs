@@ -18,7 +18,7 @@ async fn mongo_number_to_string(
             doc! { field: { "$type": "number" } },
             vec![doc! {
                 "$set": {
-                    field: { "$toString": format!("${}", field) }
+                    field: { "$toString": format!("${field}") }
                 }
             }],
             None,
@@ -33,11 +33,11 @@ async fn mongo_number_array_to_string_array(
 ) -> MongoResult<UpdateResult> {
     db.collection::<Document>(collection)
         .update_many(
-            doc! { format!("{}.0", field): { "$type": "number" } },
+            doc! { format!("{field}.0"): { "$type": "number" } },
             vec![doc! {
                 "$set": {
                     field: { "$map": {
-                        "input": format!("${}", field),
+                        "input": format!("${field}"),
                         "in": { "$toString": "$$this" }
                     } }
                 }
