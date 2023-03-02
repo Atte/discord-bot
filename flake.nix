@@ -37,7 +37,7 @@
       packages.default = pkgs.lib.makeOverridable
         ({ features }: pkgs.rustPlatform.buildRustPackage {
           pname = "discord-bot";
-          version = "0.1.0";
+          version = "0.1.1";
 
           src = gitignore.lib.gitignoreSource ./.;
           cargoLock.lockFile = ./Cargo.lock;
