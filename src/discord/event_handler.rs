@@ -116,7 +116,7 @@ impl EventHandler for Handler {
                         break;
                     }
 
-                    message.channel_id.start_typing(&ctx.http).ok();
+                    let typing = message.channel_id.start_typing(&ctx.http);
                     let response = openai.chat(request, my_nick).await.unwrap_or_else(|err| {
                         log::error!("OpenAI error: {}", err);
                         err.to_string()
@@ -125,6 +125,10 @@ impl EventHandler for Handler {
                     let response = content_safe(&ctx, response, &safe_opts, &message.mentions);
                     let response: Vec<_> =
                         WordChunks::from_str(&response, MESSAGE_CODE_LIMIT).collect();
+
+                    if let Ok(typing) = typing {
+                        let _ = typing.stop();
+                    }
 
                     let mut reply_to = message;
                     for chunk in response {
