@@ -45,15 +45,14 @@ impl Timer {
     #[inline]
     fn stop(&mut self) {
         if let Some(started) = self.started.take() {
-            self.duration += Instant::now() - started;
+            self.duration += started.elapsed();
         }
     }
 
     #[inline]
     fn duration(&self) -> Duration {
-        self.started.map_or(self.duration, |started| {
-            self.duration + (Instant::now() - started)
-        })
+        self.started
+            .map_or(self.duration, |started| self.duration + started.elapsed())
     }
 }
 

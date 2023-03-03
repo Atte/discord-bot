@@ -138,7 +138,7 @@ impl Berrytube {
             runner.runner_tx.set_activity(if title.is_empty() {
                 None
             } else {
-                Some(Activity::playing(&title))
+                Some(Activity::playing(title))
             });
         }
     }

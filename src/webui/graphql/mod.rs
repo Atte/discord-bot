@@ -62,7 +62,7 @@ async fn graphql_get(
     schema: &State<Schema>,
     context: Context,
 ) -> juniper_rocket::GraphQLResponse {
-    request.execute(&*schema, &context).await
+    request.execute(schema, &context).await
 }
 
 #[post("/api/graphql", data = "<request>")]
@@ -71,5 +71,5 @@ async fn graphql_post(
     schema: &State<Schema>,
     context: Context,
 ) -> juniper_rocket::GraphQLResponse {
-    request.execute(&*schema, &context).await
+    request.execute(schema, &context).await
 }

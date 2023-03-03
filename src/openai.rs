@@ -33,7 +33,7 @@ impl OpenAiRequest {
             model: OpenAiModel::Gpt35Turbo,
             messages: Vec::new(),
             temperature: None,
-            user: user.map(|u| u.into()),
+            user: user.map(Into::into),
         }
     }
 

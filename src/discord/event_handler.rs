@@ -78,7 +78,7 @@ impl EventHandler for Handler {
                         let text = content_safe(&ctx, &reply.content, &safe_opts, &reply.mentions);
                         let text = text
                             .trim_start()
-                            .strip_prefix(&format!("@{}", my_nick))
+                            .strip_prefix(&format!("@{my_nick}"))
                             .unwrap_or_else(|| text.as_ref())
                             .trim();
 

@@ -84,7 +84,7 @@ pub async fn index(
         }
         ",
         Some("GetBot"),
-        &*schema,
+        schema,
         &HashMap::new(),
         &context,
     )

@@ -129,7 +129,7 @@ impl WebUI {
                     response.set_header(Header::new(
                         "Permissions-Policy",
                         "camera display-capture geolocation interest-cohort microphone payment usb clipboard-read conversion-measurement serial"
-                            .split(' ').map(|key| format!("{}=()", key)).join(", ")
+                            .split(' ').map(|key| format!("{key}=()")).join(", ")
                     ));
 
                     response

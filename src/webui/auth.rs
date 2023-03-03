@@ -41,7 +41,7 @@ fn redirect(
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new(OAuth2Scope::Identify.to_string()))
         .set_redirect_uri(Cow::Owned(
-            RedirectUrl::new(format!("{}/api/auth/callback", origin)).map_err(|err| {
+            RedirectUrl::new(format!("{origin}/api/auth/callback")).map_err(|err| {
                 error!("authorize_url {err:?}");
                 (Status::BadGateway, "unable to form redirect URL")
             })?,
@@ -77,7 +77,7 @@ async fn callback(
     let token = client
         .exchange_code(AuthorizationCode::new(code.to_owned()))
         .set_redirect_uri(Cow::Owned(
-            RedirectUrl::new(format!("{}/api/auth/callback", origin)).map_err(|err| {
+            RedirectUrl::new(format!("{origin}/api/auth/callback")).map_err(|err| {
                 error!("exchange_code {err:?}");
                 (Status::BadGateway, "unable to form redirect URL")
             })?,
