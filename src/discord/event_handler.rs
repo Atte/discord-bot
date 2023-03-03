@@ -60,7 +60,7 @@ impl EventHandler for Handler {
                 };
 
                 if let Ok(openai) = get_data::<OpenAiKey>(&ctx).await {
-                    message.channel_id.start_typing(&ctx.http).ok();
+                    let typing = message.channel_id.start_typing(&ctx.http);
 
                     let mut safe_opts = ContentSafeOptions::default().show_discriminator(false);
                     let mut my_nick = ctx.cache.current_user().name;
@@ -116,7 +116,6 @@ impl EventHandler for Handler {
                         break;
                     }
 
-                    let typing = message.channel_id.start_typing(&ctx.http);
                     let response = openai.chat(request, my_nick).await.unwrap_or_else(|err| {
                         log::error!("OpenAI error: {}", err);
                         err.to_string()
