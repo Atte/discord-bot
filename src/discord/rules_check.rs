@@ -64,7 +64,7 @@ pub async fn handle_reaction(ctx: Context, reaction: Reaction) -> Result<()> {
     if !config
         .discord
         .rules_url
-        .map_or(false, |url| !message.content.contains(&url.to_string()))
+        .map_or(false, |url| message.content.contains(&url.to_string()))
     {
         // not rules message
         return Ok(());
