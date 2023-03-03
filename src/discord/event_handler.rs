@@ -7,7 +7,6 @@ use log::error;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
-    http::CacheHttp,
     model::{
         channel::{Message, Reaction},
         gateway::{Activity, Ready},
@@ -72,7 +71,7 @@ impl EventHandler for Handler {
                         }
                     }
 
-                    let mut request = OpenAiRequest::new(message.author.tag());
+                    let mut request = OpenAiRequest::new(Some(message.author.tag()));
 
                     let mut reply = message.clone();
                     loop {
@@ -106,7 +105,7 @@ impl EventHandler for Handler {
                                 continue;
                             }
                             if let Ok(referenced) =
-                                ctx.http().get_message(channel_id.0, message_id.0).await
+                                ctx.http.get_message(channel_id.0, message_id.0).await
                             {
                                 reply = referenced;
                                 continue;

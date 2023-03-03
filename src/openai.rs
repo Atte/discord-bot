@@ -21,15 +21,19 @@ impl TypeMapKey for OpenAiKey {
 pub struct OpenAiRequest {
     model: OpenAiModel,
     messages: Vec<OpenAiMessage>,
-    user: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user: Option<String>,
 }
 
 impl OpenAiRequest {
-    pub fn new(user: impl Into<String>) -> Self {
+    pub fn new(user: Option<impl Into<String>>) -> Self {
         OpenAiRequest {
             model: OpenAiModel::Gpt35Turbo,
             messages: Vec::new(),
-            user: user.into(),
+            temperature: None,
+            user: user.map(|u| u.into()),
         }
     }
 
@@ -105,6 +109,7 @@ pub struct OpenAi {
     client: reqwest::Client,
     api_key: String,
     prompt: String,
+    temperature: Option<f32>,
 }
 
 impl OpenAi {
@@ -114,6 +119,7 @@ impl OpenAi {
             client: reqwest::Client::new(),
             api_key: config.api_key.to_string(),
             prompt: config.prompt.to_string().trim().to_owned(),
+            temperature: config.temperature,
         }
     }
 
@@ -122,6 +128,7 @@ impl OpenAi {
         mut request: OpenAiRequest,
         botname: impl AsRef<str>,
     ) -> Result<String> {
+        request.temperature = request.temperature.or(self.temperature);
         request.unshift_message(OpenAiMessage {
             role: OpenAiMessageRole::System,
             content: self

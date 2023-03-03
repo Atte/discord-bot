@@ -27,6 +27,18 @@ pub struct Config {
     pub openai: OpenAiConfig,
 }
 
+impl Config {
+    #[inline]
+    pub fn from_str(source: &str) -> Result<Config> {
+        Ok(toml::from_str(source)?)
+    }
+
+    pub async fn from_file(path: impl AsRef<Path>) -> Result<Config> {
+        let source = tokio::fs::read_to_string(path).await?;
+        Self::from_str(&source)
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct MongodbConfig {
     pub uri: SubstitutingString,
@@ -106,18 +118,7 @@ pub struct TeamupConfig {
 pub struct OpenAiConfig {
     pub api_key: SubstitutingString,
     pub prompt: SubstitutingString,
-}
-
-impl Config {
-    #[inline]
-    pub fn from_str(source: &str) -> Result<Config> {
-        Ok(toml::from_str(source)?)
-    }
-
-    pub async fn from_file(path: impl AsRef<Path>) -> Result<Config> {
-        let source = tokio::fs::read_to_string(path).await?;
-        Self::from_str(&source)
-    }
+    pub temperature: Option<f32>,
 }
 
 #[cfg(test)]
