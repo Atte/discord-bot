@@ -66,6 +66,7 @@
         nativeBuildInputs = with pkgs; [
           (rust-bin.stable.latest.default.override {
             extensions = [ "rust-analyzer" "rust-src" ];
+            targets = [ "aarch64-unknown-linux-gnu" ];
           })
           cargo-outdated
           nodejs

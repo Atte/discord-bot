@@ -4,13 +4,14 @@ use conv::ConvUtil;
 use itertools::Itertools;
 use std::time::Duration;
 
+const ELLIPSIS: char = '\u{2026}';
+
 pub fn ellipsis_string(s: impl AsRef<str>, len: usize) -> String {
     let s = s.as_ref();
-    if s.chars().count() > len {
-        format!(
-            "{}\u{2026}", // ellipsis
-            s.chars().take(len - 1).collect::<String>()
-        )
+    if len == 0 {
+        String::new()
+    } else if s.chars().count() > len {
+        format!("{}{ELLIPSIS}", s.chars().take(len - 1).collect::<String>())
     } else {
         s.to_owned()
     }
@@ -94,7 +95,7 @@ pub fn format_duration_long(duration: &Duration) -> String {
         out.push_str(&mins.to_string());
         out.push_str(" minutes");
     }
-    if secs > 0 {
+    if secs > 0 || out.is_empty() {
         if !out.is_empty() {
             out.push_str(", ");
         }
@@ -118,9 +119,16 @@ pub fn format_duration_short(duration: &Duration) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::ELLIPSIS;
+    use std::time::Duration;
+
     #[test]
     fn ellipsis_string() {
-        assert_eq!(super::ellipsis_string("testing", 5), "test\u{2026}");
+        assert_eq!(super::ellipsis_string("testing", 0), "");
+        assert_eq!(
+            super::ellipsis_string("testing", 5),
+            format!("test{ELLIPSIS}")
+        );
         assert_eq!(super::ellipsis_string("testing", 50), "testing");
     }
 
@@ -182,7 +190,9 @@ mod tests {
 
     #[test]
     fn format_duration() {
-        use super::Duration;
+        let duration = Duration::from_secs(0);
+        assert_eq!(super::format_duration_long(&duration), "0 seconds");
+        assert_eq!(super::format_duration_short(&duration), "0:00");
 
         let duration = Duration::from_secs(4 * 60 + 20);
         assert_eq!(
@@ -201,5 +211,98 @@ mod tests {
         let duration = Duration::from_secs(4 * 60);
         assert_eq!(super::format_duration_long(&duration), "4 minutes");
         assert_eq!(super::format_duration_short(&duration), "4:00");
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use proptest::prelude::*;
+    use std::time::Duration;
+
+    proptest! {
+        #[test]
+        fn ellipsis_string_no_change((s, len) in any::<String>().prop_flat_map(|s| {
+            let len = s.chars().count();
+            (Just(s), len..)
+        })) {
+            let out = super::ellipsis_string(&s, len);
+            assert_eq!(s, out);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn ellipsis_string_shorten((s, len) in any::<String>().prop_filter("empty string can't be shortened", |s| !s.is_empty()).prop_flat_map(|s| {
+            let len = s.chars().count();
+            (Just(s), ..len)
+        })) {
+            let out = super::ellipsis_string(s, len);
+            assert!(out.chars().count() == len);
+            assert!(len == 0 || out.ends_with(super::ELLIPSIS));
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn separate_thousands_unsigned(s in r"[1-9][0-9]{0,2}( [0-9]{3}){0,6}") {
+            match s.replace(' ', "").parse::<usize>() {
+                Ok(n) => assert_eq!(s, super::separate_thousands_unsigned(n)),
+                Err(e) => return Err(TestCaseError::reject(e.to_string())),
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn separate_thousands_signed(s in r"-?[1-9][0-9]{0,2}( [0-9]{3}){0,6}") {
+            match s.replace(' ', "").parse::<isize>() {
+                Ok(n) => assert_eq!(s, super::separate_thousands_signed(n)),
+                Err(e) => return Err(TestCaseError::reject(e.to_string())),
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn format_duration_long_seconds(seconds in ..60_u64) {
+            let out = super::format_duration_long(&Duration::from_secs(seconds));
+            assert_eq!(format!("{seconds} seconds"), out);
+        }
+    }
+    proptest! {
+        #[test]
+        fn format_duration_long_minutes(minutes in 1_u64..60_u64) {
+            let out = super::format_duration_long(&Duration::from_secs(minutes * 60));
+            assert_eq!(format!("{minutes} minutes"), out);
+        }
+    }
+    proptest! {
+        #[test]
+        fn format_duration_long_hours(hours in 1_u64..=(u64::MAX / 60 / 60)) {
+            let out = super::format_duration_long(&Duration::from_secs(hours * 60 * 60));
+            assert_eq!(format!("{hours} hours"), out);
+        }
+    }
+    proptest! {
+        #[test]
+        fn format_duration_long_all(seconds in 1_u64..60_u64, minutes in 1_u64..60_u64, hours in 1_u64..=(u64::MAX / 60 / 60)) {
+            let out = super::format_duration_long(&Duration::from_secs(seconds + minutes * 60 + hours * 60 * 60));
+            assert_eq!(format!("{hours} hours, {minutes} minutes, {seconds} seconds"), out);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn format_duration_short_minutes_seconds(seconds in ..60_u64, minutes in ..60_u64) {
+            let out = super::format_duration_short(&Duration::from_secs(seconds + minutes * 60));
+            assert_eq!(format!("{minutes}:{seconds:02}"), out);
+        }
+    }
+    proptest! {
+        #[test]
+        fn format_duration_short_all(seconds in ..60_u64, minutes in ..60_u64, hours in 1_u64..=(u64::MAX / 60 / 60)) {
+            let out = super::format_duration_short(&Duration::from_secs(seconds + minutes * 60 + hours * 60 * 60));
+            assert_eq!(format!("{hours}:{minutes:02}:{seconds:02}"), out);
+        }
     }
 }
