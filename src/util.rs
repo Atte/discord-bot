@@ -220,29 +220,33 @@ mod proptests {
     use std::time::Duration;
 
     proptest! {
+        #![proptest_config(ProptestConfig::with_cases(1024))]
+
         #[test]
-        fn ellipsis_string_no_change((s, len) in any::<String>().prop_flat_map(|s| {
-            let len = s.chars().count();
-            (Just(s), len..)
-        })) {
+        fn ellipsis_string_no_change(
+            (s, len) in any::<String>().prop_flat_map(|s| {
+                let len = s.chars().count();
+                (Just(s), len..)
+            })
+        ) {
             let out = super::ellipsis_string(&s, len);
             assert_eq!(s, out);
         }
-    }
 
-    proptest! {
         #[test]
-        fn ellipsis_string_shorten((s, len) in any::<String>().prop_filter("empty string can't be shortened", |s| !s.is_empty()).prop_flat_map(|s| {
-            let len = s.chars().count();
-            (Just(s), ..len)
-        })) {
+        fn ellipsis_string_shorten(
+            (s, len) in any::<String>()
+                .prop_filter("empty string can't be shortened", |s| !s.is_empty())
+                .prop_flat_map(|s| {
+                    let len = s.chars().count();
+                    (Just(s), ..len)
+                })
+        ) {
             let out = super::ellipsis_string(s, len);
             assert!(out.chars().count() == len);
             assert!(len == 0 || out.ends_with(super::ELLIPSIS));
         }
-    }
 
-    proptest! {
         #[test]
         fn separate_thousands_unsigned(s in r"[1-9][0-9]{0,2}( [0-9]{3}){0,6}") {
             match s.replace(' ', "").parse::<usize>() {
@@ -250,9 +254,7 @@ mod proptests {
                 Err(e) => return Err(TestCaseError::reject(e.to_string())),
             }
         }
-    }
 
-    proptest! {
         #[test]
         fn separate_thousands_signed(s in r"-?[1-9][0-9]{0,2}( [0-9]{3}){0,6}") {
             match s.replace(' ', "").parse::<isize>() {
@@ -260,45 +262,33 @@ mod proptests {
                 Err(e) => return Err(TestCaseError::reject(e.to_string())),
             }
         }
-    }
 
-    proptest! {
         #[test]
         fn format_duration_long_seconds(seconds in ..60_u64) {
             let out = super::format_duration_long(&Duration::from_secs(seconds));
             assert_eq!(format!("{seconds} seconds"), out);
         }
-    }
-    proptest! {
         #[test]
         fn format_duration_long_minutes(minutes in 1_u64..60_u64) {
             let out = super::format_duration_long(&Duration::from_secs(minutes * 60));
             assert_eq!(format!("{minutes} minutes"), out);
         }
-    }
-    proptest! {
         #[test]
         fn format_duration_long_hours(hours in 1_u64..=(u64::MAX / 60 / 60)) {
             let out = super::format_duration_long(&Duration::from_secs(hours * 60 * 60));
             assert_eq!(format!("{hours} hours"), out);
         }
-    }
-    proptest! {
         #[test]
         fn format_duration_long_all(seconds in 1_u64..60_u64, minutes in 1_u64..60_u64, hours in 1_u64..=(u64::MAX / 60 / 60)) {
             let out = super::format_duration_long(&Duration::from_secs(seconds + minutes * 60 + hours * 60 * 60));
             assert_eq!(format!("{hours} hours, {minutes} minutes, {seconds} seconds"), out);
         }
-    }
 
-    proptest! {
         #[test]
         fn format_duration_short_minutes_seconds(seconds in ..60_u64, minutes in ..60_u64) {
             let out = super::format_duration_short(&Duration::from_secs(seconds + minutes * 60));
             assert_eq!(format!("{minutes}:{seconds:02}"), out);
         }
-    }
-    proptest! {
         #[test]
         fn format_duration_short_all(seconds in ..60_u64, minutes in ..60_u64, hours in 1_u64..=(u64::MAX / 60 / 60)) {
             let out = super::format_duration_short(&Duration::from_secs(seconds + minutes * 60 + hours * 60 * 60));
