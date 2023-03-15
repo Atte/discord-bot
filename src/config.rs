@@ -1,14 +1,12 @@
 use crate::SubstitutingString;
 use color_eyre::eyre::Result;
 use serde::Deserialize;
-use serde_with::{serde_as, DefaultOnNull};
 use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
 };
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub mongodb: MongodbConfig,
@@ -21,7 +19,7 @@ pub struct Config {
     #[cfg(feature = "berrytube")]
     pub berrytube: BerrytubeConfig,
     #[cfg(feature = "teamup")]
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub teamup: Vec<TeamupConfig>,
     #[cfg(feature = "openai")]
     pub openai: OpenAiConfig,
@@ -45,7 +43,6 @@ pub struct MongodbConfig {
     pub database: SubstitutingString,
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
@@ -54,44 +51,41 @@ pub struct DiscordConfig {
     pub client_id: SubstitutingString,
     #[cfg(feature = "webui")]
     pub client_secret: SubstitutingString,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub owners: HashSet<UserId>,
     pub blocked_users: HashSet<UserId>,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub command_channels: HashSet<ChannelId>,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub log_channels: HashSet<ChannelId>,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub clean_channels: HashSet<ChannelId>,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub rules_channels: HashSet<ChannelId>,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub rules_roles: HashSet<RoleId>,
     pub rules_url: Option<SubstitutingString>,
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct GibConfig {
     pub endpoint: SubstitutingString,
     pub user_agent: SubstitutingString,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub shy_artists: HashSet<String>,
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct WebUIConfig {
     pub url: SubstitutingString,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub guilds: HashSet<GuildId>,
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct CronConfig {
     pub rate: u64,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub delete_old_messages: HashMap<ChannelId, i64>,
 }
 
@@ -100,25 +94,27 @@ pub struct BerrytubeConfig {
     pub url: SubstitutingString,
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct TeamupConfig {
     pub guild: GuildId,
     pub api_key: SubstitutingString,
     pub calendar_key: SubstitutingString,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub recurring_subcalendars: HashSet<u64>,
-    #[serde_as(as = "DefaultOnNull")]
+    #[serde(default)]
     pub oneoff_subcalendars: HashSet<u64>,
     pub location: SubstitutingString,
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct OpenAiConfig {
     pub api_key: SubstitutingString,
     pub prompt: SubstitutingString,
     pub temperature: Option<f32>,
+    #[serde(default)]
+    pub bot_replacements: HashMap<String, String>,
+    #[serde(default)]
+    pub user_replacements: HashMap<String, String>,
 }
 
 #[cfg(test)]

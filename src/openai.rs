@@ -4,9 +4,10 @@ use color_eyre::{
     eyre::{bail, eyre, Result},
     Section, SectionExt,
 };
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serenity::prelude::TypeMapKey;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 const MAX_TOKENS: usize = 4096;
 
@@ -110,6 +111,21 @@ pub struct OpenAi {
     api_key: String,
     prompt: String,
     temperature: Option<f32>,
+    bot_replacements: Vec<(Regex, String)>,
+    user_replacements: Vec<(Regex, String)>,
+}
+
+fn parse_replacements(config: &HashMap<String, String>) -> Vec<(Regex, String)> {
+    config
+        .iter()
+        .filter_map(|(key, value)| match Regex::new(key) {
+            Ok(re) => Some((re, value.to_owned())),
+            Err(err) => {
+                log::error!("Invalid OpenAI replacement regex: {}", err);
+                None
+            }
+        })
+        .collect()
 }
 
 impl OpenAi {
@@ -120,6 +136,8 @@ impl OpenAi {
             api_key: config.api_key.to_string(),
             prompt: config.prompt.to_string().trim().to_owned(),
             temperature: config.temperature,
+            bot_replacements: parse_replacements(&config.bot_replacements),
+            user_replacements: parse_replacements(&config.bot_replacements),
         }
     }
 
@@ -128,6 +146,18 @@ impl OpenAi {
         mut request: OpenAiRequest,
         botname: impl AsRef<str>,
     ) -> Result<String> {
+        for message in &mut request.messages {
+            let replacements = match message.role {
+                OpenAiMessageRole::User => &self.user_replacements,
+                OpenAiMessageRole::Assistant => &self.bot_replacements,
+                OpenAiMessageRole::System => continue,
+            };
+
+            for (from, to) in replacements {
+                message.content = from.replace_all(&message.content, to).to_string();
+            }
+        }
+
         request.temperature = request.temperature.or(self.temperature);
         request.unshift_message(OpenAiMessage {
             role: OpenAiMessageRole::System,

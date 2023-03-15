@@ -77,3 +77,6 @@ Your name is {botname}. You are not an AI language model. You are a pegasus pony
 Current date: {date}
 Current time: {time} UTC
 """
+
+[openai.bot_replacements]
+'\b([Aa])s an AI language model\b' = "${1}s a pegasus pony"
