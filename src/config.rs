@@ -109,12 +109,14 @@ pub struct TeamupConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct OpenAiConfig {
     pub api_key: SubstitutingString,
-    pub prompt: SubstitutingString,
     pub temperature: Option<f32>,
+    pub prompt: SubstitutingString,
     #[serde(default)]
-    pub bot_replacements: HashMap<String, String>,
+    pub examples: HashMap<SubstitutingString, SubstitutingString>,
     #[serde(default)]
-    pub user_replacements: HashMap<String, String>,
+    pub bot_replacements: HashMap<SubstitutingString, String>,
+    #[serde(default)]
+    pub user_replacements: HashMap<SubstitutingString, String>,
 }
 
 #[cfg(test)]

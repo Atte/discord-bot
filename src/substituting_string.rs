@@ -3,7 +3,7 @@ use derive_more::{AsRef, Display};
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::{de, ser};
-use std::{borrow, env, fmt};
+use std::{env, fmt};
 
 #[derive(Derivative, Debug, Clone, Display, AsRef)]
 #[derivative(PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -47,13 +47,6 @@ where
     #[inline]
     fn eq(&self, other: &T) -> bool {
         self.resolved.eq(other)
-    }
-}
-
-impl borrow::Borrow<str> for SubstitutingString {
-    #[inline]
-    fn borrow(&self) -> &str {
-        self.resolved.borrow()
     }
 }
 

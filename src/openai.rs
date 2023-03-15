@@ -7,7 +7,7 @@ use color_eyre::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serenity::prelude::TypeMapKey;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 const MAX_TOKENS: usize = 4096;
 
@@ -109,16 +109,21 @@ pub enum OpenAiMessageRole {
 pub struct OpenAi {
     client: reqwest::Client,
     api_key: String,
-    prompt: String,
     temperature: Option<f32>,
+    prompt: String,
+    examples: Vec<(String, String)>,
     bot_replacements: Vec<(Regex, String)>,
     user_replacements: Vec<(Regex, String)>,
 }
 
-fn parse_replacements(config: &HashMap<String, String>) -> Vec<(Regex, String)> {
+fn parse_replacements<'a, S>(
+    config: impl Iterator<Item = (&'a S, &'a String)>,
+) -> Vec<(Regex, String)>
+where
+    S: AsRef<str> + 'a,
+{
     config
-        .iter()
-        .filter_map(|(key, value)| match Regex::new(key) {
+        .filter_map(|(key, value)| match Regex::new(key.as_ref()) {
             Ok(re) => Some((re, value.to_owned())),
             Err(err) => {
                 log::error!("Invalid OpenAI replacement regex: {}", err);
@@ -134,10 +139,15 @@ impl OpenAi {
         Self {
             client: reqwest::Client::new(),
             api_key: config.api_key.to_string(),
-            prompt: config.prompt.to_string().trim().to_owned(),
             temperature: config.temperature,
-            bot_replacements: parse_replacements(&config.bot_replacements),
-            user_replacements: parse_replacements(&config.bot_replacements),
+            prompt: config.prompt.to_string().trim().to_owned(),
+            examples: config
+                .examples
+                .iter()
+                .map(|(user, bot)| (user.to_string(), bot.to_string()))
+                .collect(),
+            bot_replacements: parse_replacements(config.bot_replacements.iter()),
+            user_replacements: parse_replacements(config.user_replacements.iter()),
         }
     }
 
@@ -159,6 +169,17 @@ impl OpenAi {
         }
 
         request.temperature = request.temperature.or(self.temperature);
+
+        for (user, bot) in self.examples.iter().rev() {
+            request.unshift_message(OpenAiMessage {
+                role: OpenAiMessageRole::Assistant,
+                content: bot.clone(),
+            });
+            request.unshift_message(OpenAiMessage {
+                role: OpenAiMessageRole::User,
+                content: user.clone(),
+            });
+        }
         request.unshift_message(OpenAiMessage {
             role: OpenAiMessageRole::System,
             content: self
