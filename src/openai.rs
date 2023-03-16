@@ -7,7 +7,7 @@ use color_eyre::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serenity::prelude::TypeMapKey;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 const MAX_TOKENS: usize = 4096;
 
@@ -134,7 +134,10 @@ impl OpenAi {
     #[inline]
     pub fn new(config: &OpenAiConfig) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::ClientBuilder::new()
+                .timeout(Duration::from_secs(60))
+                .build()
+                .expect("invalid static reqwest client config"),
             api_key: config.api_key.to_string(),
             temperature: config.temperature,
             prompt: config.prompt.to_string().trim().to_owned(),
