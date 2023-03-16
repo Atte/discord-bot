@@ -74,7 +74,7 @@ impl EventHandler for Handler {
                     let mut request = OpenAiRequest::new(Some(message.author.tag()));
 
                     let mut reply = message.clone();
-                    loop {
+                    for _ in 0..100 {
                         let text = content_safe(&ctx, &reply.content, &safe_opts, &reply.mentions);
                         let text = text
                             .trim_start()
