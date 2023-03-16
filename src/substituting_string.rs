@@ -1,11 +1,11 @@
 use derivative::Derivative;
-use derive_more::{AsRef, Display};
+use derive_more::{AsRef, Deref, Display};
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::{de, ser};
 use std::{env, fmt};
 
-#[derive(Derivative, Debug, Clone, Display, AsRef)]
+#[derive(Derivative, Debug, Clone, Display, AsRef, Deref)]
 #[derivative(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[display(fmt = "{resolved}")]
 pub struct SubstitutingString {
@@ -16,6 +16,7 @@ pub struct SubstitutingString {
         Hash = "ignore"
     )]
     raw: String,
+    #[deref]
     #[as_ref(forward)]
     resolved: String,
 }

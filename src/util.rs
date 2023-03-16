@@ -249,7 +249,7 @@ mod proptests {
 
         #[test]
         fn separate_thousands_unsigned(s in r"[1-9][0-9]{0,2}( [0-9]{3}){0,6}") {
-            match s.replace(' ', "").parse::<usize>() {
+            match s.replace(' ', "").parse() {
                 Ok(n) => assert_eq!(s, super::separate_thousands_unsigned(n)),
                 Err(e) => return Err(TestCaseError::reject(e.to_string())),
             }
@@ -257,7 +257,7 @@ mod proptests {
 
         #[test]
         fn separate_thousands_signed(s in r"-?[1-9][0-9]{0,2}( [0-9]{3}){0,6}") {
-            match s.replace(' ', "").parse::<isize>() {
+            match s.replace(' ', "").parse() {
                 Ok(n) => assert_eq!(s, super::separate_thousands_signed(n)),
                 Err(e) => return Err(TestCaseError::reject(e.to_string())),
             }

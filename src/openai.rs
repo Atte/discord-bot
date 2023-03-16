@@ -116,15 +116,12 @@ pub struct OpenAi {
     user_replacements: Vec<(Regex, String)>,
 }
 
-fn parse_replacements<'a, S>(
-    config: impl Iterator<Item = (&'a S, &'a String)>,
-) -> Vec<(Regex, String)>
-where
-    S: AsRef<str> + 'a,
-{
+fn parse_replacements(
+    config: impl Iterator<Item = (impl AsRef<str>, impl Into<String>)>,
+) -> Vec<(Regex, String)> {
     config
         .filter_map(|(key, value)| match Regex::new(key.as_ref()) {
-            Ok(re) => Some((re, value.to_owned())),
+            Ok(re) => Some((re, value.into())),
             Err(err) => {
                 log::error!("Invalid OpenAI replacement regex: {}", err);
                 None
