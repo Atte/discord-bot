@@ -135,7 +135,7 @@ impl OpenAi {
     pub fn new(config: &OpenAiConfig) -> Self {
         Self {
             client: reqwest::ClientBuilder::new()
-                .timeout(Duration::from_secs(60))
+                .timeout(Duration::from_secs(30))
                 .build()
                 .expect("invalid static reqwest client config"),
             api_key: config.api_key.to_string(),
