@@ -10,13 +10,13 @@ use serenity::{
 use std::collections::HashSet;
 
 mod ranks;
-use ranks::{JOIN_COMMAND, LEAVE_COMMAND, RANKS_COMMAND, RANK_COMMAND};
+pub use ranks::{JOIN_COMMAND, LEAVE_COMMAND, RANKS_COMMAND, RANK_COMMAND};
 
 mod roll;
-use roll::ROLL_COMMAND;
+pub use roll::ROLL_COMMAND;
 
 mod gib;
-use gib::GIB_COMMAND;
+pub use gib::GIB_COMMAND;
 
 #[group]
 #[only_in(guilds)]

@@ -11,6 +11,7 @@ use mongodb::{
 };
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DefaultOnNull};
 use serenity::{
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
@@ -18,7 +19,6 @@ use serenity::{
     prelude::TypeMapKey,
 };
 use std::time::Duration;
-use serde_with::{serde_as, DefaultOnNull};
 
 #[derive(Debug, Clone, Deserialize)]
 struct SearchResponse {
@@ -56,6 +56,8 @@ const COLLECTION_NAME: &str = "gib-seen";
 #[description("Gib pics from Derpibooru")]
 #[usage("[tags\u{2026}]")]
 async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    log::debug!("in gib {msg:?} {args:?}");
+
     let config = get_data::<ConfigKey>(ctx).await?;
     let collection = get_data::<DbKey>(ctx)
         .await?

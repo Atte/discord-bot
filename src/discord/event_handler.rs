@@ -4,9 +4,11 @@ use super::{
 };
 use crate::util::ellipsis_string;
 use log::error;
+use regex::Regex;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
+    framework::standard::{Args, Delimiter},
     model::{
         channel::{Message, Reaction},
         gateway::{Activity, Ready},
@@ -120,6 +122,24 @@ impl EventHandler for Handler {
                         err.to_string()
                     });
 
+                    let pattern =
+                        Regex::new(r"!(roll|join|leave|ranks|gib)(?:\s+(.+))?[.!]?$").unwrap();
+                    let command = if let Some(caps) = pattern.captures(&response) {
+                        Some((
+                            caps.get(1).unwrap().as_str().to_owned(),
+                            caps.get(2)
+                                .map_or(None, |cap| Some(cap.as_str().to_owned())),
+                        ))
+                    } else {
+                        None
+                    };
+
+                    let response = if command.is_some() {
+                        pattern.replace(&response, "").to_string()
+                    } else {
+                        response
+                    };
+
                     let response = content_safe(&ctx, response, &safe_opts, &message.mentions);
                     let response: Vec<_> =
                         WordChunks::from_str(&response, MESSAGE_CODE_LIMIT).collect();
@@ -128,7 +148,7 @@ impl EventHandler for Handler {
                         let _ = typing.stop();
                     }
 
-                    let mut reply_to = message;
+                    let mut reply_to = message.clone();
                     for chunk in response {
                         match reply_to.reply(&ctx, chunk).await {
                             Ok(reply) => {
@@ -138,6 +158,51 @@ impl EventHandler for Handler {
                                 log::error!("error sending response: {:?}", err);
                             }
                         }
+                    }
+
+                    if let Some((command, args)) = command {
+                        let args = args.as_ref().map_or("", |s| s.as_str());
+                        log::debug!("command: !{command} {args}");
+                        let _ = match command.as_str() {
+                            "roll" => {
+                                (super::commands::ROLL_COMMAND.fun)(
+                                    &ctx,
+                                    &message,
+                                    Args::new(args, &[]),
+                                )
+                                .await
+                            }
+                            "join" => {
+                                (super::commands::JOIN_COMMAND.fun)(
+                                    &ctx,
+                                    &message,
+                                    Args::new(args, &[Delimiter::Single(',')]),
+                                )
+                                .await
+                            }
+                            "leave" => {
+                                (super::commands::LEAVE_COMMAND.fun)(
+                                    &ctx,
+                                    &message,
+                                    Args::new(args, &[Delimiter::Single(',')]),
+                                )
+                                .await
+                            }
+                            "ranks" => {
+                                (super::commands::RANKS_COMMAND.fun)(
+                                    &ctx,
+                                    &message,
+                                    Args::new(args, &[]),
+                                )
+                                .await
+                            }
+                            "gib" => {
+                                let args = Args::new(args, &[]);
+                                log::debug!("before gib {message:?} {args:?}");
+                                (super::commands::GIB_COMMAND.fun)(&ctx, &message, args).await
+                            }
+                            _ => Ok(()),
+                        };
                     }
                 }
             }

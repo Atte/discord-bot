@@ -290,9 +290,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(
         ctx,
         if user_ranks.is_empty() {
-            format!(
-                "You currently have no ranks. Use the {prefix}join command to join some."
-            )
+            format!("You currently have no ranks. Use the {prefix}join command to join some.")
         } else {
             ellipsis_string(
                 format!("Your ranks are: {}", user_ranks.names().join(", ")),
