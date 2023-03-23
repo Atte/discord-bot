@@ -134,11 +134,11 @@ impl EventHandler for Handler {
                         None
                     };
 
-                    let response = if command.is_some() {
-                        pattern.replace(&response, "").to_string()
-                    } else {
-                        response
-                    };
+                    // let response = if command.is_some() {
+                    //     pattern.replace(&response, "").to_string()
+                    // } else {
+                    //     response
+                    // };
 
                     let response = content_safe(&ctx, response, &safe_opts, &message.mentions);
                     let response: Vec<_> =
