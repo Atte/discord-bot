@@ -14,6 +14,7 @@ use serenity::{
         gateway::{Activity, Ready},
         guild::Member,
         id::{ChannelId, GuildId, MessageId},
+        prelude::MessageFlags,
         user::User,
     },
 };
@@ -75,6 +76,7 @@ impl EventHandler for Handler {
 
                     let mut request = OpenAiRequest::new(Some(message.author.tag()));
 
+                    // TODO: use safe_reply
                     let mut reply = message.clone();
                     for _ in 0..100 {
                         let text = content_safe(&ctx, &reply.content, &safe_opts, &reply.mentions);
@@ -134,12 +136,6 @@ impl EventHandler for Handler {
                         None
                     };
 
-                    // let response = if command.is_some() {
-                    //     pattern.replace(&response, "").to_string()
-                    // } else {
-                    //     response
-                    // };
-
                     let response = content_safe(&ctx, response, &safe_opts, &message.mentions);
                     let response: Vec<_> =
                         WordChunks::from_str(&response, MESSAGE_CODE_LIMIT).collect();
@@ -150,7 +146,16 @@ impl EventHandler for Handler {
 
                     let mut reply_to = message.clone();
                     for chunk in response {
-                        match reply_to.reply(&ctx, chunk).await {
+                        match message
+                            .channel_id
+                            .send_message(&ctx, |msg| {
+                                msg.allowed_mentions(|men| men.empty_parse())
+                                    .reference_message(&reply_to)
+                                    .flags(MessageFlags::SUPPRESS_EMBEDS)
+                                    .content(chunk)
+                            })
+                            .await
+                        {
                             Ok(reply) => {
                                 reply_to = reply;
                             }

@@ -31,6 +31,7 @@ serenity = "0.11"
 tabwriter = "1.2"
 toml = "0.7"
 void = "1.0"
+async-trait = "0.1"
 
 [dependencies.serde_with]
 version = "2.0.0"

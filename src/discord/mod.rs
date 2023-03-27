@@ -19,6 +19,7 @@ mod hooks;
 pub mod limits;
 mod log_channel;
 mod rules_check;
+mod safe_reply;
 mod stats;
 mod sticky_roles;
 
