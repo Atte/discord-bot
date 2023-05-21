@@ -126,22 +126,19 @@ impl EventHandler for Handler {
 
                     let pattern =
                         Regex::new(r"!(roll|join|leave|ranks|gib)(?:\s+(.+))?[.!]?$").unwrap();
-                    let command = if let Some(caps) = pattern.captures(&response) {
-                        Some((
+                    let command = pattern.captures(&response).map(|caps| {
+                        (
                             caps.get(1).unwrap().as_str().to_owned(),
-                            caps.get(2)
-                                .map_or(None, |cap| Some(cap.as_str().to_owned())),
-                        ))
-                    } else {
-                        None
-                    };
+                            caps.get(2).map(|cap| cap.as_str().to_owned()),
+                        )
+                    });
 
                     let response = content_safe(&ctx, response, &safe_opts, &message.mentions);
                     let response: Vec<_> =
                         WordChunks::from_str(&response, MESSAGE_CODE_LIMIT).collect();
 
                     if let Ok(typing) = typing {
-                        let _ = typing.stop();
+                        let _: Option<()> = typing.stop();
                     }
 
                     let mut reply_to = message.clone();
@@ -168,7 +165,7 @@ impl EventHandler for Handler {
                     if let Some((command, args)) = command {
                         let args = args.as_ref().map_or("", |s| s.as_str());
                         log::debug!("command: !{command} {args}");
-                        let _ = match command.as_str() {
+                        let _: Result<_, _> = match command.as_str() {
                             "roll" => {
                                 (super::commands::ROLL_COMMAND.fun)(
                                     &ctx,

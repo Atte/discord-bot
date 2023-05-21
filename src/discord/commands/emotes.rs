@@ -20,7 +20,7 @@ use std::{
     time::Duration,
 };
 use tokio::time::sleep;
-use zip::ZipWriter;
+use zip::{write::FileOptions, ZipWriter};
 
 lazy_static! {
     static ref EMOTE_PATTERN: Regex = Regex::new(r"^[A-Za-z0-9_]{2,}$").unwrap();
@@ -45,7 +45,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         return Ok(());
     }
 
-    let guild = msg.guild(&ctx).ok_or_else(|| eyre!("Guild not found"))?;
+    let guild = msg.guild(ctx).ok_or_else(|| eyre!("Guild not found"))?;
 
     let Some((channel_id, message_id)) = msg
         .message_reference
@@ -113,11 +113,11 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .filter(|role| guild.roles.contains_key(role))
         .collect();
     if !rewards.is_empty() {
-        let _ = guild
+        guild
             .member(ctx, replied.author.id)
             .await?
             .add_roles(ctx, rewards.as_slice())
-            .await;
+            .await?;
     }
 
     msg.reply(&ctx, MessageBuilder::new().emoji(&emoji).build())
@@ -155,7 +155,7 @@ async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
                 .split('/')
                 .last()
                 .ok_or_else(|| eyre!("Invalid content-type header"))?;
-            zip.start_file(format!("{}.{filetype}", emoji.name), Default::default())?;
+            zip.start_file(format!("{}.{filetype}", emoji.name), FileOptions::default())?;
             zip.write_all(&response.bytes().await?)?;
 
             if emoji.animated {

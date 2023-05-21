@@ -43,7 +43,7 @@ impl SafeReply for Message {
             safe_opts = safe_opts.display_as_member_from(guild_id);
         }
 
-        let response = content_safe(&ctx, content.into(), &safe_opts, &self.mentions);
+        let response = content_safe(ctx, content.into(), &safe_opts, &self.mentions);
         let response: Vec<_> = WordChunks::from_str(&response, MESSAGE_CODE_LIMIT).collect();
 
         let mut responses = Vec::with_capacity(response.len().min(max_pages));
