@@ -12,7 +12,7 @@ owners = [
 ]
 blocked_users = []
 command_channels = [
-    324598323489013770, # test
+    1109849190344949793, # test
     409178792938962964, # BT
     722906800508239872, # BT DnD
 ]
@@ -30,13 +30,14 @@ rules_roles = [
 ]
 rules_url = "https://berrytube.tv/rules/"
 emote_reward_roles = [
-    439841893031870474, # test
+    1109849696668766228, # test
 ]
 
-[restricted_ranks]
+[discord.restricted_ranks]
 # test
-439841893031870474 = [
-    439841872249225237
+1109849696668766228 = [
+    1109849752843063387,
+    1109849811257151559,
 ]
 
 [gib]

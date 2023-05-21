@@ -2,6 +2,8 @@ use crate::discord::{get_data, ConfigKey};
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use chrono::{SubsecRound, Utc};
 use color_eyre::eyre::eyre;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serenity::{
     client::Context,
     framework::standard::{
@@ -18,38 +20,65 @@ use std::{
 use tokio::time::sleep;
 use zip::ZipWriter;
 
+lazy_static! {
+    static ref EMOTE_PATTERN: Regex = Regex::new(r"^[A-Za-z0-9_]{2,}$").unwrap();
+}
+
+const DELAY: Duration = Duration::from_millis(100);
+
 #[command]
 #[required_permissions(MANAGE_EMOJIS_AND_STICKERS)]
 #[description("Approve an emote submission")]
 #[usage("emotename")]
 #[num_args(1)]
 async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let emotename = args.message().trim();
+    if !EMOTE_PATTERN.is_match(emotename) {
+        msg.reply(ctx, "Invalid emote name!").await?;
+        return Ok(());
+    }
+
     let guild = msg.guild(&ctx).ok_or_else(|| eyre!("Guild not found"))?;
 
-    let (channel_id, message_id) = msg
+    let Some((channel_id, message_id)) = msg
         .message_reference
         .as_ref()
-        .and_then(|r| r.message_id.map(|id| (r.channel_id, id)))
-        .ok_or_else(|| eyre!("No message replied to!"))?;
+        .and_then(|r| r.message_id.map(|id| (r.channel_id, id))) else {
+            msg.reply(ctx, "No message replied to!").await?;
+            return Ok(());
+        };
 
-    let replied = ctx
-        .cache
-        .message(channel_id, message_id)
-        .ok_or_else(|| eyre!("Replied to message not found!"))?;
+    let replied;
+    if let Some(referenced) = ctx.cache.message(channel_id, message_id) {
+        replied = referenced;
+    } else if let Ok(referenced) = ctx.http.get_message(channel_id.0, message_id.0).await {
+        replied = referenced;
+    } else {
+        msg.reply(ctx, "Replied to message not found!").await?;
+        return Ok(());
+    }
 
-    let image = replied
+    let Some(image) = replied
         .attachments
         .iter()
-        .find(|a| a.dimensions().is_some())
-        .ok_or_else(|| eyre!("No image attachments in replied to message!"))?;
+        .find(|a| a.dimensions().is_some()) else {
+            msg.reply(ctx, "No image attachments in replied to message!").await?;
+            return Ok(());
+        };
 
     if image.size > 256_000 {
-        Err(eyre!("Image too large! (max 256 kB)"))?;
+        msg.reply(ctx, "Image too large! (max 256 kB)").await?;
+        return Ok(());
     }
 
     let data = BASE64_STANDARD.encode(&image.download().await?);
 
-    let emotename = args.message().trim();
+    let old_emojis: Vec<_> = guild
+        .emojis
+        .values()
+        .filter(|e| e.name == emotename)
+        .collect();
+
     let emoji = guild
         .create_emoji(
             ctx,
@@ -64,6 +93,11 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         )
         .await?;
 
+    for old in old_emojis {
+        sleep(DELAY).await;
+        old.delete(&ctx).await?;
+    }
+
     let config = get_data::<ConfigKey>(ctx).await?;
     let rewards: Vec<_> = config
         .discord
@@ -72,11 +106,11 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .filter(|role| guild.roles.contains_key(role))
         .collect();
     if !rewards.is_empty() {
-        guild
+        let _ = guild
             .member(ctx, msg.author.id)
             .await?
             .add_roles(ctx, rewards.as_slice())
-            .await?;
+            .await;
     }
 
     msg.reply(&ctx, MessageBuilder::new().emoji(&emoji).build())
@@ -122,7 +156,7 @@ async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
                 count_static += 1;
             }
 
-            sleep(Duration::from_millis(100)).await;
+            sleep(DELAY).await;
         }
 
         zip.finish()?;
@@ -146,7 +180,9 @@ async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
 #[num_args(0)]
 async fn nuke_emotes(ctx: &Context, msg: &Message) -> CommandResult {
     download_emotes(ctx, msg, Args::new("", &[])).await?;
-    return Err(eyre!("This command is disabled!"))?;
+
+    msg.reply(&ctx, "Emote deletion is disabled!").await?;
+    return Ok(());
 
     let _typing = msg.channel_id.start_typing(&ctx.http)?;
     for emoji in msg
@@ -156,7 +192,7 @@ async fn nuke_emotes(ctx: &Context, msg: &Message) -> CommandResult {
         .await?
     {
         emoji.delete(ctx).await?;
-        sleep(Duration::from_millis(100)).await;
+        sleep(DELAY).await;
     }
     msg.reply(&ctx, "All emotes deleted!").await?;
 

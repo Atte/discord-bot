@@ -68,7 +68,8 @@ pub struct DiscordConfig {
     #[serde(default)]
     pub emote_reward_roles: HashSet<RoleId>,
     #[serde(default)]
-    pub restricted_ranks: HashMap<RoleId, HashSet<RoleId>>,
+    // TODO: deserialize key directly into RoleId
+    pub restricted_ranks: HashMap<String, HashSet<RoleId>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

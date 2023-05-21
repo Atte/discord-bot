@@ -77,7 +77,7 @@ impl Discord {
         db: mongodb::Database,
         #[cfg(feature = "openai")] openai: OpenAi,
     ) -> Result<Self> {
-        let mut framework = StandardFramework::new()
+        let framework = StandardFramework::new()
             .configure(|c| {
                 c.prefix(config.discord.command_prefix.to_string())
                     .owners(config.discord.owners.clone())
