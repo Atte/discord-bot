@@ -65,6 +65,10 @@ pub struct DiscordConfig {
     #[serde(default)]
     pub rules_roles: HashSet<RoleId>,
     pub rules_url: Option<SubstitutingString>,
+    #[serde(default)]
+    pub emote_reward_roles: HashSet<RoleId>,
+    #[serde(default)]
+    pub restricted_ranks: HashMap<RoleId, HashSet<RoleId>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

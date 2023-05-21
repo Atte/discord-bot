@@ -18,6 +18,9 @@ pub use roll::ROLL_COMMAND;
 mod gib;
 pub use gib::GIB_COMMAND;
 
+mod emotes;
+pub use emotes::EMOTES_GROUP;
+
 #[group]
 #[only_in(guilds)]
 #[commands(gib)]

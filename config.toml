@@ -29,6 +29,15 @@ rules_roles = [
     967412631411503104, # test
 ]
 rules_url = "https://berrytube.tv/rules/"
+emote_reward_roles = [
+    439841893031870474, # test
+]
+
+[restricted_ranks]
+# test
+439841893031870474 = [
+    439841872249225237
+]
 
 [gib]
 endpoint = "https://derpibooru.org/api/v1/json/search/images?sf=random&filter_id=152796"

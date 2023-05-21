@@ -125,8 +125,8 @@ async fn handle_joinleave(
     ctx: &Context,
     msg: &Message,
     mut args: Args,
-    mut on_join: impl FnMut(&Rank, &mut MessageBuilder) -> bool,
-    mut on_leave: impl FnMut(&Rank, &mut MessageBuilder) -> bool,
+    mut on_join: impl FnMut(&Rank, &HashSet<RoleId>, &mut MessageBuilder) -> bool,
+    mut on_leave: impl FnMut(&Rank, &HashSet<RoleId>, &mut MessageBuilder) -> bool,
 ) -> CommandResult {
     let guild_id = msg
         .guild_id
@@ -146,10 +146,10 @@ async fn handle_joinleave(
         let name = arg.trim();
         if let Some(rank) = ranks.by_name(name) {
             if user_role_ids.contains(&rank.role.id) {
-                if on_leave(&rank, &mut response) {
+                if on_leave(&rank, &user_role_ids, &mut response) {
                     user_role_ids.remove(&rank.role.id);
                 }
-            } else if on_join(&rank, &mut response) {
+            } else if on_join(&rank, &user_role_ids, &mut response) {
                 user_role_ids.insert(rank.role.id);
             }
         } else {
@@ -169,15 +169,24 @@ async fn handle_joinleave(
 #[min_args(1)]
 #[delimiters(',')]
 async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let restricted_ranks = get_data::<ConfigKey>(ctx).await?.discord.restricted_ranks;
     handle_joinleave(
         ctx,
         msg,
         args,
-        |rank, response| {
+        |rank, user_role_ids, response| {
+            for (key, restricted) in restricted_ranks.iter() {
+                if restricted.contains(&rank.role.id) && !user_role_ids.contains(key) {
+                    response
+                        .push("You are not allowed to join ")
+                        .push_line_safe(&rank.role.name);
+                    return false;
+                }
+            }
             response.push("Joined ").push_line_safe(&rank.role.name);
             true
         },
-        |rank, response| {
+        |rank, _user_role_ids, response| {
             response.push("Already in ").push_line_safe(&rank.role.name);
             false
         },
@@ -194,13 +203,13 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         ctx,
         msg,
         args,
-        |rank, response| {
+        |rank, _user_role_ids, response| {
             response
                 .push("Already not in ")
                 .push_line_safe(&rank.role.name);
             false
         },
-        |rank, response| {
+        |rank, _user_role_ids, response| {
             response.push("Left ").push_line_safe(&rank.role.name);
             true
         },
@@ -219,11 +228,11 @@ async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         ctx,
         msg,
         args,
-        |rank, response| {
+        |rank, _user_role_ids, response| {
             response.push("Joined ").push_line_safe(&rank.role.name);
             true
         },
-        |rank, response| {
+        |rank, _user_role_ids, response| {
             response.push("Left ").push_line_safe(&rank.role.name);
             true
         },

@@ -77,7 +77,7 @@ impl Discord {
         db: mongodb::Database,
         #[cfg(feature = "openai")] openai: OpenAi,
     ) -> Result<Self> {
-        let framework = StandardFramework::new()
+        let mut framework = StandardFramework::new()
             .configure(|c| {
                 c.prefix(config.discord.command_prefix.to_string())
                     .owners(config.discord.owners.clone())
@@ -89,10 +89,11 @@ impl Discord {
             .unrecognised_command(hooks::unrecognised_command)
             .on_dispatch_error(hooks::dispatch_error)
             .after(hooks::after)
+            .help(&commands::HELP_COMMAND)
             .group(&commands::HORSE_GROUP)
             .group(&commands::RANKS_GROUP)
-            .group(&commands::MISC_GROUP)
-            .help(&commands::HELP_COMMAND);
+            .group(&commands::EMOTES_GROUP)
+            .group(&commands::MISC_GROUP);
 
         let builder = Client::builder(&config.discord.token, GatewayIntents::all())
             .cache_settings(|c| c.max_messages(1024))
