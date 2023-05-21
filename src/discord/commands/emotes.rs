@@ -3,6 +3,7 @@ use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use chrono::{SubsecRound, Utc};
 use color_eyre::eyre::eyre;
 use lazy_static::lazy_static;
+use maplit::hashset;
 use regex::Regex;
 use serenity::{
     client::Context,
@@ -14,6 +15,7 @@ use serenity::{
     utils::MessageBuilder,
 };
 use std::{
+    collections::HashSet,
     io::{Cursor, Write},
     time::Duration,
 };
@@ -22,6 +24,11 @@ use zip::ZipWriter;
 
 lazy_static! {
     static ref EMOTE_PATTERN: Regex = Regex::new(r"^[A-Za-z0-9_]{2,}$").unwrap();
+    static ref IMAGE_TYPES: HashSet<&'static str> = hashset! {
+        "image/png",
+        "image/jpeg",
+        "image/gif",
+    };
 }
 
 const DELAY: Duration = Duration::from_millis(100);
@@ -61,7 +68,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let Some(image) = replied
         .attachments
         .iter()
-        .find(|a| a.dimensions().is_some()) else {
+        .find(|a| if let Some(ref ct) = a.content_type { IMAGE_TYPES.contains(ct.as_str()) } else { false }) else {
             msg.reply(ctx, "No image attachments in replied to message!").await?;
             return Ok(());
         };
@@ -107,7 +114,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .collect();
     if !rewards.is_empty() {
         let _ = guild
-            .member(ctx, msg.author.id)
+            .member(ctx, replied.author.id)
             .await?
             .add_roles(ctx, rewards.as_slice())
             .await;
@@ -121,6 +128,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[required_permissions(MANAGE_EMOJIS_AND_STICKERS)]
+#[description("Download a ZIP file of all emotes")]
 #[num_args(0)]
 async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
     let _typing = msg.channel_id.start_typing(&ctx.http)?;
@@ -177,12 +185,13 @@ async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[required_permissions(ADMINISTRATOR)]
+#[description("Delete all emotes")]
 #[num_args(0)]
 async fn nuke_emotes(ctx: &Context, msg: &Message) -> CommandResult {
     download_emotes(ctx, msg, Args::new("", &[])).await?;
 
-    msg.reply(&ctx, "Emote deletion is disabled!").await?;
-    return Ok(());
+    // msg.reply(&ctx, "Emote deletion is disabled!").await?;
+    // return Ok(());
 
     let _typing = msg.channel_id.start_typing(&ctx.http)?;
     for emoji in msg

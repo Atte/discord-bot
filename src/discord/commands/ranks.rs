@@ -163,6 +163,7 @@ async fn handle_joinleave(
                     }
                 }
                 if on_join(&rank, &mut response) {
+                    // TODO: leave other restricted ranks
                     user_role_ids.insert(rank.role.id);
                 }
             }
