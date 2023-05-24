@@ -36,6 +36,10 @@
         cargo = pkgs.rust-bin.stable.latest.minimal;
         rustc = pkgs.rust-bin.stable.latest.minimal;
       };
+      nativeBuildInputs = with pkgs; [
+        nodejs
+        (yarn.override { inherit nodejs; })
+      ];
     in
     {
       packages.default = pkgs.lib.makeOverridable
@@ -49,9 +53,7 @@
           buildFeatures = features;
           buildType = "debug";
 
-          nativeBuildInputs = with pkgs; [
-            (yarn.override { inherit nodejs; })
-          ];
+          inherit nativeBuildInputs;
 
           preConfigure =
             let webui = pkgs.mkYarnPackage {
@@ -73,9 +75,7 @@
             targets = [ "aarch64-unknown-linux-gnu" ];
           })
           cargo-outdated
-          nodejs
-          (yarn.override { inherit nodejs; })
-        ];
+        ] ++ nativeBuildInputs;
       };
     });
 }

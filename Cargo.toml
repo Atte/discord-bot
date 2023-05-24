@@ -31,9 +31,13 @@ serenity = "0.11"
 tabwriter = "1.2"
 toml = "0.7"
 void = "1.0"
-zip = "0.6"
 async-trait = "0.1"
 base64 = "0.21"
+
+[dependencies.zip]
+version = "0.6"
+default-features = false
+features = ["deflate", "time"]
 
 [dependencies.serde_with]
 version = "2.0.0"
