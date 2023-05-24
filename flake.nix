@@ -32,10 +32,14 @@
         overlays = [ (import rust-overlay) ];
       };
       nodejs = pkgs.nodejs-16_x;
+      rustPlatform = pkgs.makeRustPlatform {
+        cargo = pkgs.rust-bin.stable.latest.minimal;
+        rustc = pkgs.rust-bin.stable.latest.minimal;
+      };
     in
     {
       packages.default = pkgs.lib.makeOverridable
-        ({ features }: pkgs.rustPlatform.buildRustPackage {
+        ({ features }: rustPlatform.buildRustPackage {
           pname = "discord-bot";
           version = "0.1.1";
 
