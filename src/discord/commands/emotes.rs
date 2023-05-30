@@ -113,11 +113,10 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .filter(|role| guild.roles.contains_key(role))
         .collect();
     if !rewards.is_empty() {
-        guild
-            .member(ctx, replied.author.id)
-            .await?
-            .add_roles(ctx, rewards.as_slice())
-            .await?;
+        let mut member = guild.member(ctx, replied.author.id).await?;
+        for reward in &rewards {
+            let _ = member.add_role(ctx, reward).await;
+        }
     }
 
     msg.reply(&ctx, MessageBuilder::new().emoji(&emoji).build())
