@@ -189,8 +189,8 @@ async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
 async fn nuke_emotes(ctx: &Context, msg: &Message) -> CommandResult {
     download_emotes(ctx, msg, Args::new("", &[])).await?;
 
-    // msg.reply(&ctx, "Emote deletion is disabled!").await?;
-    // return Ok(());
+    msg.reply(&ctx, "Emote deletion is disabled!").await?;
+    return Ok(());
 
     let _typing = msg.channel_id.start_typing(&ctx.http)?;
     for emoji in msg
