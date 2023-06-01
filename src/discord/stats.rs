@@ -1,12 +1,10 @@
 use super::{get_data, DbKey};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use color_eyre::eyre::{eyre, Result};
 use lazy_static::lazy_static;
-use mongodb::{
-    bson::{doc, Document},
-    options::UpdateOptions,
-};
+use mongodb::{bson::doc, options::UpdateOptions};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use serenity::{
     client::Context,
     model::{
@@ -17,6 +15,48 @@ use serenity::{
 
 pub const COLLECTION_NAME: &str = "stats";
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase", tag = "type")]
+pub enum Stats {
+    Member {
+        guild_id: String,
+        id: String,
+        tag: String,
+        tags: Vec<String>,
+        nick: String,
+        nicks: Vec<String>,
+        first_message: DateTime<Utc>,
+        last_message: DateTime<Utc>,
+        emoji_count: usize,
+        message_count: usize,
+        channel_mention_count: usize,
+        role_mention_count: usize,
+        user_mention_count: usize,
+    },
+    Channel {
+        guild_id: String,
+        id: String,
+        name: String,
+        names: Vec<String>,
+        first_message: DateTime<Utc>,
+        last_message: DateTime<Utc>,
+        emoji_count: usize,
+        message_count: usize,
+        channel_mention_count: usize,
+        role_mention_count: usize,
+        user_mention_count: usize,
+    },
+    Emoji {
+        guild_id: String,
+        id: String,
+        name: String,
+        names: Vec<String>,
+        first_message: DateTime<Utc>,
+        last_message: DateTime<Utc>,
+        use_count: usize,
+    },
+}
+
 #[allow(clippy::too_many_lines)]
 pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
     lazy_static! {
@@ -25,7 +65,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
         static ref CHANNEL_MENTION_RE: Regex =
             Regex::new(r#"<#(?P<id>[0-9]+)>"#).expect("Invalid regex for CHANNEL_MENTION_RE");
         static ref ROLE_MENTION_RE: Regex =
-            Regex::new(r#"<@#(?P<id>[0-9]+)>"#).expect("Invalid regex for ROLE_MENTION_RE");
+            Regex::new(r#"<@&(?P<id>[0-9]+)>"#).expect("Invalid regex for ROLE_MENTION_RE");
         static ref EMOJI_RE: Regex = Regex::new(r#"<a?:(?P<name>[^:]+):(?P<id>[0-9]+)>"#)
             .expect("Invalid regex for EMOJI_RE");
     }
@@ -65,7 +105,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
     let now = Utc::now();
     let collection = get_data::<DbKey>(ctx)
         .await?
-        .collection::<Document>(COLLECTION_NAME);
+        .collection::<Stats>(COLLECTION_NAME);
 
     collection
         .update_one(

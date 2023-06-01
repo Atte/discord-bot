@@ -21,6 +21,9 @@ pub use gib::GIB_COMMAND;
 mod emotes;
 pub use emotes::EMOTES_GROUP;
 
+mod stats;
+pub use stats::STATS_COMMAND;
+
 #[group]
 #[only_in(guilds)]
 #[commands(gib)]
@@ -32,8 +35,8 @@ pub struct Horse;
 pub struct Ranks;
 
 #[group]
-#[cfg_attr(feature = "webui", commands(roll, ping, webui))]
-#[cfg_attr(not(feature = "webui"), commands(roll, ping))]
+#[cfg_attr(feature = "webui", commands(roll, ping, webui, stats))]
+#[cfg_attr(not(feature = "webui"), commands(roll, ping, stats))]
 pub struct Misc;
 
 #[command]

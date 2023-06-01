@@ -115,7 +115,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if !rewards.is_empty() {
         let mut member = guild.member(ctx, replied.author.id).await?;
         for reward in &rewards {
-            let _ = member.add_role(ctx, reward).await;
+            let _: Result<_, _> = member.add_role(ctx, reward).await;
         }
     }
 
@@ -182,32 +182,7 @@ async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
-#[command]
-#[required_permissions(ADMINISTRATOR)]
-#[description("Delete all emotes")]
-#[num_args(0)]
-async fn nuke_emotes(ctx: &Context, msg: &Message) -> CommandResult {
-    download_emotes(ctx, msg, Args::new("", &[])).await?;
-
-    msg.reply(&ctx, "Emote deletion is disabled!").await?;
-    return Ok(());
-
-    let _typing = msg.channel_id.start_typing(&ctx.http)?;
-    for emoji in msg
-        .guild_id
-        .ok_or_else(|| eyre!("Guild not found"))?
-        .emojis(ctx)
-        .await?
-    {
-        emoji.delete(ctx).await?;
-        sleep(DELAY).await;
-    }
-    msg.reply(&ctx, "All emotes deleted!").await?;
-
-    Ok(())
-}
-
 #[group]
 #[only_in(guilds)]
-#[commands(emote, download_emotes, nuke_emotes)]
+#[commands(emote, download_emotes)]
 pub struct Emotes;
