@@ -41,6 +41,15 @@ impl SubstitutingString {
     }
 }
 
+impl Default for SubstitutingString {
+    fn default() -> Self {
+        Self {
+            raw: Default::default(),
+            resolved: Default::default(),
+        }
+    }
+}
+
 impl<T> PartialEq<T> for SubstitutingString
 where
     String: PartialEq<T>,

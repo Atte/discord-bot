@@ -67,6 +67,7 @@ pub struct DiscordConfig {
     pub rules_url: Option<SubstitutingString>,
     #[serde(default)]
     pub emote_reward_roles: HashSet<RoleId>,
+    pub emote_reward_message: Option<SubstitutingString>,
     #[serde(default)]
     // TODO: deserialize key directly into RoleId
     pub restricted_ranks: HashMap<String, HashSet<RoleId>>,
