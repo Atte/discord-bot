@@ -122,7 +122,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     msg.reply(
         &ctx,
         MessageBuilder::new()
-            .push_safe(config.discord.emote_reward_message.unwrap_or_default())
+            .push(config.discord.emote_reward_message.unwrap_or_default())
             .push_safe(" ")
             .emoji(&emoji)
             .build(),
