@@ -44,6 +44,7 @@ impl Ranks {
     }
 
     async fn from_guild(ctx: &Context, guild_id: impl Into<GuildId>) -> Result<Self> {
+        let config = get_data::<ConfigKey>(ctx).await?;
         let guild = guild_id
             .into()
             .to_guild_cached(ctx)
@@ -57,11 +58,20 @@ impl Ranks {
             .map(|role| role.position)
             .min()
             .ok_or_else(|| eyre!("Empty roles for bot!"))?;
+        let cutlast_position = guild
+            .roles
+            .values()
+            .find(|role| config.discord.rank_end_roles.contains(&role.id))
+            .map(|role| role.position);
         Ok(Self::new(
             guild
                 .roles
                 .values()
-                .filter(|role| role.position < cutoff_position && !role.name.starts_with('@'))
+                .filter(|role| {
+                    role.position < cutoff_position
+                        && cutlast_position.map_or(true, |p| role.position > p)
+                        && !role.name.starts_with('@')
+                })
                 .cloned()
                 .map(|role| Rank {
                     members: guild

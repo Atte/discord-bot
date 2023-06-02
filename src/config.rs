@@ -70,6 +70,8 @@ pub struct DiscordConfig {
     #[serde(default)]
     // TODO: deserialize key directly into RoleId
     pub restricted_ranks: HashMap<String, HashSet<RoleId>>,
+    #[serde(default)]
+    pub rank_end_roles: HashSet<RoleId>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
