@@ -1,9 +1,13 @@
-use crate::discord::{get_data, ConfigKey};
+use crate::discord::{get_data, ConfigKey, DbKey};
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use chrono::{SubsecRound, Utc};
 use color_eyre::eyre::eyre;
 use lazy_static::lazy_static;
 use maplit::hashset;
+use mongodb::{
+    bson::{doc, Document},
+    options::InsertOneOptions,
+};
 use regex::Regex;
 use serenity::{
     client::Context,
@@ -118,6 +122,25 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             let _: Result<_, _> = member.add_role(ctx, reward).await;
         }
     }
+
+    let collection = get_data::<DbKey>(ctx)
+        .await?
+        .collection::<Document>("emote-submissions");
+    collection
+        .insert_one(
+            doc! {
+                "time": Utc::now(),
+                "guild_id": guild.id.to_string(),
+                "emote_id": emoji.id.to_string(),
+                "emote_name": &emoji.name,
+                "user_id": replied.author.id.to_string(),
+                "user_name": replied.author.name,
+                "approver_id": msg.author.id.to_string(),
+                "approver_name": &msg.author.name
+            },
+            None,
+        )
+        .await?;
 
     msg.reply(
         &ctx,
