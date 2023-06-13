@@ -4,10 +4,7 @@ use chrono::{SubsecRound, Utc};
 use color_eyre::eyre::eyre;
 use lazy_static::lazy_static;
 use maplit::hashset;
-use mongodb::{
-    bson::{doc, Document},
-    options::InsertOneOptions,
-};
+use mongodb::bson::{doc, Document};
 use regex::Regex;
 use serenity::{
     client::Context,
@@ -27,7 +24,7 @@ use tokio::time::sleep;
 use zip::{write::FileOptions, ZipWriter};
 
 lazy_static! {
-    static ref EMOTE_PATTERN: Regex = Regex::new(r"^[A-Za-z0-9_]{2,}$").unwrap();
+    static ref EMOTE_PATTERN: Regex = Regex::new(r"^(?:<:)?([A-Za-z0-9_]{2,})(?::\d+>)?$").unwrap();
     static ref IMAGE_TYPES: HashSet<&'static str> = hashset! {
         "image/png",
         "image/jpeg",
@@ -43,11 +40,10 @@ const DELAY: Duration = Duration::from_millis(100);
 #[usage("emotename")]
 #[num_args(1)]
 async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let emotename = args.message().trim();
-    if !EMOTE_PATTERN.is_match(emotename) {
+    let Some(emotename) = EMOTE_PATTERN.captures(args.message().trim()).and_then(|caps| caps.get(1)) else {
         msg.reply(ctx, "Invalid emote name!").await?;
         return Ok(());
-    }
+    };
 
     let guild = msg.guild(ctx).ok_or_else(|| eyre!("Guild not found"))?;
 
@@ -87,13 +83,13 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let old_emojis: Vec<_> = guild
         .emojis
         .values()
-        .filter(|e| e.name == emotename)
+        .filter(|e| e.name == emotename.as_str())
         .collect();
 
     let emoji = guild
         .create_emoji(
             ctx,
-            emotename,
+            emotename.as_str(),
             &format!(
                 "data:{};base64,{data}",
                 image
