@@ -24,7 +24,8 @@ use tokio::time::sleep;
 use zip::{write::FileOptions, ZipWriter};
 
 lazy_static! {
-    static ref EMOTE_PATTERN: Regex = Regex::new(r"^(?:<:)?([A-Za-z0-9_]{2,})(?::\d+>)?$").unwrap();
+    static ref EMOTE_PATTERN: Regex =
+        Regex::new(r"^(?:<a?:)?([A-Za-z0-9_]{2,})(?::\d+>)?$").unwrap();
     static ref IMAGE_TYPES: HashSet<&'static str> = hashset! {
         "image/png",
         "image/jpeg",
