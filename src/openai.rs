@@ -5,6 +5,7 @@ use color_eyre::{
     Section, SectionExt,
 };
 use regex::Regex;
+use schemars::schema::RootSchema;
 use serde::{Deserialize, Serialize};
 use serenity::prelude::TypeMapKey;
 use std::{sync::Arc, time::Duration};
@@ -22,6 +23,9 @@ impl TypeMapKey for OpenAiKey {
 pub struct OpenAiRequest {
     model: OpenAiModel,
     messages: Vec<OpenAiMessage>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    functions: Vec<OpenAiFunction>,
+    function_call: OpenAiFunctionCallType,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -31,8 +35,10 @@ pub struct OpenAiRequest {
 impl OpenAiRequest {
     pub fn new(user: Option<impl Into<String>>) -> Self {
         OpenAiRequest {
-            model: OpenAiModel::Gpt35Turbo,
+            model: OpenAiModel::Gpt35Turbo0613,
             messages: Vec::new(),
+            functions: Vec::new(),
+            function_call: OpenAiFunctionCallType::Auto,
             temperature: None,
             user: user.map(Into::into),
         }
@@ -46,9 +52,16 @@ impl OpenAiRequest {
         let words_sofar: usize = self
             .messages
             .iter()
-            .map(|msg| msg.content.split_whitespace().count())
+            .filter_map(|msg| {
+                msg.content
+                    .as_ref()
+                    .map(|content| content.split_whitespace().count())
+            })
             .sum();
-        let new_words = message.content.split_whitespace().count();
+        let new_words = message
+            .content
+            .as_ref()
+            .map_or(0, |content| content.split_whitespace().count());
 
         if (words_sofar + new_words) * 4 / 3 > MAX_TOKENS / 2 {
             bail!("too many tokens");
@@ -59,10 +72,30 @@ impl OpenAiRequest {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize)]
 enum OpenAiModel {
     #[serde(rename = "gpt-3.5-turbo")]
     Gpt35Turbo,
+    #[serde(rename = "gpt-3.5-turbo-0301")]
+    Gpt35Turbo0301,
+    #[serde(rename = "gpt-3.5-turbo-0613")]
+    Gpt35Turbo0613,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum OpenAiFunctionCallType {
+    Auto,
+    None,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct OpenAiFunction {
+    name: String,
+    description: String,
+    parameters: RootSchema,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -86,14 +119,24 @@ struct OpenAiResponseUsage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAiMessage {
     role: OpenAiMessageRole,
-    content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    function_call: Option<OpenAiFunctionCall>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenAiFunctionCall {
+    name: String,
+    arguments: serde_json::Value,
 }
 
 impl OpenAiMessage {
     pub fn new(role: OpenAiMessageRole, content: impl Into<String>) -> Self {
         Self {
             role,
-            content: content.into(),
+            content: Some(content.into()),
+            function_call: None,
         }
     }
 }
@@ -104,6 +147,14 @@ pub enum OpenAiMessageRole {
     System,
     User,
     Assistant,
+    Function,
+}
+
+impl OpenAiMessageRole {
+    #[inline]
+    pub fn message(&self, content: impl Into<String>) -> OpenAiMessage {
+        OpenAiMessage::new(self.clone(), content)
+    }
 }
 
 pub struct OpenAi {
@@ -160,34 +211,31 @@ impl OpenAi {
             let replacements = match message.role {
                 OpenAiMessageRole::User => &self.user_replacements,
                 OpenAiMessageRole::Assistant => &self.bot_replacements,
-                OpenAiMessageRole::System => continue,
+                OpenAiMessageRole::System | OpenAiMessageRole::Function => continue,
             };
 
             for (from, to) in replacements {
-                message.content = from.replace_all(&message.content, to).to_string();
+                message.content = message
+                    .content
+                    .as_ref()
+                    .map(|content| from.replace_all(content, to).to_string());
             }
         }
 
         request.temperature = request.temperature.or(self.temperature);
 
         for (user, bot) in self.examples.iter().rev() {
-            request.unshift_message(OpenAiMessage {
-                role: OpenAiMessageRole::Assistant,
-                content: bot.clone(),
-            });
-            request.unshift_message(OpenAiMessage {
-                role: OpenAiMessageRole::User,
-                content: user.clone(),
-            });
+            request.unshift_message(OpenAiMessageRole::Assistant.message(bot.clone()));
+            request.unshift_message(OpenAiMessageRole::User.message(user.clone()));
         }
-        request.unshift_message(OpenAiMessage {
-            role: OpenAiMessageRole::System,
-            content: self
-                .prompt
-                .replace("{botname}", botname.as_ref())
-                .replace("{date}", &Utc::now().format("%A, %B %d, %Y").to_string())
-                .replace("{time}", &Utc::now().format("%I:%M %p").to_string()),
-        });
+        request.unshift_message(
+            OpenAiMessageRole::System.message(
+                self.prompt
+                    .replace("{botname}", botname.as_ref())
+                    .replace("{date}", &Utc::now().format("%A, %B %d, %Y").to_string())
+                    .replace("{time}", &Utc::now().format("%I:%M %p").to_string()),
+            ),
+        );
 
         log::debug!("OpenAI request: {:?}", request);
 
@@ -206,8 +254,14 @@ impl OpenAi {
             .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))?;
 
         if let Some(choice) = response.choices.get(0) {
-            log::debug!("OpenAI response: {}", choice.message.content);
-            Ok(choice.message.content.clone())
+            if let Some(ref call) = choice.message.function_call {
+                todo!("function call")
+            } else if let Some(ref content) = choice.message.content {
+                log::debug!("OpenAI response: {}", content);
+                Ok(content.clone())
+            } else {
+                bail!("No content in OpenAI response")
+            }
         } else {
             bail!("No content in OpenAI response")
         }

@@ -9,6 +9,8 @@ readme = "README.md"
 repository = "https://github.com/Atte/discord-bot"
 
 [dependencies]
+async-trait = "0.1"
+base64 = "0.21"
 bytes = "1.0"
 color-eyre = "0.6"
 conv = "0.3"
@@ -31,8 +33,6 @@ serenity = "0.11"
 tabwriter = "1.2"
 toml = "0.7"
 void = "1.0"
-async-trait = "0.1"
-base64 = "0.21"
 
 [dependencies.zip]
 version = "0.6"
@@ -102,6 +102,10 @@ optional = true
 version = "0.8"
 optional = true
 
+[dependencies.schemars]
+version = "0.8"
+optional = true
+
 [build-dependencies]
 includedir_codegen = "0.6"
 
@@ -116,4 +120,4 @@ webui-https = ["webui", "rocket/tls"]
 berrytube = ["reqwest/stream", "tokio-stream"]
 cron = []
 teamup = ["serde_repr"]
-openai = []
+openai = ["schemars"]
