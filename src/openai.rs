@@ -25,7 +25,6 @@ pub struct OpenAiRequest {
     messages: Vec<OpenAiMessage>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     functions: Vec<OpenAiFunction>,
-    function_call: OpenAiFunctionCallType,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -38,7 +37,6 @@ impl OpenAiRequest {
             model: OpenAiModel::Gpt35Turbo0613,
             messages: Vec::new(),
             functions: Vec::new(),
-            function_call: OpenAiFunctionCallType::Auto,
             temperature: None,
             user: user.map(Into::into),
         }
@@ -81,14 +79,6 @@ enum OpenAiModel {
     Gpt35Turbo0301,
     #[serde(rename = "gpt-3.5-turbo-0613")]
     Gpt35Turbo0613,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "lowercase")]
-enum OpenAiFunctionCallType {
-    Auto,
-    None,
 }
 
 #[derive(Debug, Clone, Serialize)]
