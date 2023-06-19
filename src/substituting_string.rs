@@ -5,7 +5,7 @@ use regex::{Captures, Regex};
 use serde::{de, ser};
 use std::{env, fmt};
 
-#[derive(Derivative, Debug, Clone, Display, AsRef, Deref)]
+#[derive(Derivative, Debug, Clone, Default, Display, AsRef, Deref)]
 #[derivative(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[display(fmt = "{resolved}")]
 pub struct SubstitutingString {
@@ -38,15 +38,6 @@ impl SubstitutingString {
             .replace_all(&raw, |caps: &Captures<'_>| env::var(&caps[1]).unwrap())
             .into_owned();
         Ok(Self { raw, resolved })
-    }
-}
-
-impl Default for SubstitutingString {
-    fn default() -> Self {
-        Self {
-            raw: Default::default(),
-            resolved: Default::default(),
-        }
     }
 }
 

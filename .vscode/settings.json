@@ -14,5 +14,11 @@
     },
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
     "rust.all_features": true,
-    "rust-analyzer.cargo.features": ["berrytube", "cron", "teamup", "openai"]
+    "rust-analyzer.cargo.features": [
+        "berrytube",
+        "cron",
+        "teamup",
+        "openai",
+        "openai-functions"
+    ]
 }

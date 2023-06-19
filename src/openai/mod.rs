@@ -5,10 +5,14 @@ use color_eyre::{
     Section, SectionExt,
 };
 use regex::Regex;
-use schemars::schema::RootSchema;
 use serde::{Deserialize, Serialize};
 use serenity::prelude::TypeMapKey;
 use std::{sync::Arc, time::Duration};
+
+#[cfg(feature = "openai-functions")]
+mod functions;
+#[cfg(feature = "openai-functions")]
+use self::functions::{OpenAiFunction, OpenAiFunctionCall};
 
 const MAX_TOKENS: usize = 4096;
 
@@ -23,6 +27,7 @@ impl TypeMapKey for OpenAiKey {
 pub struct OpenAiRequest {
     model: OpenAiModel,
     messages: Vec<OpenAiMessage>,
+    #[cfg(feature = "openai-functions")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     functions: Vec<OpenAiFunction>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -36,10 +41,15 @@ impl OpenAiRequest {
         OpenAiRequest {
             model: OpenAiModel::Gpt35Turbo0613,
             messages: Vec::new(),
-            functions: Vec::new(),
+            #[cfg(feature = "openai-functions")]
+            functions: functions::all(),
             temperature: None,
             user: user.map(Into::into),
         }
+    }
+
+    fn push_message(&mut self, message: OpenAiMessage) {
+        self.messages.push(message);
     }
 
     fn unshift_message(&mut self, message: OpenAiMessage) {
@@ -81,13 +91,6 @@ enum OpenAiModel {
     Gpt35Turbo0613,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct OpenAiFunction {
-    name: String,
-    description: String,
-    parameters: RootSchema,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAiResponse {
     choices: Vec<OpenAiResponseChoice>,
@@ -110,22 +113,35 @@ struct OpenAiResponseUsage {
 pub struct OpenAiMessage {
     role: OpenAiMessageRole,
     #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     content: Option<String>,
+    #[cfg(feature = "openai-functions")]
     #[serde(skip_serializing_if = "Option::is_none")]
     function_call: Option<OpenAiFunctionCall>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OpenAiFunctionCall {
-    name: String,
-    arguments: serde_json::Value,
 }
 
 impl OpenAiMessage {
     pub fn new(role: OpenAiMessageRole, content: impl Into<String>) -> Self {
         Self {
             role,
+            name: None,
             content: Some(content.into()),
+            #[cfg(feature = "openai-functions")]
+            function_call: None,
+        }
+    }
+
+    pub fn new_with_name(
+        role: OpenAiMessageRole,
+        name: impl Into<String>,
+        content: impl Into<String>,
+    ) -> Self {
+        Self {
+            role,
+            name: Some(name.into()),
+            content: Some(content.into()),
+            #[cfg(feature = "openai-functions")]
             function_call: None,
         }
     }
@@ -144,6 +160,15 @@ impl OpenAiMessageRole {
     #[inline]
     pub fn message(&self, content: impl Into<String>) -> OpenAiMessage {
         OpenAiMessage::new(self.clone(), content)
+    }
+
+    #[inline]
+    pub fn message_with_name(
+        &self,
+        name: impl Into<String>,
+        content: impl Into<String>,
+    ) -> OpenAiMessage {
+        OpenAiMessage::new_with_name(self.clone(), name, content)
     }
 }
 
@@ -192,6 +217,24 @@ impl OpenAi {
         }
     }
 
+    async fn request(&self, request: &OpenAiRequest) -> Result<OpenAiResponse> {
+        log::debug!("OpenAI request: {:?}", request);
+
+        let response = self
+            .client
+            .post("https://api.openai.com/v1/chat/completions")
+            .bearer_auth(&self.api_key)
+            .json(request)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
+
+        serde_json::from_str(&response)
+            .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))
+    }
+
     pub async fn chat(
         &self,
         mut request: OpenAiRequest,
@@ -227,31 +270,29 @@ impl OpenAi {
             ),
         );
 
-        log::debug!("OpenAI request: {:?}", request);
+        let response = self.request(&request).await?;
+        #[cfg(feature = "openai-functions")]
+        let response = if let Some(call) = response
+            .choices
+            .get(0)
+            .and_then(|choice| choice.message.function_call.as_ref())
+        {
+            request.push_message(response.choices.get(0).unwrap().message.clone());
+            request.push_message(
+                OpenAiMessageRole::Function
+                    .message_with_name(&call.name, functions::call(call).unwrap_or_else(|err| err)),
+            );
+            self.request(&request).await?
+        } else {
+            response
+        };
 
-        let response = self
-            .client
-            .post("https://api.openai.com/v1/chat/completions")
-            .bearer_auth(&self.api_key)
-            .json(&request)
-            .send()
-            .await?
-            .error_for_status()?
-            .text()
-            .await?;
-
-        let response: OpenAiResponse = serde_json::from_str(&response)
-            .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))?;
-
-        if let Some(choice) = response.choices.get(0) {
-            if let Some(ref call) = choice.message.function_call {
-                todo!("function call")
-            } else if let Some(ref content) = choice.message.content {
-                log::debug!("OpenAI response: {}", content);
-                Ok(content.clone())
-            } else {
-                bail!("No content in OpenAI response")
-            }
+        if let Some(content) = response
+            .choices
+            .get(0)
+            .and_then(|choice| choice.message.content.as_ref())
+        {
+            Ok(content.clone())
         } else {
             bail!("No content in OpenAI response")
         }
