@@ -28,7 +28,7 @@ struct SearchResponse {
 
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Image {
+pub struct Image {
     id: i64,
     #[serde_as(as = "DefaultOnNull")]
     tags: Vec<String>,
@@ -51,13 +51,10 @@ impl TypeMapKey for ClientKey {
 
 const COLLECTION_NAME: &str = "gib-seen";
 
-#[command]
-#[aliases(give, derpi, derpibooru)]
-#[description("Gib pics from Derpibooru")]
-#[usage("[tags\u{2026}]")]
-async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    log::debug!("in gib {msg:?} {args:?}");
-
+pub async fn derpibooru_search(
+    ctx: &Context,
+    query: &str,
+) -> CommandResult<Option<(Image, usize)>> {
     let config = get_data::<ConfigKey>(ctx).await?;
     let collection = get_data::<DbKey>(ctx)
         .await?
@@ -71,11 +68,6 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             .map_err(|err| format!("Unable to create reqwest::Client: {err:?}"))
     })
     .await?;
-
-    let mut query = args.message().trim();
-    if query.is_empty() {
-        query = "*";
-    }
 
     let response: SearchResponse = client
         .get(Url::parse_with_params(
@@ -134,53 +126,81 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .or_else(|| seen_ids.first())
         .and_then(|id| images.iter().find(|image| &image.id == id))
         .or_else(|| images.first())
+        .cloned()
+        .cloned()
     {
-        let artists = image
-            .tags
-            .iter()
-            .filter_map(|tag| tag.strip_prefix("artist:"))
-            .join(", ");
-        msg.channel_id
-            .send_message(&ctx, |message| {
-                message.embed(|embed| {
-                    embed.field("Post", format!("https://derpibooru.org/{}", image.id), true);
-                    if !artists.is_empty() {
-                        embed.field(
-                            if artists.contains(", ") {
-                                "Artists"
-                            } else {
-                                "Artist"
-                            },
-                            ellipsis_string(artists, EMBED_FIELD_VALUE_LENGTH),
-                            true,
-                        );
-                    }
-                    /*
-                    if let Some(ref source_url) = image.source_url {
-                        if source_url.len() <= EMBED_FIELD_VALUE_LENGTH {
-                            embed.field("Source", source_url, false);
-                        }
-                    }
-                    */
-                    if let Some(ref timestamp) = image.first_seen_at {
-                        embed.timestamp::<&str>(timestamp);
-                    }
-                    embed.image(&image.representations.tall).footer(|footer| {
-                        footer.text(format!(
-                            "{} results",
-                            separate_thousands_unsigned(response.total)
-                        ))
-                    })
-                })
-            })
-            .await?;
         collection
             .update_one(
                 doc! { "image.id": image.id },
-                doc! { "$set": { "image": to_bson(image)?, "time": Utc::now() } },
+                doc! { "$set": { "image": to_bson(&image)?, "time": Utc::now() } },
                 UpdateOptions::builder().upsert(true).build(),
             )
             .await?;
+        Ok(Some((image, response.total)))
+    } else {
+        Ok(None)
+    }
+}
+
+pub async fn derpibooru_embed(
+    ctx: &Context,
+    msg: &Message,
+    image: Image,
+    total: usize,
+) -> CommandResult {
+    let artists = image
+        .tags
+        .iter()
+        .filter_map(|tag| tag.strip_prefix("artist:"))
+        .join(", ");
+    msg.channel_id
+        .send_message(&ctx, |message| {
+            message.embed(|embed| {
+                embed.field("Post", format!("https://derpibooru.org/{}", image.id), true);
+                if !artists.is_empty() {
+                    embed.field(
+                        if artists.contains(", ") {
+                            "Artists"
+                        } else {
+                            "Artist"
+                        },
+                        ellipsis_string(artists, EMBED_FIELD_VALUE_LENGTH),
+                        true,
+                    );
+                }
+                /*
+                if let Some(ref source_url) = image.source_url {
+                    if source_url.len() <= EMBED_FIELD_VALUE_LENGTH {
+                        embed.field("Source", source_url, false);
+                    }
+                }
+                */
+                if let Some(ref timestamp) = image.first_seen_at {
+                    embed.timestamp::<&str>(timestamp);
+                }
+                embed.image(&image.representations.tall).footer(|footer| {
+                    footer.text(format!("{} results", separate_thousands_unsigned(total)))
+                })
+            })
+        })
+        .await?;
+    Ok(())
+}
+
+#[command]
+#[aliases(give, derpi, derpibooru)]
+#[description("Gib pics from Derpibooru")]
+#[usage("[tags\u{2026}]")]
+async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    log::debug!("in gib {msg:?} {args:?}");
+
+    let mut query = args.message().trim();
+    if query.is_empty() {
+        query = "*";
+    }
+
+    if let Some((image, total)) = derpibooru_search(ctx, query).await? {
+        derpibooru_embed(ctx, msg, image, total).await?;
     } else {
         msg.reply(&ctx, "No results").await?;
     }

@@ -1,12 +1,12 @@
 use crate::config::OpenAiConfig;
 use chrono::Utc;
-use color_eyre::{
-    eyre::{bail, eyre, Result},
-    Section, SectionExt,
-};
+use color_eyre::eyre::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serenity::prelude::TypeMapKey;
+use serenity::{
+    model::prelude::Message,
+    prelude::{Context, TypeMapKey},
+};
 use std::{sync::Arc, time::Duration};
 
 #[cfg(feature = "openai-functions")]
@@ -42,7 +42,13 @@ impl OpenAiRequest {
             model: OpenAiModel::Gpt35Turbo0613,
             messages: Vec::new(),
             #[cfg(feature = "openai-functions")]
-            functions: functions::all(),
+            functions: match functions::all() {
+                Ok(funs) => funs,
+                Err(err) => {
+                    log::error!("Unable to define OpenAI functions: {:?}", err);
+                    Vec::new()
+                }
+            },
             temperature: None,
             user: user.map(Into::into),
         }
@@ -114,7 +120,6 @@ pub struct OpenAiMessage {
     role: OpenAiMessageRole,
     #[serde(skip_serializing_if = "Option::is_none")]
     name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     content: Option<String>,
     #[cfg(feature = "openai-functions")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -218,7 +223,7 @@ impl OpenAi {
     }
 
     async fn request(&self, request: &OpenAiRequest) -> Result<OpenAiResponse> {
-        log::debug!("OpenAI request: {:?}", request);
+        log::debug!("OpenAI request: {}", serde_json::to_string_pretty(request)?);
 
         let response = self
             .client
@@ -226,17 +231,27 @@ impl OpenAi {
             .bearer_auth(&self.api_key)
             .json(request)
             .send()
-            .await?
-            .error_for_status()?
-            .text()
             .await?;
 
-        serde_json::from_str(&response)
-            .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))
+        match response.error_for_status_ref() {
+            Ok(_) => {
+                let text = response.text().await?;
+                log::debug!("OpenAI response: {}", text);
+                Ok(serde_json::from_str(&text)?)
+            }
+            Err(err) => {
+                if let Ok(text) = response.text().await {
+                    log::debug!("OpenAI error response: {}", text);
+                }
+                Err(err.into())
+            }
+        }
     }
 
     pub async fn chat(
         &self,
+        ctx: &Context,
+        msg: &Message,
         mut request: OpenAiRequest,
         botname: impl AsRef<str>,
     ) -> Result<String> {
@@ -279,8 +294,12 @@ impl OpenAi {
         {
             request.push_message(response.choices.get(0).unwrap().message.clone());
             request.push_message(
-                OpenAiMessageRole::Function
-                    .message_with_name(&call.name, functions::call(call).unwrap_or_else(|err| err)),
+                OpenAiMessageRole::Function.message_with_name(
+                    &call.name,
+                    functions::call(ctx, msg, call)
+                        .await
+                        .unwrap_or_else(|err| err.to_string()),
+                ),
             );
             self.request(&request).await?
         } else {

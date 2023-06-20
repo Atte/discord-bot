@@ -4,11 +4,9 @@ use super::{
 };
 use crate::util::ellipsis_string;
 use log::error;
-use regex::Regex;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
-    framework::standard::{Args, Delimiter},
     model::{
         channel::{Message, Reaction},
         gateway::{Activity, Ready},
@@ -119,19 +117,13 @@ impl EventHandler for Handler {
                         break;
                     }
 
-                    let response = openai.chat(request, my_nick).await.unwrap_or_else(|err| {
-                        log::error!("OpenAI error: {}", err);
-                        err.to_string()
-                    });
-
-                    let pattern =
-                        Regex::new(r"!(roll|join|leave|ranks|gib)(?:\s+(.+))?[.!]?$").unwrap();
-                    let command = pattern.captures(&response).map(|caps| {
-                        (
-                            caps.get(1).unwrap().as_str().to_owned(),
-                            caps.get(2).map(|cap| cap.as_str().to_owned()),
-                        )
-                    });
+                    let response = openai
+                        .chat(&ctx, &message, request, my_nick)
+                        .await
+                        .unwrap_or_else(|err| {
+                            log::error!("OpenAI error: {}", err);
+                            err.to_string()
+                        });
 
                     let response = content_safe(&ctx, response, &safe_opts, &message.mentions);
                     let response: Vec<_> =
@@ -160,51 +152,6 @@ impl EventHandler for Handler {
                                 log::error!("error sending response: {:?}", err);
                             }
                         }
-                    }
-
-                    if let Some((command, args)) = command {
-                        let args = args.as_ref().map_or("", |s| s.as_str());
-                        log::debug!("command: !{command} {args}");
-                        let _: Result<_, _> = match command.as_str() {
-                            "roll" => {
-                                (super::commands::ROLL_COMMAND.fun)(
-                                    &ctx,
-                                    &message,
-                                    Args::new(args, &[]),
-                                )
-                                .await
-                            }
-                            "join" => {
-                                (super::commands::JOIN_COMMAND.fun)(
-                                    &ctx,
-                                    &message,
-                                    Args::new(args, &[Delimiter::Single(',')]),
-                                )
-                                .await
-                            }
-                            "leave" => {
-                                (super::commands::LEAVE_COMMAND.fun)(
-                                    &ctx,
-                                    &message,
-                                    Args::new(args, &[Delimiter::Single(',')]),
-                                )
-                                .await
-                            }
-                            "ranks" => {
-                                (super::commands::RANKS_COMMAND.fun)(
-                                    &ctx,
-                                    &message,
-                                    Args::new(args, &[]),
-                                )
-                                .await
-                            }
-                            "gib" => {
-                                let args = Args::new(args, &[]);
-                                log::debug!("before gib {message:?} {args:?}");
-                                (super::commands::GIB_COMMAND.fun)(&ctx, &message, args).await
-                            }
-                            _ => Ok(()),
-                        };
                     }
                 }
             }

@@ -13,7 +13,7 @@ use crate::openai::{OpenAi, OpenAiKey};
 #[cfg(feature = "openai")]
 use std::sync::Arc;
 
-mod commands;
+pub mod commands;
 mod event_handler;
 mod hooks;
 pub mod limits;
