@@ -14,7 +14,11 @@ mod functions;
 #[cfg(feature = "openai-functions")]
 use self::functions::{OpenAiFunction, OpenAiFunctionCall};
 
-const MAX_TOKENS: usize = 4096;
+const MODEL_SMALL: OpenAiModel = OpenAiModel::Gpt35Turbo0613;
+const MAX_TOKENS_SMALL: usize = 4_000;
+
+const MODEL_LARGE: OpenAiModel = OpenAiModel::Gpt35Turbo16k0613;
+const MAX_TOKENS_LARGE: usize = 16_000;
 
 #[derive(Debug)]
 pub struct OpenAiKey;
@@ -39,7 +43,7 @@ pub struct OpenAiRequest {
 impl OpenAiRequest {
     pub fn new(user: Option<impl Into<String>>) -> Self {
         OpenAiRequest {
-            model: OpenAiModel::Gpt35Turbo0613,
+            model: MODEL_LARGE,
             messages: Vec::new(),
             #[cfg(feature = "openai-functions")]
             functions: match functions::all() {
@@ -54,16 +58,37 @@ impl OpenAiRequest {
         }
     }
 
+    fn shift_message(&mut self) -> Option<OpenAiMessage> {
+        if self.messages.is_empty() {
+            None
+        } else {
+            Some(self.messages.remove(0))
+        }
+    }
+
+    #[inline]
     fn push_message(&mut self, message: OpenAiMessage) {
         self.messages.push(message);
     }
 
+    #[inline]
     fn unshift_message(&mut self, message: OpenAiMessage) {
         self.messages.insert(0, message);
     }
 
     pub fn try_unshift_message(&mut self, message: OpenAiMessage) -> Result<()> {
-        let words_sofar: usize = self
+        self.unshift_message(message);
+
+        if self.approximate_num_tokens() > MAX_TOKENS_LARGE / 2 {
+            self.shift_message();
+            bail!("too many tokens");
+        }
+
+        Ok(())
+    }
+
+    fn approximate_num_tokens(&self) -> usize {
+        let words: usize = self
             .messages
             .iter()
             .filter_map(|msg| {
@@ -72,17 +97,7 @@ impl OpenAiRequest {
                     .map(|content| content.split_whitespace().count())
             })
             .sum();
-        let new_words = message
-            .content
-            .as_ref()
-            .map_or(0, |content| content.split_whitespace().count());
-
-        if (words_sofar + new_words) * 4 / 3 > MAX_TOKENS / 2 {
-            bail!("too many tokens");
-        }
-
-        self.messages.insert(0, message);
-        Ok(())
+        words * 4 / 3
     }
 }
 
@@ -91,10 +106,14 @@ impl OpenAiRequest {
 enum OpenAiModel {
     #[serde(rename = "gpt-3.5-turbo")]
     Gpt35Turbo,
+    #[serde(rename = "gpt-3.5-turbo-16k")]
+    Gpt35Turbo16k,
     #[serde(rename = "gpt-3.5-turbo-0301")]
     Gpt35Turbo0301,
     #[serde(rename = "gpt-3.5-turbo-0613")]
     Gpt35Turbo0613,
+    #[serde(rename = "gpt-3.5-turbo-16k-0613")]
+    Gpt35Turbo16k0613,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -285,7 +304,13 @@ impl OpenAi {
             ),
         );
 
+        request.model = if request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2 {
+            MODEL_LARGE
+        } else {
+            MODEL_SMALL
+        };
         let response = self.request(&request).await?;
+
         #[cfg(feature = "openai-functions")]
         let response = if let Some(call) = response
             .choices
@@ -301,6 +326,12 @@ impl OpenAi {
                         .unwrap_or_else(|err| err.to_string()),
                 ),
             );
+
+            request.model = if request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2 {
+                MODEL_LARGE
+            } else {
+                MODEL_SMALL
+            };
             self.request(&request).await?
         } else {
             response
