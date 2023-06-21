@@ -106,6 +106,10 @@ optional = true
 version = "0.8"
 optional = true
 
+[dependencies.chrono-tz]
+version = "0.8"
+optional = true
+
 [build-dependencies]
 includedir_codegen = "0.6"
 
@@ -121,4 +125,4 @@ berrytube = ["reqwest/stream", "tokio-stream"]
 cron = []
 teamup = ["serde_repr"]
 openai = ["schemars"]
-openai-functions = ["openai"]
+openai-functions = ["openai", "chrono-tz"]

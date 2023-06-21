@@ -1,25 +1,25 @@
 use crate::config::TeamupConfig;
 use chrono::{DateTime, Duration, Utc};
 use color_eyre::{
-    eyre::{eyre, Result},
+    eyre::{bail, eyre, Result},
     Section, SectionExt,
 };
 use log::info;
 use reqwest::{header::HeaderValue, Method};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use serde_with::{serde_as, DefaultOnError, NoneAsEmptyString};
 use serenity::CacheAndHttp;
 use std::time::Duration as StdDuration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::time::sleep;
 use tokio::try_join;
-use serde_with::{serde_as, DefaultOnError, NoneAsEmptyString};
 
 const RATE_LIMIT: StdDuration = StdDuration::from_secs(15);
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
-enum TeamupId {
+pub enum TeamupId {
     String(String),
     Number(u64),
 }
@@ -32,14 +32,14 @@ struct TeamupEventsResponse {
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
-struct TeamupEvent {
+pub struct TeamupEvent {
     // id: TeamupId,
     series_id: Option<TeamupId>,
-    start_dt: DateTime<Utc>,
-    end_dt: DateTime<Utc>,
-    title: String,
+    pub start_dt: DateTime<Utc>,
+    pub end_dt: DateTime<Utc>,
+    pub title: String,
     #[serde_as(as = "NoneAsEmptyString")]
-    notes: Option<String>,
+    pub notes: Option<String>,
 }
 
 #[serde_as]
@@ -82,16 +82,25 @@ enum DiscordEventEntityType {
 
 pub struct Teamup {
     config: TeamupConfig,
-    discord: Arc<CacheAndHttp>,
+    discord: Option<Arc<CacheAndHttp>>,
     client: reqwest::Client,
 }
 
 impl Teamup {
     #[inline]
-    pub fn new(config: TeamupConfig, discord: Arc<CacheAndHttp>) -> Self {
+    pub fn new(config: TeamupConfig) -> Self {
         Self {
             config,
-            discord,
+            discord: None,
+            client: reqwest::Client::new(),
+        }
+    }
+
+    #[inline]
+    pub fn new_with_discord(config: TeamupConfig, discord: Arc<CacheAndHttp>) -> Self {
+        Self {
+            config,
+            discord: Some(discord),
             client: reqwest::Client::new(),
         }
     }
@@ -143,6 +152,10 @@ impl Teamup {
         event_id: Option<&str>,
         f: impl FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
     ) -> Result<String> {
+        let Some(ref discord) = self.discord else {
+            bail!("Discord client not configured");
+        };
+
         let url = if let Some(event_id) = event_id {
             format!(
                 "https://discord.com/api/v9/guilds/{}/scheduled-events/{}",
@@ -155,10 +168,10 @@ impl Teamup {
             )
         };
 
-        let request = self.client.request(method, url).header(
-            "Authorization",
-            HeaderValue::from_str(&self.discord.http.token)?,
-        );
+        let request = self
+            .client
+            .request(method, url)
+            .header("Authorization", HeaderValue::from_str(&discord.http.token)?);
 
         let response = f(request).send().await?;
 
@@ -171,12 +184,16 @@ impl Teamup {
     }
 
     async fn fetch_discord_events(&self) -> Result<impl Iterator<Item = DiscordEvent>> {
+        let Some(ref discord) = self.discord else {
+            bail!("Discord client not configured");
+        };
+
         let response = self.discord_request(Method::GET, None, |r| r).await?;
 
         let response: Vec<DiscordEvent> = serde_json::from_str(&response)
             .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))?;
 
-        let bot_id = self.discord.cache.current_user_id().to_string();
+        let bot_id = discord.cache.current_user_id().to_string();
         Ok(response
             .into_iter()
             .filter(move |event| event.creator_id == bot_id))
@@ -194,17 +211,27 @@ impl Teamup {
         Ok(())
     }
 
+    pub async fn fetch_recurring_events(&self) -> Result<impl Iterator<Item = TeamupEvent> + '_> {
+        self.fetch_calendar_events(
+            Duration::days(9),
+            self.config.recurring_subcalendars.iter().copied(),
+        )
+        .await
+    }
+
+    pub async fn fetch_oneoff_events(&self) -> Result<impl Iterator<Item = TeamupEvent> + '_> {
+        self.fetch_calendar_events(
+            Duration::days(365),
+            self.config.oneoff_subcalendars.iter().copied(),
+        )
+        .await
+    }
+
     pub async fn run(&mut self) -> Result<()> {
         let (discord_events, recurring_calendar_events, oneoff_calendar_events) = try_join!(
             self.fetch_discord_events(),
-            self.fetch_calendar_events(
-                Duration::days(9),
-                self.config.recurring_subcalendars.iter().copied(),
-            ),
-            self.fetch_calendar_events(
-                Duration::days(365),
-                self.config.oneoff_subcalendars.iter().copied(),
-            ),
+            self.fetch_recurring_events(),
+            self.fetch_oneoff_events(),
         )?;
 
         let mut discord_events: HashMap<String, DiscordEvent> = discord_events
