@@ -31,7 +31,7 @@ struct SearchResponse {
 pub struct Image {
     id: i64,
     #[serde_as(as = "DefaultOnNull")]
-    tags: Vec<String>,
+    pub tags: Vec<String>,
     source_url: Option<String>,
     first_seen_at: Option<String>,
     representations: Representations,
@@ -145,7 +145,7 @@ pub async fn derpibooru_search(
 pub async fn derpibooru_embed(
     ctx: &Context,
     msg: &Message,
-    image: Image,
+    image: &Image,
     total: usize,
 ) -> CommandResult {
     let artists = image
@@ -200,7 +200,7 @@ async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     if let Some((image, total)) = derpibooru_search(ctx, query).await? {
-        derpibooru_embed(ctx, msg, image, total).await?;
+        derpibooru_embed(ctx, msg, &image, total).await?;
     } else {
         msg.reply(&ctx, "No results").await?;
     }

@@ -186,10 +186,13 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
                 .await
                 .map_err(|err| eyre!(err))?
             {
-                derpibooru_embed(ctx, msg, image, total)
+                derpibooru_embed(ctx, msg, &image, total)
                     .await
                     .map_err(|err| eyre!(err))?;
-                Ok("Image shown to user".to_owned())
+                Ok(format!(
+                    "Image found and shown to the user. It matches the following keywords: {}",
+                    image.tags.join(", ")
+                ))
             } else {
                 Ok("No images found".to_owned())
             }
