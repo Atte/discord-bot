@@ -21,7 +21,11 @@ pub enum FunctionName {
 
 impl From<&FunctionName> for String {
     fn from(value: &FunctionName) -> Self {
-        serde_json::to_value(value).unwrap().to_string()
+        serde_json::to_value(value)
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_owned()
     }
 }
 
@@ -39,25 +43,25 @@ pub struct FunctionCall {
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
-struct TimeParameters {
+struct GetTimeParameters {
     #[schemars(description = "Timezone to return the current time for.")]
     timezone: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
-struct DateParameters {
+struct GetDateParameters {
     #[schemars(description = "Timezone to return the current date for.")]
     timezone: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
-struct EventsParameters {
-    #[schemars(description = "Timezone to return the event times in.")]
+struct GetEventsParameters {
+    #[schemars(description = "Timezone to return the event start times in.")]
     timezone: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
-struct GibParameters {
+struct ShowImageParameters {
     #[schemars(
         description = "List of keywords to search for. Should be as short as possible, but not empty."
     )]
@@ -84,23 +88,23 @@ pub fn all() -> Result<Vec<Function>> {
     Ok(vec![
         Function {
             name: FunctionName::GetTime,
-            description: "Get the time in a given timezone.",
-            parameters: parameters::<TimeParameters>()?,
+            description: "Get the current time.",
+            parameters: parameters::<GetTimeParameters>()?,
         },
         Function {
             name: FunctionName::GetDate,
-            description: "Get the date in a given timezone.",
-            parameters: parameters::<DateParameters>()?,
+            description: "Get the current date.",
+            parameters: parameters::<GetDateParameters>()?,
         },
         Function {
             name: FunctionName::GetEvents,
             description: "Get a list of upcoming events.",
-            parameters: parameters::<EventsParameters>()?,
+            parameters: parameters::<GetEventsParameters>()?,
         },
         Function {
             name: FunctionName::ShowImage,
             description: "Search for an image on Derpibooru. If one is found, show it to the user.",
-            parameters: parameters::<GibParameters>()?,
+            parameters: parameters::<ShowImageParameters>()?,
         },
     ])
 }
@@ -108,7 +112,7 @@ pub fn all() -> Result<Vec<Function>> {
 pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<String> {
     match call.name {
         FunctionName::GetTime => {
-            let params: TimeParameters = serde_json::from_str(&call.arguments)
+            let params: GetTimeParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
 
             let timezone: Tz = params
@@ -122,7 +126,7 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
         }
 
         FunctionName::GetDate => {
-            let params: DateParameters = serde_json::from_str(&call.arguments)
+            let params: GetDateParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
 
             let timezone: Tz = params
@@ -136,7 +140,7 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
         }
 
         FunctionName::GetEvents => {
-            let params: EventsParameters = serde_json::from_str(&call.arguments)
+            let params: GetEventsParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
             let Some(guild_id) = msg.guild_id else {
                 bail!("Function not available in current context");
@@ -171,7 +175,7 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
         }
 
         FunctionName::ShowImage => {
-            let params: GibParameters = serde_json::from_str(&call.arguments)
+            let params: ShowImageParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
             if params.keywords.is_empty() {
                 bail!("No keywords provided");

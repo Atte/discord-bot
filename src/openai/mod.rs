@@ -327,6 +327,7 @@ impl OpenAi {
                 ),
             );
 
+            request.functions = Vec::new();
             request.model = if request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2 {
                 MODEL_LARGE
             } else {
