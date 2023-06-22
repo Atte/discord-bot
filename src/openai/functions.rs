@@ -10,16 +10,31 @@ use schemars::{gen::SchemaSettings, schema::SchemaObject, JsonSchema};
 use serde::{Deserialize, Serialize};
 use serenity::{http::CacheHttp, model::prelude::Message, prelude::Context};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FunctionName {
+    GetTime,
+    GetDate,
+    GetEvents,
+    ShowImage,
+}
+
+impl From<&FunctionName> for String {
+    fn from(value: &FunctionName) -> Self {
+        serde_json::to_value(value).unwrap().to_string()
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
-pub struct OpenAiFunction {
-    name: &'static str,
+pub struct Function {
+    name: FunctionName,
     description: &'static str,
     parameters: SchemaObject,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OpenAiFunctionCall {
-    pub name: String,
+pub struct FunctionCall {
+    pub name: FunctionName,
     pub arguments: String,
 }
 
@@ -65,34 +80,34 @@ where
     Ok(schema.schema)
 }
 
-pub fn all() -> Result<Vec<OpenAiFunction>> {
+pub fn all() -> Result<Vec<Function>> {
     Ok(vec![
-        OpenAiFunction {
-            name: "get_current_time",
-            description: "Get the current time in a given timezone.",
+        Function {
+            name: FunctionName::GetTime,
+            description: "Get the time in a given timezone.",
             parameters: parameters::<TimeParameters>()?,
         },
-        OpenAiFunction {
-            name: "get_current_date",
-            description: "Get the current date in a given timezone.",
+        Function {
+            name: FunctionName::GetDate,
+            description: "Get the date in a given timezone.",
             parameters: parameters::<DateParameters>()?,
         },
-        OpenAiFunction {
-            name: "get_events",
+        Function {
+            name: FunctionName::GetEvents,
             description: "Get a list of upcoming events.",
             parameters: parameters::<EventsParameters>()?,
         },
-        OpenAiFunction {
-            name: "show_derpibooru_image",
+        Function {
+            name: FunctionName::ShowImage,
             description: "Search for an image on Derpibooru. If one is found, show it to the user.",
             parameters: parameters::<GibParameters>()?,
         },
     ])
 }
 
-pub async fn call(ctx: &Context, msg: &Message, call: &OpenAiFunctionCall) -> Result<String> {
-    match call.name.as_str() {
-        "get_current_time" => {
+pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<String> {
+    match call.name {
+        FunctionName::GetTime => {
             let params: TimeParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
 
@@ -106,7 +121,7 @@ pub async fn call(ctx: &Context, msg: &Message, call: &OpenAiFunctionCall) -> Re
                 .to_string())
         }
 
-        "get_current_date" => {
+        FunctionName::GetDate => {
             let params: DateParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
 
@@ -120,7 +135,7 @@ pub async fn call(ctx: &Context, msg: &Message, call: &OpenAiFunctionCall) -> Re
                 .to_string())
         }
 
-        "get_events" => {
+        FunctionName::GetEvents => {
             let params: EventsParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
             let Some(guild_id) = msg.guild_id else {
@@ -155,7 +170,7 @@ pub async fn call(ctx: &Context, msg: &Message, call: &OpenAiFunctionCall) -> Re
                 .join("\n"))
         }
 
-        "show_derpibooru_image" => {
+        FunctionName::ShowImage => {
             let params: GibParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
             if params.keywords.is_empty() {
@@ -174,7 +189,5 @@ pub async fn call(ctx: &Context, msg: &Message, call: &OpenAiFunctionCall) -> Re
                 Ok("No images found".to_owned())
             }
         }
-
-        _ => bail!("Invalid function name"),
     }
 }

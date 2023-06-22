@@ -12,7 +12,7 @@ use std::{sync::Arc, time::Duration};
 #[cfg(feature = "openai-functions")]
 mod functions;
 #[cfg(feature = "openai-functions")]
-use self::functions::{OpenAiFunction, OpenAiFunctionCall};
+use self::functions::{Function, FunctionCall};
 
 const MODEL_SMALL: OpenAiModel = OpenAiModel::Gpt35Turbo0613;
 const MAX_TOKENS_SMALL: usize = 4_000;
@@ -33,7 +33,7 @@ pub struct OpenAiRequest {
     messages: Vec<OpenAiMessage>,
     #[cfg(feature = "openai-functions")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    functions: Vec<OpenAiFunction>,
+    functions: Vec<Function>,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -142,7 +142,7 @@ pub struct OpenAiMessage {
     content: Option<String>,
     #[cfg(feature = "openai-functions")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    function_call: Option<OpenAiFunctionCall>,
+    function_call: Option<FunctionCall>,
 }
 
 impl OpenAiMessage {
