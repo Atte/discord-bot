@@ -1,6 +1,4 @@
 use crate::config::OpenAiConfig;
-#[cfg(feature = "teamup")]
-use crate::config::TeamupConfig;
 use chrono::Utc;
 use color_eyre::eyre::{bail, Result};
 use regex::Regex;
@@ -206,7 +204,6 @@ pub struct OpenAi {
     examples: Vec<(String, String)>,
     bot_replacements: Vec<(Regex, String)>,
     user_replacements: Vec<(Regex, String)>,
-    teamup_configs: Vec<TeamupConfig>,
 }
 
 fn parse_replacements(
@@ -225,10 +222,7 @@ fn parse_replacements(
 
 impl OpenAi {
     #[inline]
-    pub fn new(
-        config: &OpenAiConfig,
-        #[cfg(feature = "teamup")] teamup_configs: Vec<TeamupConfig>,
-    ) -> Self {
+    pub fn new(config: &OpenAiConfig) -> Self {
         Self {
             client: reqwest::ClientBuilder::new()
                 .timeout(Duration::from_secs(30))
@@ -244,7 +238,6 @@ impl OpenAi {
                 .collect(),
             bot_replacements: parse_replacements(config.bot_replacements.iter()),
             user_replacements: parse_replacements(config.user_replacements.iter()),
-            teamup_configs,
         }
     }
 
@@ -328,15 +321,9 @@ impl OpenAi {
             request.push_message(
                 OpenAiMessageRole::Function.message_with_name(
                     &call.name,
-                    functions::call(
-                        ctx,
-                        msg,
-                        call,
-                        #[cfg(feature = "teamup")]
-                        &self.teamup_configs,
-                    )
-                    .await
-                    .unwrap_or_else(|err| err.to_string()),
+                    functions::call(ctx, msg, call)
+                        .await
+                        .unwrap_or_else(|err| err.to_string()),
                 ),
             );
 

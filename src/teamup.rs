@@ -88,16 +88,7 @@ pub struct Teamup {
 
 impl Teamup {
     #[inline]
-    pub fn new(config: TeamupConfig) -> Self {
-        Self {
-            config,
-            discord: None,
-            client: reqwest::Client::new(),
-        }
-    }
-
-    #[inline]
-    pub fn new_with_discord(config: TeamupConfig, discord: Arc<CacheAndHttp>) -> Self {
+    pub fn new(config: TeamupConfig, discord: Arc<CacheAndHttp>) -> Self {
         Self {
             config,
             discord: Some(discord),

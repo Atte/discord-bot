@@ -126,7 +126,7 @@ pub async fn derpibooru_search(
         .or_else(|| seen_ids.first())
         .and_then(|id| images.iter().find(|image| &image.id == id))
         .or_else(|| images.first())
-        .cloned()
+        .copied()
         .cloned()
     {
         collection

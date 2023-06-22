@@ -1,5 +1,3 @@
-#[cfg(feature = "teamup")]
-use crate::{config::TeamupConfig, teamup::Teamup};
 use crate::{
     discord::commands::{derpibooru_embed, derpibooru_search},
     Result,
@@ -10,8 +8,7 @@ use color_eyre::eyre::{bail, eyre};
 use itertools::Itertools;
 use schemars::{gen::SchemaSettings, schema::SchemaObject, JsonSchema};
 use serde::{Deserialize, Serialize};
-use serenity::{model::prelude::Message, prelude::Context};
-use tokio::try_join;
+use serenity::{http::CacheHttp, model::prelude::Message, prelude::Context};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct OpenAiFunction {
@@ -80,7 +77,6 @@ pub fn all() -> Result<Vec<OpenAiFunction>> {
             description: "Get the current date in a given timezone.",
             parameters: parameters::<DateParameters>()?,
         },
-        #[cfg(feature = "teamup")]
         OpenAiFunction {
             name: "get_events",
             description: "Get a list of upcoming events.",
@@ -94,16 +90,12 @@ pub fn all() -> Result<Vec<OpenAiFunction>> {
     ])
 }
 
-pub async fn call(
-    ctx: &Context,
-    msg: &Message,
-    call: &OpenAiFunctionCall,
-    #[cfg(feature = "teamup")] teamup_configs: &[TeamupConfig],
-) -> Result<String> {
+pub async fn call(ctx: &Context, msg: &Message, call: &OpenAiFunctionCall) -> Result<String> {
     match call.name.as_str() {
         "get_current_time" => {
             let params: TimeParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
+
             let timezone: Tz = params
                 .timezone
                 .parse()
@@ -113,9 +105,11 @@ pub async fn call(
                 .format("%H:%M:%S")
                 .to_string())
         }
+
         "get_current_date" => {
             let params: DateParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
+
             let timezone: Tz = params
                 .timezone
                 .parse()
@@ -125,44 +119,49 @@ pub async fn call(
                 .format("%A %Y-%m-%d")
                 .to_string())
         }
-        #[cfg(feature = "teamup")]
+
         "get_events" => {
             let params: EventsParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
+            let Some(guild_id) = msg.guild_id else {
+                bail!("Function not available in current context");
+            };
+
             let timezone: Tz = params
                 .timezone
                 .parse()
                 .map_err(|_| eyre!("Invalid timezone"))?;
-            for config in teamup_configs {
-                if Some(config.guild) == msg.guild_id {
-                    let teamup = Teamup::new(config.clone());
-                    let (recurring_calendar_events, oneoff_calendar_events) = try_join!(
-                        teamup.fetch_recurring_events(),
-                        teamup.fetch_oneoff_events(),
-                    )?;
-                    return Ok(recurring_calendar_events
-                        .chain(oneoff_calendar_events)
-                        .map(|event| {
-                            format!(
-                                "{}: {}",
-                                event
-                                    .start_dt
-                                    .with_timezone(&timezone)
-                                    .format("%A %Y-%m-%d %H:%M"),
-                                event.title
-                            )
-                        })
-                        .join("\n"));
-                }
+
+            let events = guild_id
+                .scheduled_events(ctx.http(), false)
+                .await
+                .map_err(|_| eyre!("Failed to fetch events"))?;
+            if events.is_empty() {
+                bail!("No events found");
             }
-            bail!("No calendar available");
+
+            Ok(events
+                .into_iter()
+                .map(|event| {
+                    format!(
+                        "{}: {}",
+                        event
+                            .start_time
+                            .with_timezone(&timezone)
+                            .format("%A %Y-%m-%d %H:%M"),
+                        event.name
+                    )
+                })
+                .join("\n"))
         }
+
         "show_derpibooru_image" => {
             let params: GibParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments"))?;
             if params.keywords.is_empty() {
                 bail!("No keywords provided");
             }
+
             if let Some((image, total)) = derpibooru_search(ctx, &params.keywords.join(","))
                 .await
                 .map_err(|err| eyre!(err))?
@@ -175,6 +174,7 @@ pub async fn call(
                 Ok("No images found".to_owned())
             }
         }
+
         _ => bail!("Invalid function name"),
     }
 }

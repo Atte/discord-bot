@@ -46,11 +46,7 @@ async fn main() -> Result<()> {
     migrations::mongo(&db).await?;
 
     #[cfg(feature = "openai")]
-    let openai = openai::OpenAi::new(
-        &config.openai,
-        #[cfg(feature = "teamup")]
-        config.teamup.clone(),
-    );
+    let openai = openai::OpenAi::new(&config.openai);
 
     info!("Spawning Discord...");
     let mut discord = discord::Discord::try_new(
@@ -119,8 +115,7 @@ async fn main() -> Result<()> {
     {
         for config in config.teamup {
             info!("Spawning Teamup for {}...", config.guild);
-            let mut teamup =
-                teamup::Teamup::new_with_discord(config, discord.client.cache_and_http.clone());
+            let mut teamup = teamup::Teamup::new(config, discord.client.cache_and_http.clone());
             tokio::spawn(async move {
                 sleep(Duration::from_secs(5)).await;
                 loop {
