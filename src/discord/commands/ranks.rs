@@ -49,27 +49,33 @@ impl Ranks {
             .into()
             .to_guild_cached(ctx)
             .ok_or_else(|| eyre!("Guild not found!"))?;
-        let cutoff_position = guild
+        let bot_roles = guild
             .member(&ctx, ctx.cache.current_user_id())
             .await?
             .roles(ctx)
-            .ok_or_else(|| eyre!("Roles for bot not found!"))?
-            .into_iter()
+            .ok_or_else(|| eyre!("Roles for bot not found!"))?;
+
+        let highest_position = guild
+            .roles
+            .values()
+            .filter(|role| config.discord.rank_start_roles.contains(&role.id))
+            .chain(bot_roles.iter())
             .map(|role| role.position)
             .min()
-            .ok_or_else(|| eyre!("Empty roles for bot!"))?;
-        let cutlast_position = guild
+            .ok_or_else(|| eyre!("Ranks start marker not found!"))?;
+        let lowest_position = guild
             .roles
             .values()
             .find(|role| config.discord.rank_end_roles.contains(&role.id))
-            .map(|role| role.position);
+            .map_or(-1, |role| role.position);
+
         Ok(Self::new(
             guild
                 .roles
                 .values()
                 .filter(|role| {
-                    role.position < cutoff_position
-                        && cutlast_position.map_or(true, |p| role.position > p)
+                    role.position > lowest_position
+                        && role.position < highest_position
                         && !role.name.starts_with('@')
                 })
                 .cloned()

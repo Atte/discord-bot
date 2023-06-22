@@ -33,6 +33,9 @@ rules_url = "https://berrytube.tv/rules/"
 emote_reward_roles = [
     1109849696668766228, # test
 ]
+rank_start_roles = [
+    1121483889253294211, # test
+]
 rank_end_roles = [
     1114229249646272572, # test
 ]

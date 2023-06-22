@@ -20,6 +20,7 @@ pub enum FunctionName {
 }
 
 impl From<&FunctionName> for String {
+    #[inline]
     fn from(value: &FunctionName) -> Self {
         serde_json::to_value(value)
             .unwrap()
