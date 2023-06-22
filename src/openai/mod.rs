@@ -11,6 +11,7 @@ use std::{sync::Arc, time::Duration};
 
 #[cfg(feature = "openai-functions")]
 mod functions;
+use self::functions::FunctionCallType;
 #[cfg(feature = "openai-functions")]
 use self::functions::{Function, FunctionCall};
 
@@ -32,6 +33,8 @@ pub struct OpenAiRequest {
     model: OpenAiModel,
     messages: Vec<OpenAiMessage>,
     #[cfg(feature = "openai-functions")]
+    function_call: FunctionCallType,
+    #[cfg(feature = "openai-functions")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     functions: Vec<Function>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -42,17 +45,25 @@ pub struct OpenAiRequest {
 
 impl OpenAiRequest {
     pub fn new(user: Option<impl Into<String>>) -> Self {
+        #[cfg(feature = "openai-functions")]
+        let functions = match functions::all() {
+            Ok(funs) => funs,
+            Err(err) => {
+                log::error!("Unable to define OpenAI functions: {:?}", err);
+                Vec::new()
+            }
+        };
         OpenAiRequest {
             model: MODEL_LARGE,
             messages: Vec::new(),
             #[cfg(feature = "openai-functions")]
-            functions: match functions::all() {
-                Ok(funs) => funs,
-                Err(err) => {
-                    log::error!("Unable to define OpenAI functions: {:?}", err);
-                    Vec::new()
-                }
+            function_call: if functions.is_empty() {
+                FunctionCallType::None
+            } else {
+                FunctionCallType::Auto
             },
+            #[cfg(feature = "openai-functions")]
+            functions,
             temperature: None,
             user: user.map(Into::into),
         }
@@ -108,6 +119,7 @@ enum OpenAiModel {
     Gpt35Turbo,
     #[serde(rename = "gpt-3.5-turbo-16k")]
     Gpt35Turbo16k,
+    #[deprecated]
     #[serde(rename = "gpt-3.5-turbo-0301")]
     Gpt35Turbo0301,
     #[serde(rename = "gpt-3.5-turbo-0613")]
@@ -327,7 +339,7 @@ impl OpenAi {
                 ),
             );
 
-            request.functions = Vec::new();
+            request.function_call = FunctionCallType::None;
             request.model = if request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2 {
                 MODEL_LARGE
             } else {

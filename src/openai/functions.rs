@@ -11,6 +11,13 @@ use serde::{Deserialize, Serialize};
 use serenity::{http::CacheHttp, model::prelude::Message, prelude::Context};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FunctionCallType {
+    Auto,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FunctionName {
     GetTime,
@@ -64,7 +71,7 @@ struct GetEventsParameters {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 struct ShowImageParameters {
     #[schemars(
-        description = "List of keywords to search for. Should be as short as possible, but not empty."
+        description = "List of keywords to search for. Should be as short as possible, but not empty. The name of an artist should be prefixed with `artist:`."
     )]
     keywords: Vec<String>,
 }
@@ -80,7 +87,7 @@ where
         .into_generator();
     let schema = generator.into_root_schema_for::<T>();
     if !schema.definitions.is_empty() {
-        bail!("Generated schema contains definitions");
+        bail!("Generated schema contains definitions.");
     }
     Ok(schema.schema)
 }
@@ -114,12 +121,12 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
     match call.name {
         FunctionName::GetTime => {
             let params: GetTimeParameters = serde_json::from_str(&call.arguments)
-                .map_err(|_| eyre!("Invalid function arguments"))?;
+                .map_err(|_| eyre!("Invalid function arguments."))?;
 
             let timezone: Tz = params
                 .timezone
                 .parse()
-                .map_err(|_| eyre!("Invalid timezone"))?;
+                .map_err(|_| eyre!("Invalid timezone."))?;
             Ok(Utc::now()
                 .with_timezone(&timezone)
                 .format("%H:%M:%S")
@@ -128,12 +135,12 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
 
         FunctionName::GetDate => {
             let params: GetDateParameters = serde_json::from_str(&call.arguments)
-                .map_err(|_| eyre!("Invalid function arguments"))?;
+                .map_err(|_| eyre!("Invalid function arguments."))?;
 
             let timezone: Tz = params
                 .timezone
                 .parse()
-                .map_err(|_| eyre!("Invalid timezone"))?;
+                .map_err(|_| eyre!("Invalid timezone."))?;
             Ok(Utc::now()
                 .with_timezone(&timezone)
                 .format("%A %Y-%m-%d")
@@ -142,22 +149,22 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
 
         FunctionName::GetEvents => {
             let params: GetEventsParameters = serde_json::from_str(&call.arguments)
-                .map_err(|_| eyre!("Invalid function arguments"))?;
+                .map_err(|_| eyre!("Invalid function arguments."))?;
             let Some(guild_id) = msg.guild_id else {
-                bail!("Function not available in current context");
+                bail!("Function not available in current context.");
             };
 
             let timezone: Tz = params
                 .timezone
                 .parse()
-                .map_err(|_| eyre!("Invalid timezone"))?;
+                .map_err(|_| eyre!("Invalid timezone."))?;
 
             let events = guild_id
                 .scheduled_events(ctx.http(), false)
                 .await
-                .map_err(|_| eyre!("Failed to fetch events"))?;
+                .map_err(|_| eyre!("Failed to fetch events."))?;
             if events.is_empty() {
-                bail!("No events found");
+                bail!("No events found.");
             }
 
             Ok(events
@@ -177,9 +184,9 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
 
         FunctionName::ShowImage => {
             let params: ShowImageParameters = serde_json::from_str(&call.arguments)
-                .map_err(|_| eyre!("Invalid function arguments"))?;
+                .map_err(|_| eyre!("Invalid function arguments."))?;
             if params.keywords.is_empty() {
-                bail!("No keywords provided");
+                bail!("No keywords provided.");
             }
 
             if let Some((image, total)) = derpibooru_search(ctx, &params.keywords.join(","))
@@ -194,7 +201,7 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
                     image.tags.join(", ")
                 ))
             } else {
-                Ok("No images found".to_owned())
+                Ok("No images found.".to_owned())
             }
         }
     }
