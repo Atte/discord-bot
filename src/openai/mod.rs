@@ -1,6 +1,7 @@
 use crate::config::OpenAiConfig;
 use chrono::Utc;
 use color_eyre::eyre::{bail, Result};
+use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serenity::{
@@ -20,6 +21,10 @@ const MAX_TOKENS_SMALL: usize = 4_000;
 
 const MODEL_LARGE: OpenAiModel = OpenAiModel::Gpt35Turbo16k0613;
 const MAX_TOKENS_LARGE: usize = 16_000;
+
+lazy_static! {
+    static ref CLEANUP_REGEX: Regex = Regex::new(r"\bhttps?:\/\/\S+").unwrap();
+}
 
 #[derive(Debug)]
 pub struct OpenAiKey;
@@ -355,7 +360,7 @@ impl OpenAi {
             .get(0)
             .and_then(|choice| choice.message.content.as_ref())
         {
-            Ok(content.clone())
+            Ok(CLEANUP_REGEX.replace_all(content, "").to_string())
         } else {
             bail!("No content in OpenAI response")
         }
