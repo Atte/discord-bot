@@ -31,7 +31,6 @@
         inherit system;
         overlays = [ (import rust-overlay) ];
       };
-      nodejs = pkgs.nodejs-16_x;
       rustPlatform = pkgs.makeRustPlatform {
         cargo = pkgs.rust-bin.stable.latest.minimal;
         rustc = pkgs.rust-bin.stable.latest.minimal;
