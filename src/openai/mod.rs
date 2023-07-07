@@ -16,11 +16,17 @@ use self::functions::FunctionCallType;
 #[cfg(feature = "openai-functions")]
 use self::functions::{Function, FunctionCall};
 
-const MODEL_SMALL: OpenAiModel = OpenAiModel::Gpt35Turbo0613;
-const MAX_TOKENS_SMALL: usize = 4_000;
+// const MODEL_SMALL: OpenAiModel = OpenAiModel::Gpt35Turbo0613;
+// const MAX_TOKENS_SMALL: usize = 4_000;
 
-const MODEL_LARGE: OpenAiModel = OpenAiModel::Gpt35Turbo16k0613;
-const MAX_TOKENS_LARGE: usize = 16_000;
+// const MODEL_LARGE: OpenAiModel = OpenAiModel::Gpt35Turbo16k0613;
+// const MAX_TOKENS_LARGE: usize = 16_000;
+
+const MODEL_SMALL: OpenAiModel = OpenAiModel::Gpt40613;
+const MAX_TOKENS_SMALL: usize = 8_000;
+
+const MODEL_LARGE: OpenAiModel = OpenAiModel::Gpt432k0613;
+const MAX_TOKENS_LARGE: usize = 32_000;
 
 lazy_static! {
     static ref CLEANUP_REGEX: Regex = Regex::new(r"\bhttps?:\/\/\S+").unwrap();
@@ -131,6 +137,14 @@ enum OpenAiModel {
     Gpt35Turbo0613,
     #[serde(rename = "gpt-3.5-turbo-16k-0613")]
     Gpt35Turbo16k0613,
+    #[serde(rename = "gpt-4")]
+    Gpt4,
+    #[serde(rename = "gpt-4-32k")]
+    Gpt432k,
+    #[serde(rename = "gpt-4-0613")]
+    Gpt40613,
+    #[serde(rename = "gpt-4-32k-0613")]
+    Gpt432k0613,
 }
 
 #[derive(Debug, Clone, Deserialize)]
