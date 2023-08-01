@@ -1,5 +1,5 @@
 use crate::config::OpenAiConfig;
-use chrono::Utc;
+use chrono::{Datelike, Timelike, Utc};
 use color_eyre::eyre::{bail, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -12,9 +12,8 @@ use std::{sync::Arc, time::Duration};
 
 #[cfg(feature = "openai-functions")]
 mod functions;
-use self::functions::FunctionCallType;
 #[cfg(feature = "openai-functions")]
-use self::functions::{Function, FunctionCall};
+use self::functions::{Function, FunctionCall, FunctionCallType};
 
 // const MODEL_SMALL: OpenAiModel = OpenAiModel::Gpt35Turbo0613;
 // const MAX_TOKENS_SMALL: usize = 4_000;
@@ -331,7 +330,18 @@ impl OpenAi {
                 self.prompt
                     .replace("{botname}", botname.as_ref())
                     .replace("{date}", &Utc::now().format("%A, %B %d, %Y").to_string())
-                    .replace("{time}", &Utc::now().format("%I:%M %p").to_string()),
+                    .replace("{time}", &Utc::now().format("%I:%M %p").to_string())
+                    .replace(
+                        "{is_weekend}",
+                        if Utc::now().weekday().number_from_monday() >= 6
+                            || (Utc::now().weekday().number_from_monday() == 5
+                                && Utc::now().hour() >= 16)
+                        {
+                            "is"
+                        } else {
+                            "is not"
+                        },
+                    ),
             ),
         );
 
