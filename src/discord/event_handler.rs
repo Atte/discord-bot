@@ -85,14 +85,17 @@ impl EventHandler for Handler {
                             .trim();
 
                         if request
-                            .try_unshift_message(OpenAiMessage::new(
-                                if reply.is_own(&ctx) {
-                                    OpenAiMessageRole::Assistant
-                                } else {
-                                    OpenAiMessageRole::User
-                                },
-                                text,
-                            ))
+                            .try_unshift_message(
+                                OpenAiMessage::new(
+                                    if reply.is_own(&ctx) {
+                                        OpenAiMessageRole::Assistant
+                                    } else {
+                                        OpenAiMessageRole::User
+                                    },
+                                    text,
+                                ),
+                                config.openai.allow_large_model,
+                            )
                             .is_err()
                         {
                             break;

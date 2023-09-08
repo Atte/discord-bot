@@ -97,10 +97,20 @@ impl OpenAiRequest {
         self.messages.insert(0, message);
     }
 
-    pub fn try_unshift_message(&mut self, message: OpenAiMessage) -> Result<()> {
+    pub fn try_unshift_message(
+        &mut self,
+        message: OpenAiMessage,
+        allow_large_model: bool,
+    ) -> Result<()> {
         self.unshift_message(message);
 
-        if self.approximate_num_tokens() > MAX_TOKENS_LARGE / 2 {
+        if self.approximate_num_tokens()
+            > if allow_large_model {
+                MAX_TOKENS_LARGE
+            } else {
+                MAX_TOKENS_SMALL
+            } / 2
+        {
             self.shift_message();
             bail!("too many tokens");
         }
@@ -234,6 +244,7 @@ pub struct OpenAi {
     examples: Vec<(String, String)>,
     bot_replacements: Vec<(Regex, String)>,
     user_replacements: Vec<(Regex, String)>,
+    allow_large_model: bool,
 }
 
 fn parse_replacements(
@@ -268,6 +279,7 @@ impl OpenAi {
                 .collect(),
             bot_replacements: parse_replacements(config.bot_replacements.iter()),
             user_replacements: parse_replacements(config.user_replacements.iter()),
+            allow_large_model: config.allow_large_model,
         }
     }
 
@@ -345,11 +357,12 @@ impl OpenAi {
             ),
         );
 
-        request.model = if request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2 {
-            MODEL_LARGE
-        } else {
-            MODEL_SMALL
-        };
+        request.model =
+            if self.allow_large_model && request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2 {
+                MODEL_LARGE
+            } else {
+                MODEL_SMALL
+            };
         let response = self.request(&request).await?;
 
         #[cfg(feature = "openai-functions")]
@@ -369,7 +382,9 @@ impl OpenAi {
             );
 
             request.function_call = FunctionCallType::None;
-            request.model = if request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2 {
+            request.model = if self.allow_large_model
+                && request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2
+            {
                 MODEL_LARGE
             } else {
                 MODEL_SMALL
