@@ -12,19 +12,19 @@ use serenity::{
         gateway::{Activity, Ready},
         guild::Member,
         id::{ChannelId, GuildId, MessageId},
-        prelude::MessageFlags,
         user::User,
     },
 };
 
 #[cfg(feature = "openai")]
 use crate::openai::{OpenAiKey, OpenAiMessage, OpenAiMessageRole, OpenAiRequest};
+#[cfg(feature = "openai")]
+use serenity::model::channel::MessageFlags;
 
 #[derive(Debug)]
 pub struct Handler;
 
-// #[async_trait] seems to mess with unused parameter detection,
-// so need to use #[allow(unused_variables)] instead of underscore prefix
+#[allow(clippy::ignored_unit_patterns)] // async_trait
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, _ready: Ready) {

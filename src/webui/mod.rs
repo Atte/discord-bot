@@ -103,7 +103,7 @@ impl WebUI {
             "custom headers",
             |_request, response| {
                 Box::pin(async move {
-                    const CSP: &str = r#"
+                    const CSP: &str = r"
                         default-src 'none'
                         script-src 'self'
                         style-src 'self'
@@ -116,7 +116,7 @@ impl WebUI {
                         block-all-mixed-content
                         disown-opener
                         sandbox allow-forms allow-same-origin allow-scripts allow-top-navigation-by-user-activation
-                    "#;
+                    ";
                     response.set_header(Header::new(
                         "Content-Security-Policy",
                         CSP.trim().split('\n').map(str::trim).join("; "),

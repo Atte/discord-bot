@@ -1,6 +1,7 @@
 use super::{get_data, DbKey};
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::{eyre, Result};
+use conv::{UnwrapOrSaturate, ValueFrom};
 use lazy_static::lazy_static;
 use mongodb::{bson::doc, options::UpdateOptions};
 use regex::Regex;
@@ -61,13 +62,13 @@ pub enum Stats {
 pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
     lazy_static! {
         static ref USER_MENTION_RE: Regex =
-            Regex::new(r#"<@!?(?P<id>[0-9]+)>"#).expect("Invalid regex for USER_MENTION_RE");
+            Regex::new(r"<@!?(?P<id>[0-9]+)>").expect("Invalid regex for USER_MENTION_RE");
         static ref CHANNEL_MENTION_RE: Regex =
-            Regex::new(r#"<#(?P<id>[0-9]+)>"#).expect("Invalid regex for CHANNEL_MENTION_RE");
+            Regex::new(r"<#(?P<id>[0-9]+)>").expect("Invalid regex for CHANNEL_MENTION_RE");
         static ref ROLE_MENTION_RE: Regex =
-            Regex::new(r#"<@&(?P<id>[0-9]+)>"#).expect("Invalid regex for ROLE_MENTION_RE");
-        static ref EMOJI_RE: Regex = Regex::new(r#"<a?:(?P<name>[^:]+):(?P<id>[0-9]+)>"#)
-            .expect("Invalid regex for EMOJI_RE");
+            Regex::new(r"<@&(?P<id>[0-9]+)>").expect("Invalid regex for ROLE_MENTION_RE");
+        static ref EMOJI_RE: Regex =
+            Regex::new(r"<a?:(?P<name>[^:]+):(?P<id>[0-9]+)>").expect("Invalid regex for EMOJI_RE");
     }
 
     let channel = msg
@@ -127,10 +128,10 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                 },
                 "$inc": {
                     "message_count": 1,
-                    "user_mention_count": user_mentions.len() as i64,
-                    "channel_mention_count": channel_mentions.len() as i64,
-                    "role_mention_count": role_mentions.len() as i64,
-                    "emoji_count": emojis.len() as i64,
+                    "user_mention_count": i64::value_from(user_mentions.len()).unwrap_or_saturate(),
+                    "channel_mention_count": i64::value_from(channel_mentions.len()).unwrap_or_saturate(),
+                    "role_mention_count": i64::value_from(role_mentions.len()).unwrap_or_saturate(),
+                    "emoji_count": i64::value_from(emojis.len()).unwrap_or_saturate(),
                 },
             },
             UpdateOptions::builder().upsert(true).build(),
@@ -159,10 +160,10 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                 },
                 "$inc": {
                     "message_count": 1,
-                    "user_mention_count": user_mentions.len() as i64,
-                    "channel_mention_count": channel_mentions.len() as i64,
-                    "role_mention_count": role_mentions.len() as i64,
-                    "emoji_count": emojis.len() as i64,
+                    "user_mention_count": i64::value_from(user_mentions.len()).unwrap_or_saturate(),
+                    "channel_mention_count": i64::value_from(channel_mentions.len()).unwrap_or_saturate(),
+                    "role_mention_count": i64::value_from(role_mentions.len()).unwrap_or_saturate(),
+                    "emoji_count": i64::value_from(emojis.len()).unwrap_or_saturate(),
                 },
             },
             UpdateOptions::builder().upsert(true).build(),

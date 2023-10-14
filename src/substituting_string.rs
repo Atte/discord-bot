@@ -1,3 +1,5 @@
+#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)] // derivative
+
 use derivative::Derivative;
 use derive_more::{AsRef, Deref, Display};
 use lazy_static::lazy_static;
@@ -28,7 +30,7 @@ impl SubstitutingString {
     pub fn try_new(raw: String) -> Result<Self, ::std::env::VarError> {
         lazy_static! {
             static ref VARIABLE_RE: Regex =
-                Regex::new(r#"\$\{?([A-Z0-9_]+)\}?"#).expect("Invalid regex for VARIABLE_RE");
+                Regex::new(r"\$\{?([A-Z0-9_]+)\}?").expect("Invalid regex for VARIABLE_RE");
         }
 
         for caps in VARIABLE_RE.captures_iter(&raw) {

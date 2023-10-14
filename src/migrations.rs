@@ -1,4 +1,5 @@
 use color_eyre::eyre::Result;
+use futures::TryStreamExt;
 use log::info;
 use mongodb::{
     bson::{doc, Document},
@@ -52,25 +53,39 @@ async fn mongo_ensure_indexes(
     collection: &str,
     indexes: Vec<(Document, bool)>,
 ) -> Result<()> {
-    #[allow(unused_must_use)]
-    {
-        // ignore error: the collection might already exist
-        db.create_collection(collection, None).await;
+    // ignore error: the collection might already exist
+    let _ = db.create_collection(collection, None).await;
+    let collection = db.collection::<Document>(collection);
+
+    let existing: Vec<_> = collection.list_indexes(None).await?.try_collect().await?;
+
+    for (spec, unique) in &indexes {
+        if existing.iter().any(|i| &i.keys == spec) {
+            continue;
+        }
+        log::info!("Creating index {}", spec.to_string());
+        collection
+            .create_index(
+                IndexModel::builder()
+                    .keys(spec.clone())
+                    .options(IndexOptions::builder().unique(*unique).build())
+                    .build(),
+                None,
+            )
+            .await?;
     }
 
-    let collection = db.collection::<Document>(collection);
-    collection.drop_indexes(None).await?; // YOLO
-    collection
-        .create_indexes(
-            indexes.into_iter().map(|(spec, unique)| {
-                IndexModel::builder()
-                    .keys(spec)
-                    .options(IndexOptions::builder().unique(unique).build())
-                    .build()
-            }),
-            None,
-        )
-        .await?;
+    for index in existing {
+        if indexes.iter().any(|(spec, _)| spec == &index.keys) {
+            continue;
+        }
+        if let Some(name) = index.options.and_then(|options| options.name) {
+            if name != "_id_" {
+                log::warn!("Dropping index {} {}", name, index.keys.to_string());
+                collection.drop_index(name, None).await?;
+            }
+        }
+    }
 
     Ok(())
 }
@@ -99,6 +114,12 @@ pub async fn mongo(db: &Database) -> Result<()> {
         db,
         "gib-seen",
         vec![(doc! { "image.id": 1 }, true), (doc! { "time": 1 }, false)],
+    )
+    .await?;
+    mongo_ensure_indexes(
+        db,
+        "openai-user-log",
+        vec![(doc! { "user_id": 1 }, true), (doc! { "time": 1 }, false)],
     )
     .await?;
 

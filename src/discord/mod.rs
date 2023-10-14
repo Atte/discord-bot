@@ -40,7 +40,7 @@ impl TypeMapKey for ConfigKey {
 }
 
 #[derive(Debug)]
-struct DbKey;
+pub struct DbKey;
 
 impl TypeMapKey for DbKey {
     type Value = mongodb::Database;

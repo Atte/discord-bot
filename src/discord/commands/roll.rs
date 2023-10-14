@@ -19,8 +19,8 @@ use serenity::{
 async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     lazy_static! {
         static ref DICE_RE: Regex =
-            Regex::new(r#"(?P<rolls>[1-9][0-9]*)?d(?P<sides>[1-9][0-9]*)"#).unwrap();
-        static ref SIMPLE_RE: Regex = Regex::new(r#"^\(?\d+\)?$"#).unwrap();
+            Regex::new(r"(?P<rolls>[1-9][0-9]*)?d(?P<sides>[1-9][0-9]*)").unwrap();
+        static ref SIMPLE_RE: Regex = Regex::new(r"^\(?\d+\)?$").unwrap();
     }
 
     let original_input = args.message().trim();

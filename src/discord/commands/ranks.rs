@@ -1,3 +1,5 @@
+#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)] // derivative
+
 use super::super::{
     get_data,
     limits::{EMBED_DESC_LENGTH, REPLY_LENGTH},

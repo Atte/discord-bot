@@ -1,6 +1,10 @@
-use crate::config::OpenAiConfig;
-use chrono::{Datelike, Timelike, Utc};
+use crate::{
+    config::OpenAiConfig,
+    discord::{get_data, DbKey},
+};
+use chrono::{DateTime, Datelike, Timelike, Utc};
 use color_eyre::eyre::{bail, Result};
+use conv::{UnwrapOrSaturate, ValueFrom};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -29,6 +33,19 @@ const MAX_TOKENS_LARGE: usize = 32_000;
 
 lazy_static! {
     static ref CLEANUP_REGEX: Regex = Regex::new(r"\bhttps?:\/\/\S+").unwrap();
+}
+
+const USER_LOG_COLLECTION_NAME: &str = "openai-user-log";
+
+#[derive(Debug, Clone, Serialize)]
+struct UserLog {
+    time: DateTime<Utc>,
+    user_id: String,
+    model: String,
+    prompt_tokens: i64,
+    completion_tokens: i64,
+    total_tokens: i64,
+    function_call: Option<FunctionCall>,
 }
 
 #[derive(Debug)]
@@ -147,8 +164,9 @@ enum OpenAiModel {
 
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAiResponse {
+    model: String,
     choices: Vec<OpenAiResponseChoice>,
-    // usage: OpenAiResponseUsage,
+    usage: OpenAiResponseUsage,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -158,9 +176,9 @@ struct OpenAiResponseChoice {
 
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAiResponseUsage {
-    // prompt_tokens: usize,
-    // completion_tokens: usize,
-    // total_tokens: usize,
+    prompt_tokens: usize,
+    completion_tokens: usize,
+    total_tokens: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -352,7 +370,9 @@ impl OpenAi {
             } else {
                 MODEL_SMALL
             };
+
         let response = self.request(&request).await?;
+        Self::update_stats(ctx, msg, &response, None).await?;
 
         #[cfg(feature = "openai-functions")]
         let response = if let Some(call) = response
@@ -378,7 +398,10 @@ impl OpenAi {
             } else {
                 MODEL_SMALL
             };
-            self.request(&request).await?
+
+            let response = self.request(&request).await?;
+            Self::update_stats(ctx, msg, &response, Some(call.clone())).await?;
+            response
         } else {
             response
         };
@@ -392,5 +415,35 @@ impl OpenAi {
         } else {
             bail!("No content in OpenAI response")
         }
+    }
+
+    async fn update_stats(
+        ctx: &Context,
+        message: &Message,
+        response: &OpenAiResponse,
+        function_call: Option<FunctionCall>,
+    ) -> Result<()> {
+        let collection = get_data::<DbKey>(ctx)
+            .await?
+            .collection::<UserLog>(USER_LOG_COLLECTION_NAME);
+
+        collection
+            .insert_one(
+                UserLog {
+                    time: Utc::now(),
+                    user_id: message.author.id.to_string(),
+                    model: response.model.clone(),
+                    prompt_tokens: i64::value_from(response.usage.prompt_tokens)
+                        .unwrap_or_saturate(),
+                    completion_tokens: i64::value_from(response.usage.completion_tokens)
+                        .unwrap_or_saturate(),
+                    total_tokens: i64::value_from(response.usage.total_tokens).unwrap_or_saturate(),
+                    function_call,
+                },
+                None,
+            )
+            .await?;
+
+        Ok(())
     }
 }
