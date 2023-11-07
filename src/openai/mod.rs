@@ -160,6 +160,10 @@ enum OpenAiModel {
     Gpt4,
     #[serde(rename = "gpt-4-32k")]
     Gpt432k,
+    #[serde(rename = "gpt-4-1106-preview")]
+    Gpt4Turbo,
+    #[serde(rename = "gpt-4-vision-preview")]
+    Gpt4Vision,
 }
 
 #[derive(Debug, Clone, Deserialize)]
