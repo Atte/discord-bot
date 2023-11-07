@@ -243,6 +243,7 @@ pub enum OpenAiMessage {
     Assistant {
         content: Option<String>,
         #[cfg(feature = "openai-functions")]
+        #[serde(skip_serializing_if = "Option::is_none")]
         function_call: Option<FunctionCall>,
     },
     Function {
