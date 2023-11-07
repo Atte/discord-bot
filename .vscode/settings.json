@@ -19,6 +19,7 @@
         "cron",
         "teamup",
         "openai",
-        "openai-functions"
+        "openai-functions",
+        "openai-vision"
     ]
 }

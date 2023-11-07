@@ -16,11 +16,6 @@ use serenity::{
     },
 };
 
-#[cfg(feature = "openai")]
-use crate::openai::{OpenAiKey, OpenAiMessage, OpenAiRequest};
-#[cfg(feature = "openai")]
-use serenity::model::channel::MessageFlags;
-
 #[derive(Debug)]
 pub struct Handler;
 
@@ -53,9 +48,11 @@ impl EventHandler for Handler {
                 .contains(&message.channel_id)
                 && matches!(message.mentions_me(&ctx).await, Ok(true))
             {
+                use crate::openai::{OpenAiKey, OpenAiMessage, OpenAiRequest, OpenAiUserMessage};
                 use crate::word_chunks::WordChunks;
                 use serenity::{
                     constants::MESSAGE_CODE_LIMIT,
+                    model::channel::MessageFlags,
                     utils::{content_safe, ContentSafeOptions},
                 };
 
@@ -88,11 +85,14 @@ impl EventHandler for Handler {
                             .try_unshift_message(if reply.is_own(&ctx) {
                                 OpenAiMessage::Assistant {
                                     content: Some(text.to_owned()),
+                                    #[cfg(feature = "openai-functions")]
                                     function_call: None,
                                 }
                             } else {
                                 OpenAiMessage::User {
-                                    content: text.to_owned(),
+                                    content: vec![OpenAiUserMessage::Text {
+                                        text: text.to_owned(),
+                                    }],
                                 }
                             })
                             .is_err()

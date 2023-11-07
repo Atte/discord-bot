@@ -19,8 +19,12 @@ mod functions;
 #[cfg(feature = "openai-functions")]
 use self::functions::{Function, FunctionCall, FunctionCallType};
 
+#[cfg(not(feature = "openai-vision"))]
 const MODEL: OpenAiModel = OpenAiModel::Gpt4Turbo;
-const MAX_TOKENS: usize = 16_000;
+#[cfg(feature = "openai-vision")]
+const MODEL: OpenAiModel = OpenAiModel::Gpt4Vision;
+const MAX_TOKENS: usize = 1024 * 8;
+const MAX_RESULT_TOKENS: usize = 1024 * 4;
 
 lazy_static! {
     static ref CLEANUP_REGEX: Regex = Regex::new(r"\bhttps?:\/\/\S+").unwrap();
@@ -36,6 +40,7 @@ struct UserLog {
     prompt_tokens: i64,
     completion_tokens: i64,
     total_tokens: i64,
+    #[cfg(feature = "openai-functions")]
     function_call: Option<FunctionCall>,
 }
 
@@ -59,6 +64,7 @@ pub struct OpenAiRequest {
     temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     user: Option<String>,
+    max_tokens: usize,
 }
 
 impl OpenAiRequest {
@@ -84,6 +90,7 @@ impl OpenAiRequest {
             functions,
             temperature: None,
             user: user.map(Into::into),
+            max_tokens: MAX_RESULT_TOKENS,
         }
     }
 
@@ -127,6 +134,45 @@ impl OpenAiRequest {
             .sum();
         words * 4 / 3
     }
+
+    #[cfg(feature = "openai-vision")]
+    pub fn expand_vision(&mut self) {
+        let mut finder = linkify::LinkFinder::new();
+        finder.kinds(&[linkify::LinkKind::Url]);
+
+        for msg in &mut self.messages {
+            if let OpenAiMessage::User { content } = msg {
+                let urls = if let Some(OpenAiUserMessage::Text { text }) = content.first_mut() {
+                    let urls: Vec<_> = finder
+                        .links(text)
+                        .map(|link| link.as_str().to_owned())
+                        .collect();
+                    for url in &urls {
+                        *text = text.replace(url.as_str(), " ");
+                    }
+                    urls
+                } else {
+                    continue;
+                };
+
+                for url in urls {
+                    if url.ends_with(".png")
+                        || url.ends_with(".jpg")
+                        || url.ends_with(".jpeg")
+                        || url.ends_with(".webp")
+                        || url.ends_with(".gif")
+                    {
+                        content.push(OpenAiUserMessage::ImageUrl {
+                            image_url: OpenAiImageUrl {
+                                url,
+                                detail: OpenAiImageDetail::Low,
+                            },
+                        });
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -166,16 +212,42 @@ struct OpenAiResponseUsage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "role", rename_all = "lowercase")]
+pub struct OpenAiImageUrl {
+    url: String,
+    detail: OpenAiImageDetail,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenAiImageDetail {
+    Low,
+    High,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum OpenAiUserMessage {
+    Text {
+        text: String,
+    },
+    #[cfg(feature = "openai-vision")]
+    ImageUrl {
+        image_url: OpenAiImageUrl,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "role", rename_all = "snake_case")]
 pub enum OpenAiMessage {
     System {
         content: String,
     },
     User {
-        content: String,
+        content: Vec<OpenAiUserMessage>,
     },
     Assistant {
         content: Option<String>,
+        #[cfg(feature = "openai-functions")]
         function_call: Option<FunctionCall>,
     },
     Function {
@@ -189,7 +261,14 @@ impl OpenAiMessage {
     pub fn content(&self) -> Option<&String> {
         match self {
             OpenAiMessage::System { content } => Some(content),
-            OpenAiMessage::User { content } => Some(content),
+            OpenAiMessage::User { content } => content
+                .iter()
+                .filter_map(|msg| match msg {
+                    OpenAiUserMessage::Text { text } => Some(text),
+                    #[cfg(feature = "openai-vision")]
+                    OpenAiUserMessage::ImageUrl { .. } => None,
+                })
+                .next(),
             OpenAiMessage::Assistant { content, .. } => content.as_ref(),
             OpenAiMessage::Function { content, .. } => Some(content),
         }
@@ -199,7 +278,14 @@ impl OpenAiMessage {
     pub fn content_mut(&mut self) -> Option<&mut String> {
         match self {
             OpenAiMessage::System { content } => Some(content),
-            OpenAiMessage::User { content } => Some(content),
+            OpenAiMessage::User { content } => content
+                .iter_mut()
+                .filter_map(|msg| match msg {
+                    OpenAiUserMessage::Text { text } => Some(text),
+                    #[cfg(feature = "openai-vision")]
+                    OpenAiUserMessage::ImageUrl { .. } => None,
+                })
+                .next(),
             OpenAiMessage::Assistant { content, .. } => content.as_mut(),
             OpenAiMessage::Function { content, .. } => Some(content),
         }
@@ -303,10 +389,11 @@ impl OpenAi {
         for (user, bot) in self.examples.iter().rev() {
             request.unshift_message(OpenAiMessage::Assistant {
                 content: Some(bot.clone()),
+                #[cfg(feature = "openai-functions")]
                 function_call: None,
             });
             request.unshift_message(OpenAiMessage::User {
-                content: user.clone(),
+                content: vec![OpenAiUserMessage::Text { text: user.clone() }],
             });
         }
         request.unshift_message(OpenAiMessage::System {
@@ -330,8 +417,18 @@ impl OpenAi {
 
         request.model = MODEL;
 
+        #[cfg(feature = "openai-vision")]
+        request.expand_vision();
+
         let response = self.request(&request).await?;
-        Self::update_stats(ctx, msg, &response, None).await?;
+        Self::update_stats(
+            ctx,
+            msg,
+            &response,
+            #[cfg(feature = "openai-functions")]
+            None,
+        )
+        .await?;
 
         #[cfg(feature = "openai-functions")]
         let response = if let Some(call) = response.choices.get(0).and_then(|choice| match &choice
@@ -373,7 +470,7 @@ impl OpenAi {
         ctx: &Context,
         message: &Message,
         response: &OpenAiResponse,
-        function_call: Option<FunctionCall>,
+        #[cfg(feature = "openai-functions")] function_call: Option<FunctionCall>,
     ) -> Result<()> {
         let collection = get_data::<DbKey>(ctx)
             .await?
@@ -390,6 +487,7 @@ impl OpenAi {
                     completion_tokens: i64::value_from(response.usage.completion_tokens)
                         .unwrap_or_saturate(),
                     total_tokens: i64::value_from(response.usage.total_tokens).unwrap_or_saturate(),
+                    #[cfg(feature = "openai-functions")]
                     function_call,
                 },
                 None,

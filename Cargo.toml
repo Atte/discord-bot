@@ -20,6 +20,7 @@ env_logger = "0.10"
 futures = "0.3"
 itertools = "0.10"
 lazy_static = "1.4"
+linkify = { version = "0.10.0", optional = true }
 log = "0.4"
 maplit = "1.0"
 meval = "0.2"
@@ -126,4 +127,4 @@ cron = []
 teamup = ["serde_repr"]
 openai = ["schemars"]
 openai-functions = ["openai", "chrono-tz"]
-openai-vision = ["openai"]
+openai-vision = ["openai", "linkify"]
