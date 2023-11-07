@@ -139,31 +139,47 @@ impl OpenAiRequest {
     pub fn expand_vision(&mut self) {
         use std::collections::HashSet;
 
+        let finder = linkify::LinkFinder::new();
+        let extract_urls = move |text: &mut String| -> HashSet<String> {
+            let urls: HashSet<_> = finder
+                .links(text)
+                .map(|link| link.as_str().to_owned())
+                .collect();
+            for url in &urls {
+                *text = text.replace(url.as_str(), " ");
+            }
+            urls
+        };
+
         let mut finder = linkify::LinkFinder::new();
         finder.kinds(&[linkify::LinkKind::Url]);
 
         for msg in &mut self.messages {
-            if let OpenAiMessage::User { content } = msg {
-                let urls = if let Some(OpenAiUserMessage::Text { text }) = content.first_mut() {
-                    let urls: HashSet<_> = finder
-                        .links(text)
-                        .map(|link| link.as_str().to_owned())
-                        .collect();
-                    for url in &urls {
-                        *text = text.replace(url.as_str(), " ");
+            match msg {
+                &mut OpenAiMessage::User { ref mut content } => {
+                    let mut urls: HashSet<String> = HashSet::new();
+                    for item in content.iter_mut() {
+                        match item {
+                            &mut OpenAiUserMessage::Text { ref mut text } => {
+                                urls.extend(extract_urls(text));
+                            }
+                            _ => {
+                                // noop
+                            }
+                        }
                     }
-                    urls
-                } else {
-                    continue;
-                };
 
-                for url in urls {
-                    content.push(OpenAiUserMessage::ImageUrl {
-                        image_url: OpenAiImageUrl {
-                            url,
-                            detail: OpenAiImageDetail::Low,
-                        },
-                    });
+                    for url in urls {
+                        content.push(OpenAiUserMessage::ImageUrl {
+                            image_url: OpenAiImageUrl {
+                                url,
+                                detail: OpenAiImageDetail::Low,
+                            },
+                        });
+                    }
+                }
+                _ => {
+                    // noop
                 }
             }
         }
