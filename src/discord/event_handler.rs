@@ -17,7 +17,7 @@ use serenity::{
 };
 
 #[cfg(feature = "openai")]
-use crate::openai::{OpenAiKey, OpenAiMessage, OpenAiMessageRole, OpenAiRequest};
+use crate::openai::{OpenAiKey, OpenAiMessage, OpenAiRequest};
 #[cfg(feature = "openai")]
 use serenity::model::channel::MessageFlags;
 
@@ -85,17 +85,16 @@ impl EventHandler for Handler {
                             .trim();
 
                         if request
-                            .try_unshift_message(
-                                OpenAiMessage::new(
-                                    if reply.is_own(&ctx) {
-                                        OpenAiMessageRole::Assistant
-                                    } else {
-                                        OpenAiMessageRole::User
-                                    },
-                                    text,
-                                ),
-                                config.openai.allow_large_model,
-                            )
+                            .try_unshift_message(if reply.is_own(&ctx) {
+                                OpenAiMessage::Assistant {
+                                    content: Some(text.to_owned()),
+                                    function_call: None,
+                                }
+                            } else {
+                                OpenAiMessage::User {
+                                    content: text.to_owned(),
+                                }
+                            })
                             .is_err()
                         {
                             break;

@@ -19,17 +19,8 @@ mod functions;
 #[cfg(feature = "openai-functions")]
 use self::functions::{Function, FunctionCall, FunctionCallType};
 
-// const MODEL_SMALL: OpenAiModel = OpenAiModel::Gpt35Turbo;
-// const MAX_TOKENS_SMALL: usize = 4_000;
-
-// const MODEL_LARGE: OpenAiModel = OpenAiModel::Gpt35Turbo16k;
-// const MAX_TOKENS_LARGE: usize = 16_000;
-
-const MODEL_SMALL: OpenAiModel = OpenAiModel::Gpt4;
-const MAX_TOKENS_SMALL: usize = 8_000;
-
-const MODEL_LARGE: OpenAiModel = OpenAiModel::Gpt432k;
-const MAX_TOKENS_LARGE: usize = 32_000;
+const MODEL: OpenAiModel = OpenAiModel::Gpt4Turbo;
+const MAX_TOKENS: usize = 16_000;
 
 lazy_static! {
     static ref CLEANUP_REGEX: Regex = Regex::new(r"\bhttps?:\/\/\S+").unwrap();
@@ -81,7 +72,7 @@ impl OpenAiRequest {
             }
         };
         OpenAiRequest {
-            model: MODEL_LARGE,
+            model: MODEL,
             messages: Vec::new(),
             #[cfg(feature = "openai-functions")]
             function_call: if functions.is_empty() {
@@ -114,20 +105,10 @@ impl OpenAiRequest {
         self.messages.insert(0, message);
     }
 
-    pub fn try_unshift_message(
-        &mut self,
-        message: OpenAiMessage,
-        allow_large_model: bool,
-    ) -> Result<()> {
+    pub fn try_unshift_message(&mut self, message: OpenAiMessage) -> Result<()> {
         self.unshift_message(message);
 
-        if self.approximate_num_tokens()
-            > if allow_large_model {
-                MAX_TOKENS_LARGE
-            } else {
-                MAX_TOKENS_SMALL
-            } / 2
-        {
+        if self.approximate_num_tokens() > MAX_TOKENS / 2 {
             self.shift_message();
             bail!("too many tokens");
         }
@@ -140,8 +121,7 @@ impl OpenAiRequest {
             .messages
             .iter()
             .filter_map(|msg| {
-                msg.content
-                    .as_ref()
+                msg.content()
                     .map(|content| content.split_whitespace().count())
             })
             .sum();
@@ -186,64 +166,43 @@ struct OpenAiResponseUsage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OpenAiMessage {
-    role: OpenAiMessageRole,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>,
-    content: Option<String>,
-    #[cfg(feature = "openai-functions")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    function_call: Option<FunctionCall>,
+#[serde(tag = "role", rename_all = "lowercase")]
+pub enum OpenAiMessage {
+    System {
+        content: String,
+    },
+    User {
+        content: String,
+    },
+    Assistant {
+        content: Option<String>,
+        function_call: Option<FunctionCall>,
+    },
+    Function {
+        content: String,
+        name: String,
+    },
 }
 
 impl OpenAiMessage {
-    pub fn new(role: OpenAiMessageRole, content: impl Into<String>) -> Self {
-        Self {
-            role,
-            name: None,
-            content: Some(content.into()),
-            #[cfg(feature = "openai-functions")]
-            function_call: None,
+    #[inline]
+    pub fn content(&self) -> Option<&String> {
+        match self {
+            OpenAiMessage::System { content } => Some(content),
+            OpenAiMessage::User { content } => Some(content),
+            OpenAiMessage::Assistant { content, .. } => content.as_ref(),
+            OpenAiMessage::Function { content, .. } => Some(content),
         }
     }
 
-    pub fn new_with_name(
-        role: OpenAiMessageRole,
-        name: impl Into<String>,
-        content: impl Into<String>,
-    ) -> Self {
-        Self {
-            role,
-            name: Some(name.into()),
-            content: Some(content.into()),
-            #[cfg(feature = "openai-functions")]
-            function_call: None,
+    #[inline]
+    pub fn content_mut(&mut self) -> Option<&mut String> {
+        match self {
+            OpenAiMessage::System { content } => Some(content),
+            OpenAiMessage::User { content } => Some(content),
+            OpenAiMessage::Assistant { content, .. } => content.as_mut(),
+            OpenAiMessage::Function { content, .. } => Some(content),
         }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum OpenAiMessageRole {
-    System,
-    User,
-    Assistant,
-    Function,
-}
-
-impl OpenAiMessageRole {
-    #[inline]
-    pub fn message(&self, content: impl Into<String>) -> OpenAiMessage {
-        OpenAiMessage::new(self.clone(), content)
-    }
-
-    #[inline]
-    pub fn message_with_name(
-        &self,
-        name: impl Into<String>,
-        content: impl Into<String>,
-    ) -> OpenAiMessage {
-        OpenAiMessage::new_with_name(self.clone(), name, content)
     }
 }
 
@@ -255,7 +214,6 @@ pub struct OpenAi {
     examples: Vec<(String, String)>,
     bot_replacements: Vec<(Regex, String)>,
     user_replacements: Vec<(Regex, String)>,
-    allow_large_model: bool,
 }
 
 fn parse_replacements(
@@ -290,7 +248,6 @@ impl OpenAi {
                 .collect(),
             bot_replacements: parse_replacements(config.bot_replacements.iter()),
             user_replacements: parse_replacements(config.user_replacements.iter()),
-            allow_large_model: config.allow_large_model,
         }
     }
 
@@ -328,80 +285,71 @@ impl OpenAi {
         botname: impl AsRef<str>,
     ) -> Result<String> {
         for message in &mut request.messages {
-            let replacements = match message.role {
-                OpenAiMessageRole::User => &self.user_replacements,
-                OpenAiMessageRole::Assistant => &self.bot_replacements,
-                OpenAiMessageRole::System | OpenAiMessageRole::Function => continue,
+            let replacements = match message {
+                OpenAiMessage::User { .. } => &self.user_replacements,
+                OpenAiMessage::Assistant { .. } => &self.bot_replacements,
+                OpenAiMessage::System { .. } | OpenAiMessage::Function { .. } => continue,
             };
 
             for (from, to) in replacements {
-                message.content = message
-                    .content
-                    .as_ref()
-                    .map(|content| from.replace_all(content, to).to_string());
+                if let Some(content) = message.content_mut() {
+                    *content = from.replace_all(content, to).to_string();
+                }
             }
         }
 
         request.temperature = request.temperature.or(self.temperature);
 
         for (user, bot) in self.examples.iter().rev() {
-            request.unshift_message(OpenAiMessageRole::Assistant.message(bot.clone()));
-            request.unshift_message(OpenAiMessageRole::User.message(user.clone()));
+            request.unshift_message(OpenAiMessage::Assistant {
+                content: Some(bot.clone()),
+                function_call: None,
+            });
+            request.unshift_message(OpenAiMessage::User {
+                content: user.clone(),
+            });
         }
-        request.unshift_message(
-            OpenAiMessageRole::System.message(
-                self.prompt
-                    .replace("{botname}", botname.as_ref())
-                    .replace("{date}", &Utc::now().format("%A, %B %d, %Y").to_string())
-                    .replace("{time}", &Utc::now().format("%I:%M %p").to_string())
-                    .replace(
-                        "{is_weekend}",
-                        if Utc::now().weekday().number_from_monday() >= 6
-                            || (Utc::now().weekday().number_from_monday() == 5
-                                && Utc::now().hour() >= 16)
-                        {
-                            "is"
-                        } else {
-                            "is not"
-                        },
-                    ),
-            ),
-        );
+        request.unshift_message(OpenAiMessage::System {
+            content: self
+                .prompt
+                .replace("{botname}", botname.as_ref())
+                .replace("{date}", &Utc::now().format("%A, %B %d, %Y").to_string())
+                .replace("{time}", &Utc::now().format("%I:%M %p").to_string())
+                .replace(
+                    "{is_weekend}",
+                    if Utc::now().weekday().number_from_monday() >= 6
+                        || (Utc::now().weekday().number_from_monday() == 5
+                            && Utc::now().hour() >= 16)
+                    {
+                        "is"
+                    } else {
+                        "is not"
+                    },
+                ),
+        });
 
-        request.model =
-            if self.allow_large_model && request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2 {
-                MODEL_LARGE
-            } else {
-                MODEL_SMALL
-            };
+        request.model = MODEL;
 
         let response = self.request(&request).await?;
         Self::update_stats(ctx, msg, &response, None).await?;
 
         #[cfg(feature = "openai-functions")]
-        let response = if let Some(call) = response
-            .choices
-            .get(0)
-            .and_then(|choice| choice.message.function_call.as_ref())
+        let response = if let Some(call) = response.choices.get(0).and_then(|choice| match &choice
+            .message
         {
+            OpenAiMessage::Assistant { function_call, .. } => function_call.as_ref(),
+            _ => None,
+        }) {
             request.push_message(response.choices.get(0).unwrap().message.clone());
-            request.push_message(
-                OpenAiMessageRole::Function.message_with_name(
-                    &call.name,
-                    functions::call(ctx, msg, call)
-                        .await
-                        .unwrap_or_else(|err| err.to_string()),
-                ),
-            );
+            request.push_message(OpenAiMessage::Function {
+                name: (&call.name).into(),
+                content: functions::call(ctx, msg, &call)
+                    .await
+                    .unwrap_or_else(|err| err.to_string()),
+            });
 
             request.function_call = FunctionCallType::None;
-            request.model = if self.allow_large_model
-                && request.approximate_num_tokens() > MAX_TOKENS_SMALL / 2
-            {
-                MODEL_LARGE
-            } else {
-                MODEL_SMALL
-            };
+            request.model = MODEL;
 
             let response = self.request(&request).await?;
             Self::update_stats(ctx, msg, &response, Some(call.clone())).await?;
@@ -413,7 +361,7 @@ impl OpenAi {
         if let Some(content) = response
             .choices
             .get(0)
-            .and_then(|choice| choice.message.content.as_ref())
+            .and_then(|choice| choice.message.content())
         {
             Ok(CLEANUP_REGEX.replace_all(content, "").to_string())
         } else {

@@ -7,11 +7,6 @@ use std::{
     path::Path,
 };
 
-#[inline]
-fn default_true() -> bool {
-    true
-}
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub mongodb: MongodbConfig,
@@ -132,8 +127,6 @@ pub struct OpenAiConfig {
     pub bot_replacements: HashMap<SubstitutingString, String>,
     #[serde(default)]
     pub user_replacements: HashMap<SubstitutingString, String>,
-    #[serde(default = "default_true")]
-    pub allow_large_model: bool,
 }
 
 #[cfg(test)]
