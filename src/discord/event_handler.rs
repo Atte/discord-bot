@@ -89,10 +89,25 @@ impl EventHandler for Handler {
                                     function_call: None,
                                 }
                             } else {
+                                eprintln!("{reply:?}");
+                                let mut text = text.to_owned();
+                                #[cfg(feature = "openai-vision")]
+                                {
+                                    for attach in reply.attachments {
+                                        if let Some("image/jpeg") | Some("image/png")
+                                        | Some("image/webp") = attach.content_type.as_deref()
+                                        {
+                                            text.push_str(&format!(" {}", attach.url));
+                                        }
+                                    }
+                                    for embed in reply.embeds {
+                                        if let Some(image) = embed.image {
+                                            text.push_str(&format!(" {}", image.url));
+                                        }
+                                    }
+                                }
                                 OpenAiMessage::User {
-                                    content: vec![OpenAiUserMessage::Text {
-                                        text: text.to_owned(),
-                                    }],
+                                    content: vec![OpenAiUserMessage::Text { text }],
                                 }
                             })
                             .is_err()

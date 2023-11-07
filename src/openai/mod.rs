@@ -137,13 +137,15 @@ impl OpenAiRequest {
 
     #[cfg(feature = "openai-vision")]
     pub fn expand_vision(&mut self) {
+        use std::collections::HashSet;
+
         let mut finder = linkify::LinkFinder::new();
         finder.kinds(&[linkify::LinkKind::Url]);
 
         for msg in &mut self.messages {
             if let OpenAiMessage::User { content } = msg {
                 let urls = if let Some(OpenAiUserMessage::Text { text }) = content.first_mut() {
-                    let urls: Vec<_> = finder
+                    let urls: HashSet<_> = finder
                         .links(text)
                         .map(|link| link.as_str().to_owned())
                         .collect();
@@ -156,19 +158,12 @@ impl OpenAiRequest {
                 };
 
                 for url in urls {
-                    if url.ends_with(".png")
-                        || url.ends_with(".jpg")
-                        || url.ends_with(".jpeg")
-                        || url.ends_with(".webp")
-                        || url.ends_with(".gif")
-                    {
-                        content.push(OpenAiUserMessage::ImageUrl {
-                            image_url: OpenAiImageUrl {
-                                url,
-                                detail: OpenAiImageDetail::Low,
-                            },
-                        });
-                    }
+                    content.push(OpenAiUserMessage::ImageUrl {
+                        image_url: OpenAiImageUrl {
+                            url,
+                            detail: OpenAiImageDetail::Low,
+                        },
+                    });
                 }
             }
         }
