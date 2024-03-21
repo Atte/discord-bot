@@ -98,7 +98,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
         .captures_iter(&msg.content)
         .filter_map(|cap| {
             cap.name("id")
-                .and_then(|c| c.as_str().parse::<u64>().map(EmojiId).ok())
+                .and_then(|c| c.as_str().parse::<u64>().map(EmojiId::new).ok())
                 .zip(cap.name("name").map(|c| c.as_str()))
         })
         .collect();
@@ -170,7 +170,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
         )
         .await?;
 
-    for (EmojiId(id), name) in emojis {
+    for (id, name) in emojis {
         collection
             .update_one(
                 doc! {

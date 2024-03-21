@@ -10,9 +10,8 @@ use log::warn;
 use reqwest::Url;
 use serde::Deserialize;
 use serenity::{
-    client::bridge::gateway::ShardManager,
-    model::gateway::Activity,
-    prelude::{Mutex, RwLock, TypeMap},
+    all::{ActivityData, ShardManager},
+    prelude::{RwLock, TypeMap},
 };
 use std::{convert::TryInto, sync::Arc, time::Duration};
 
@@ -32,7 +31,7 @@ struct VideoStatusEvent {
 
 pub struct Berrytube {
     url: Url,
-    shard_manager: Arc<Mutex<ShardManager>>,
+    shard_manager: Arc<ShardManager>,
     data: Arc<RwLock<TypeMap>>,
     latest_change: Option<VideoChangeEvent>,
     latest_status: Option<VideoStatusEvent>,
@@ -41,7 +40,7 @@ pub struct Berrytube {
 impl Berrytube {
     pub fn try_new(
         config: &BerrytubeConfig,
-        shard_manager: Arc<Mutex<ShardManager>>,
+        shard_manager: Arc<ShardManager>,
         data: Arc<RwLock<TypeMap>>,
     ) -> Result<Self> {
         Ok(Self {
@@ -133,12 +132,11 @@ impl Berrytube {
             data.insert::<ActivityKey>(title.to_owned());
         }
 
-        let shard_manager = self.shard_manager.lock().await;
-        for runner in shard_manager.runners.lock().await.values() {
+        for runner in self.shard_manager.runners.lock().await.values() {
             runner.runner_tx.set_activity(if title.is_empty() {
                 None
             } else {
-                Some(Activity::playing(title))
+                Some(ActivityData::custom(title))
             });
         }
     }

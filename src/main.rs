@@ -6,10 +6,12 @@
     unused
 )]
 #![allow(clippy::module_name_repetitions)]
+// TODO: switch to new Serenity framework
+#![allow(deprecated)]
 
 use color_eyre::eyre::Result;
 use log::{error, info, warn};
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 
 mod substituting_string;
@@ -55,29 +57,11 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    #[cfg(feature = "webui")]
-    {
-        info!("Spawning web UI...");
-        let webui =
-            webui::WebUI::try_new(config.clone(), discord.client.cache_and_http.clone(), db)
-                .await?;
-        tokio::spawn(async move {
-            loop {
-                if let Err(report) = webui.run().await {
-                    error!("Web UI error: {report:?}");
-                } else {
-                    warn!("Web UI ended!");
-                }
-                sleep(Duration::from_secs(10)).await;
-            }
-        });
-    }
-
     #[cfg(feature = "cron")]
     {
         if config.cron.rate > 0 {
             info!("Spawning cron...");
-            let mut cron = cron::Cron::new(config.cron, discord.client.cache_and_http.clone());
+            let mut cron = cron::Cron::new(config.cron, Arc::clone(&discord.client.http));
             tokio::spawn(async move {
                 loop {
                     if let Err(report) = cron.run().await {
@@ -94,8 +78,8 @@ async fn main() -> Result<()> {
         info!("Spawning BerryTube...");
         let mut berrytube = berrytube::Berrytube::try_new(
             &config.berrytube,
-            discord.client.shard_manager.clone(),
-            discord.client.data.clone(),
+            Arc::clone(&discord.client.shard_manager),
+            Arc::clone(&discord.client.data),
         )?;
         tokio::spawn(async move {
             loop {
@@ -113,7 +97,11 @@ async fn main() -> Result<()> {
     {
         for config in config.teamup {
             info!("Spawning Teamup for {}...", config.guild);
-            let mut teamup = teamup::Teamup::new(config, discord.client.cache_and_http.clone());
+            let mut teamup = teamup::Teamup::new(
+                config,
+                Arc::clone(&discord.client.cache),
+                Arc::clone(&discord.client.http),
+            );
             tokio::spawn(async move {
                 sleep(Duration::from_secs(5)).await;
                 loop {

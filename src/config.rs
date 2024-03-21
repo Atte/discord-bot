@@ -12,8 +12,6 @@ pub struct Config {
     pub mongodb: MongodbConfig,
     pub discord: DiscordConfig,
     pub gib: GibConfig,
-    #[cfg(feature = "webui")]
-    pub webui: WebUIConfig,
     #[cfg(feature = "cron")]
     pub cron: CronConfig,
     #[cfg(feature = "berrytube")]
@@ -47,10 +45,6 @@ pub struct MongodbConfig {
 pub struct DiscordConfig {
     pub command_prefix: SubstitutingString,
     pub token: SubstitutingString,
-    #[cfg(feature = "webui")]
-    pub client_id: SubstitutingString,
-    #[cfg(feature = "webui")]
-    pub client_secret: SubstitutingString,
     #[serde(default)]
     pub owners: HashSet<UserId>,
     pub blocked_users: HashSet<UserId>,
@@ -83,13 +77,6 @@ pub struct GibConfig {
     pub user_agent: SubstitutingString,
     #[serde(default)]
     pub shy_artists: HashSet<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct WebUIConfig {
-    pub url: SubstitutingString,
-    #[serde(default)]
-    pub guilds: HashSet<GuildId>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

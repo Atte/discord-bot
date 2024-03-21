@@ -7,6 +7,7 @@ use maplit::hashset;
 use mongodb::bson::{doc, Document};
 use regex::Regex;
 use serenity::{
+    all::{CreateAttachment, CreateMessage},
     client::Context,
     framework::standard::{
         macros::{command, group},
@@ -41,38 +42,53 @@ const DELAY: Duration = Duration::from_millis(100);
 #[usage("emotename")]
 #[num_args(1)]
 async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let Some(emotename) = EMOTE_PATTERN.captures(args.message().trim()).and_then(|caps| caps.get(1)) else {
+    let Some(emotename) = EMOTE_PATTERN
+        .captures(args.message().trim())
+        .and_then(|caps| caps.get(1))
+    else {
         msg.reply(ctx, "Invalid emote name!").await?;
         return Ok(());
     };
 
-    let guild = msg.guild(ctx).ok_or_else(|| eyre!("Guild not found"))?;
+    let guild = msg
+        .guild(&ctx.cache)
+        .ok_or_else(|| eyre!("Guild not found"))?
+        .clone();
 
     let Some((channel_id, message_id)) = msg
         .message_reference
         .as_ref()
-        .and_then(|r| r.message_id.map(|id| (r.channel_id, id))) else {
-            msg.reply(ctx, "No message replied to!").await?;
-            return Ok(());
-        };
+        .and_then(|r| r.message_id.map(|id| (r.channel_id, id)))
+    else {
+        msg.reply(ctx, "No message replied to!").await?;
+        return Ok(());
+    };
 
     let replied;
-    if let Some(referenced) = ctx.cache.message(channel_id, message_id) {
-        replied = referenced;
-    } else if let Ok(referenced) = ctx.http.get_message(channel_id.0, message_id.0).await {
+    if let Some(referenced) = ctx
+        .cache
+        .message(channel_id, message_id)
+        .map(|msg| msg.clone())
+    {
+        replied = referenced.clone();
+    } else if let Ok(referenced) = ctx.http.get_message(channel_id, message_id).await {
         replied = referenced;
     } else {
         msg.reply(ctx, "Replied to message not found!").await?;
         return Ok(());
     }
 
-    let Some(image) = replied
-        .attachments
-        .iter()
-        .find(|a| if let Some(ref ct) = a.content_type { IMAGE_TYPES.contains(ct.as_str()) } else { false }) else {
-            msg.reply(ctx, "No image attachments in replied to message!").await?;
-            return Ok(());
-        };
+    let Some(image) = replied.attachments.iter().find(|a| {
+        if let Some(ref ct) = a.content_type {
+            IMAGE_TYPES.contains(ct.as_str())
+        } else {
+            false
+        }
+    }) else {
+        msg.reply(ctx, "No image attachments in replied to message!")
+            .await?;
+        return Ok(());
+    };
 
     if image.size > 256_000 {
         msg.reply(ctx, "Image too large! (max 256 kB)").await?;
@@ -114,7 +130,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .filter(|role| guild.roles.contains_key(role))
         .collect();
     if !rewards.is_empty() {
-        let mut member = guild.member(ctx, replied.author.id).await?;
+        let member = guild.member(ctx, replied.author.id).await?;
         for reward in &rewards {
             let _: Result<_, _> = member.add_role(ctx, reward).await;
         }
@@ -157,7 +173,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[description("Download a ZIP file of all emotes")]
 #[num_args(0)]
 async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
-    let _typing = msg.channel_id.start_typing(&ctx.http)?;
+    let _typing = msg.channel_id.start_typing(&ctx.http);
 
     let mut count_static = 0;
     let mut count_animated = 0;
@@ -198,12 +214,14 @@ async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
 
     let filename = format!("emotes_{}.zip", Utc::now().round_subsecs(0));
     msg.channel_id
-        .send_files(ctx, vec![(buffer.as_slice(), filename.as_str())], |m| {
-            m.reference_message(msg).content(format!(
+        .send_files(
+            ctx,
+            std::iter::once(CreateAttachment::bytes(buffer, filename)),
+            CreateMessage::new().reference_message(msg).content(format!(
                 "{} emotes ({count_static} static + {count_animated} animated)",
                 count_static + count_animated
-            ))
-        })
+            )),
+        )
         .await?;
 
     Ok(())

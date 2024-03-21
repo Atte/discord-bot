@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serenity::{
+    all::{CreateAllowedMentions, CreateMessage},
     constants::MESSAGE_CODE_LIMIT,
     model::prelude::*,
     prelude::*,
@@ -51,12 +52,14 @@ impl SafeReply for Message {
         for chunk in response.into_iter().take(max_pages) {
             match reply_to
                 .channel_id
-                .send_message(&ctx, |msg| {
-                    msg.allowed_mentions(|men| men.empty_parse())
+                .send_message(
+                    &ctx,
+                    CreateMessage::new()
+                        .allowed_mentions(CreateAllowedMentions::new())
                         .reference_message(&reply_to)
                         .flags(MessageFlags::SUPPRESS_EMBEDS)
-                        .content(chunk)
-                })
+                        .content(chunk),
+                )
                 .await
             {
                 Ok(reply) => {

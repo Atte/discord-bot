@@ -3,22 +3,22 @@ use chrono::{Duration, Utc};
 use color_eyre::eyre::Result;
 use log::info;
 use serenity::{
+    all::{GetMessages, Http},
     model::id::{ChannelId, MessageId},
-    CacheAndHttp,
 };
 use std::{collections::HashMap, sync::Arc};
 
 pub struct Cron {
-    discord: Arc<CacheAndHttp>,
+    http: Arc<Http>,
     delete_old_messages: HashMap<ChannelId, i64>,
     pub rate: u64,
 }
 
 impl Cron {
     #[inline]
-    pub fn new(config: CronConfig, discord: Arc<CacheAndHttp>) -> Self {
+    pub fn new(config: CronConfig, http: Arc<Http>) -> Self {
         Self {
-            discord,
+            http,
             delete_old_messages: config.delete_old_messages,
             rate: config.rate,
         }
@@ -30,7 +30,7 @@ impl Cron {
             let max_age = Duration::seconds(*seconds);
 
             let messages = channel_id
-                .messages(&self.discord.http, |c| c.limit(100))
+                .messages(&self.http, GetMessages::new().limit(100))
                 .await?;
             let delete_message_ids: Vec<MessageId> = messages
                 .iter()
@@ -48,13 +48,13 @@ impl Cron {
                 1 => {
                     info!("Deleting an obsolete message from {channel_id}");
                     channel_id
-                        .delete_message(&self.discord.http, delete_message_ids[0])
+                        .delete_message(&self.http, delete_message_ids[0])
                         .await?;
                 }
                 len => {
                     info!("Deleting {len} obsolete messages from {channel_id}");
                     channel_id
-                        .delete_messages(&self.discord.http, delete_message_ids)
+                        .delete_messages(&self.http, delete_message_ids)
                         .await?;
                 }
             }

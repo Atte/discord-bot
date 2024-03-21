@@ -7,6 +7,7 @@ use mongodb::{
     options::{FindOneOptions, UpdateOptions},
 };
 use serenity::{
+    all::EditMember,
     client::Context,
     model::{guild::Member, id::RoleId},
 };
@@ -35,7 +36,7 @@ pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
     Ok(())
 }
 
-pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<bool> {
+pub async fn apply_stickies(ctx: &Context, member: &mut Member) -> Result<bool> {
     let collection = get_data::<DbKey>(ctx)
         .await?
         .collection::<Document>(COLLECTION_NAME);
@@ -51,13 +52,16 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<bool> {
         )
         .await?
     {
+        let current_user_id = ctx.cache.current_user().id.clone();
+
         let guild = member
             .guild_id
             .to_guild_cached(ctx)
-            .ok_or_else(|| eyre!("Guild not found!"))?;
+            .ok_or_else(|| eyre!("Guild not found!"))?
+            .clone();
 
         let bot_roles: HashSet<RoleId> = guild
-            .member(&ctx, ctx.cache.current_user_id())
+            .member(&ctx, current_user_id)
             .await?
             .roles(ctx)
             .ok_or_else(|| eyre!("Roles for bot not found!"))?
@@ -77,7 +81,7 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<bool> {
         let role_ids: Vec<RoleId> = entry
             .get_array("role_ids")?
             .iter()
-            .filter_map(|i| i.as_str().and_then(|s| s.parse().ok()).map(RoleId))
+            .filter_map(|i| i.as_str().and_then(|s| s.parse().ok()).map(RoleId::new))
             .filter(|id| guild_role_ids.contains(id))
             .collect();
 
@@ -86,7 +90,9 @@ pub async fn apply_stickies(ctx: &Context, member: &Member) -> Result<bool> {
 
             let mut user_role_ids: Vec<RoleId> = member.roles.clone();
             user_role_ids.extend(role_ids);
-            member.edit(&ctx, |edit| edit.roles(user_role_ids)).await?;
+            member
+                .edit(&ctx, EditMember::new().roles(user_role_ids))
+                .await?;
 
             return Ok(true);
         }

@@ -2,7 +2,7 @@ use super::super::{
     get_data, get_data_or_insert_with, limits::EMBED_FIELD_VALUE_LENGTH, ConfigKey, DbKey,
 };
 use crate::util::{ellipsis_string, separate_thousands_unsigned};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use futures::StreamExt;
 use itertools::Itertools;
 use mongodb::{
@@ -13,6 +13,7 @@ use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DefaultOnNull};
 use serenity::{
+    all::{CreateEmbed, CreateEmbedFooter, CreateMessage},
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
@@ -154,11 +155,16 @@ pub async fn derpibooru_embed(
         .filter_map(|tag| tag.strip_prefix("artist:"))
         .join(", ");
     msg.channel_id
-        .send_message(&ctx, |message| {
-            message.embed(|embed| {
-                embed.field("Post", format!("https://derpibooru.org/{}", image.id), true);
+        .send_message(
+            &ctx,
+            CreateMessage::new().embed({
+                let mut embed = CreateEmbed::new().field(
+                    "Post",
+                    format!("https://derpibooru.org/{}", image.id),
+                    true,
+                );
                 if !artists.is_empty() {
-                    embed.field(
+                    embed = embed.field(
                         if artists.contains(", ") {
                             "Artists"
                         } else {
@@ -176,13 +182,16 @@ pub async fn derpibooru_embed(
                 }
                 */
                 if let Some(ref timestamp) = image.first_seen_at {
-                    embed.timestamp::<&str>(timestamp);
+                    embed = embed.timestamp(DateTime::parse_from_rfc3339(timestamp)?)
                 }
-                embed.image(&image.representations.tall).footer(|footer| {
-                    footer.text(format!("{} results", separate_thousands_unsigned(total)))
-                })
-            })
-        })
+                embed
+                    .image(&image.representations.tall)
+                    .footer(CreateEmbedFooter::new(format!(
+                        "{} results",
+                        separate_thousands_unsigned(total)
+                    )))
+            }),
+        )
         .await?;
     Ok(())
 }

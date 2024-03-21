@@ -10,6 +10,7 @@ use color_eyre::eyre::{eyre, Result};
 use derivative::Derivative;
 use itertools::{EitherOrBoth, Itertools};
 use serenity::{
+    all::{CreateEmbed, CreateEmbedFooter, CreateMessage, EditMember},
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
     model::{
@@ -46,13 +47,15 @@ impl Ranks {
     }
 
     async fn from_guild(ctx: &Context, guild_id: impl Into<GuildId>) -> Result<Self> {
+        let current_user_id = ctx.cache.current_user().id.clone();
         let config = get_data::<ConfigKey>(ctx).await?;
         let guild = guild_id
             .into()
             .to_guild_cached(ctx)
-            .ok_or_else(|| eyre!("Guild not found!"))?;
+            .ok_or_else(|| eyre!("Guild not found!"))?
+            .clone();
         let bot_roles = guild
-            .member(&ctx, ctx.cache.current_user_id())
+            .member(&ctx, current_user_id)
             .await?
             .roles(ctx)
             .ok_or_else(|| eyre!("Roles for bot not found!"))?;
@@ -69,7 +72,7 @@ impl Ranks {
             .roles
             .values()
             .find(|role| config.discord.rank_end_roles.contains(&role.id))
-            .map_or(-1, |role| role.position);
+            .map_or(0, |role| role.position);
 
         Ok(Self::new(
             guild
@@ -170,7 +173,7 @@ async fn handle_joinleave(
                 }
             } else {
                 for (key, restricted) in &restricted_ranks {
-                    let key = RoleId(key.parse()?);
+                    let key = RoleId::new(key.parse()?);
                     if rank.role.id == key
                         || (restricted.contains(&rank.role.id) && !user_role_ids.contains(&key))
                     {
@@ -190,7 +193,7 @@ async fn handle_joinleave(
         }
     }
     guild_id
-        .edit_member(&ctx, &msg.author, |edit| edit.roles(user_role_ids))
+        .edit_member(&ctx, &msg.author, EditMember::new().roles(user_role_ids))
         .await?;
     msg.reply(ctx, response.build()).await?;
     Ok(())
@@ -300,23 +303,22 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
 
     let prefix = get_data::<ConfigKey>(ctx).await?.discord.command_prefix;
     msg.channel_id
-        .send_message(&ctx, |message| {
-            message.embed(|embed| {
-                embed
+        .send_message(
+            &ctx,
+            CreateMessage::new().embed(
+                CreateEmbed::new()
                     .title("Ranks")
-                    .footer(|footer| {
-                        footer.text(format!(
-                            "Use {prefix}join and {prefix}leave to change your ranks"
-                        ))
-                    })
+                    .footer(CreateEmbedFooter::new(format!(
+                        "Use {prefix}join and {prefix}leave to change your ranks"
+                    )))
                     .description(ellipsis_string(
                         MessageBuilder::new()
                             .push_codeblock_safe(rank_list, None)
                             .build(),
                         EMBED_DESC_LENGTH,
-                    ))
-            })
-        })
+                    )),
+            ),
+        )
         .await?;
 
     let user_ranks = ranks.of_user(&msg.author);

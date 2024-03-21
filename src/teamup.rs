@@ -1,7 +1,7 @@
 use crate::config::TeamupConfig;
 use chrono::{DateTime, Duration, Utc};
 use color_eyre::{
-    eyre::{bail, eyre, Result},
+    eyre::{eyre, Result},
     Section, SectionExt,
 };
 use log::info;
@@ -9,7 +9,7 @@ use reqwest::{header::HeaderValue, Method};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::{serde_as, DefaultOnError, NoneAsEmptyString};
-use serenity::CacheAndHttp;
+use serenity::all::{Cache, Http};
 use std::time::Duration as StdDuration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::time::sleep;
@@ -82,16 +82,18 @@ enum DiscordEventEntityType {
 
 pub struct Teamup {
     config: TeamupConfig,
-    discord: Option<Arc<CacheAndHttp>>,
+    cache: Arc<Cache>,
+    http: Arc<Http>,
     client: reqwest::Client,
 }
 
 impl Teamup {
     #[inline]
-    pub fn new(config: TeamupConfig, discord: Arc<CacheAndHttp>) -> Self {
+    pub fn new(config: TeamupConfig, cache: Arc<Cache>, http: Arc<Http>) -> Self {
         Self {
             config,
-            discord: Some(discord),
+            cache,
+            http,
             client: reqwest::Client::new(),
         }
     }
@@ -143,10 +145,6 @@ impl Teamup {
         event_id: Option<&str>,
         f: impl FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
     ) -> Result<String> {
-        let Some(ref discord) = self.discord else {
-            bail!("Discord client not configured");
-        };
-
         let url = if let Some(event_id) = event_id {
             format!(
                 "https://discord.com/api/v9/guilds/{}/scheduled-events/{}",
@@ -162,7 +160,7 @@ impl Teamup {
         let request = self
             .client
             .request(method, url)
-            .header("Authorization", HeaderValue::from_str(&discord.http.token)?);
+            .header("Authorization", HeaderValue::from_str(self.http.token())?);
 
         let response = f(request).send().await?;
 
@@ -175,16 +173,12 @@ impl Teamup {
     }
 
     async fn fetch_discord_events(&self) -> Result<impl Iterator<Item = DiscordEvent>> {
-        let Some(ref discord) = self.discord else {
-            bail!("Discord client not configured");
-        };
-
         let response = self.discord_request(Method::GET, None, |r| r).await?;
 
         let response: Vec<DiscordEvent> = serde_json::from_str(&response)
             .map_err(|err| eyre!(err).with_section(|| response.header("Response:")))?;
 
-        let bot_id = discord.cache.current_user_id().to_string();
+        let bot_id = self.cache.current_user().id.to_string();
         Ok(response
             .into_iter()
             .filter(move |event| event.creator_id == bot_id))

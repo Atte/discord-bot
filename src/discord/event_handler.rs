@@ -5,11 +5,12 @@ use super::{
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
+    all::{ActivityData, CreateAllowedMentions, CreateMessage, GuildMemberUpdateEvent},
     async_trait,
     client::{Context, EventHandler},
     model::{
         channel::{Message, Reaction},
-        gateway::{Activity, Ready},
+        gateway::Ready,
         guild::Member,
         id::{ChannelId, GuildId, MessageId},
         user::User,
@@ -28,7 +29,7 @@ impl EventHandler for Handler {
             data.get::<ActivityKey>()
                 .map(|a| ellipsis_string(a, ACTIVITY_LENGTH))
         } {
-            ctx.set_activity(Activity::playing(&activity)).await;
+            ctx.set_activity(Some(ActivityData::custom(&activity)));
         }
     }
 
@@ -60,12 +61,12 @@ impl EventHandler for Handler {
                     let typing = message.channel_id.start_typing(&ctx.http);
 
                     let mut safe_opts = ContentSafeOptions::default().show_discriminator(false);
-                    let mut my_nick = ctx.cache.current_user().name;
+                    let current_user_id = ctx.cache.current_user().id.clone();
+                    let mut my_nick = ctx.cache.current_user().name.to_owned();
                     if let Some(guild_id) = message.guild_id {
                         safe_opts = safe_opts.display_as_member_from(guild_id);
-                        if let Ok(member) = guild_id.member(&ctx, ctx.cache.current_user_id()).await
-                        {
-                            my_nick = member.display_name().into_owned();
+                        if let Ok(member) = guild_id.member(&ctx, current_user_id).await {
+                            my_nick = member.display_name().to_owned();
                         }
                     }
 
@@ -120,11 +121,11 @@ impl EventHandler for Handler {
                             .and_then(|r| r.message_id.map(|id| (r.channel_id, id)))
                         {
                             if let Some(referenced) = ctx.cache.message(channel_id, message_id) {
-                                reply = referenced;
+                                reply = referenced.clone();
                                 continue;
                             }
                             if let Ok(referenced) =
-                                ctx.http.get_message(channel_id.0, message_id.0).await
+                                ctx.http.get_message(channel_id, message_id).await
                             {
                                 reply = referenced;
                                 continue;
@@ -146,20 +147,20 @@ impl EventHandler for Handler {
                     let response: Vec<_> =
                         WordChunks::from_str(&response, MESSAGE_CODE_LIMIT).collect();
 
-                    if let Ok(typing) = typing {
-                        let _: Option<()> = typing.stop();
-                    }
+                    typing.stop();
 
                     let mut reply_to = message.clone();
                     for chunk in response {
                         match message
                             .channel_id
-                            .send_message(&ctx, |msg| {
-                                msg.allowed_mentions(|men| men.empty_parse())
+                            .send_message(
+                                &ctx,
+                                CreateMessage::new()
+                                    .allowed_mentions(CreateAllowedMentions::new())
                                     .reference_message(&reply_to)
                                     .flags(MessageFlags::SUPPRESS_EMBEDS)
-                                    .content(chunk)
-                            })
+                                    .content(chunk),
+                            )
                             .await
                         {
                             Ok(reply) => {
@@ -183,9 +184,13 @@ impl EventHandler for Handler {
         guild_id: Option<GuildId>,
     ) {
         if let Some(guild_id) = guild_id {
-            if let Some(message) = ctx.cache.message(channel_id, message_id) {
+            if let Some(message) = ctx
+                .cache
+                .message(channel_id, message_id)
+                .map(|msg| msg.clone())
+            {
                 if let Err(err) =
-                    log_channel::message_deleted(&ctx, channel_id, guild_id, message).await
+                    log_channel::message_deleted(&ctx, channel_id, guild_id, message.clone()).await
                 {
                     error!("Unable to log message deletion: {err:?}");
                 }
@@ -202,7 +207,11 @@ impl EventHandler for Handler {
     ) {
         if let Some(guild_id) = guild_id {
             for message_id in messages_ids {
-                if let Some(message) = ctx.cache.message(channel_id, message_id) {
+                if let Some(message) = ctx
+                    .cache
+                    .message(channel_id, message_id)
+                    .map(|msg| msg.clone())
+                {
                     if let Err(err) =
                         log_channel::message_deleted(&ctx, channel_id, guild_id, message).await
                     {
@@ -213,11 +222,11 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_member_addition(&self, ctx: Context, member: Member) {
+    async fn guild_member_addition(&self, ctx: Context, mut member: Member) {
         if let Err(err) = log_channel::member_added(&ctx, member.guild_id, &member.user).await {
             error!("Unable to log member addition: {err:?}");
         }
-        match sticky_roles::apply_stickies(&ctx, &member).await {
+        match sticky_roles::apply_stickies(&ctx, &mut member).await {
             Ok(true) => { /* user has been here before */ }
             Ok(false) => {
                 if let Err(err) = rules_check::post_welcome(ctx, member).await {
@@ -246,8 +255,13 @@ impl EventHandler for Handler {
         &self,
         ctx: Context,
         old_member: Option<Member>,
-        new_member: Member,
+        new_member: Option<Member>,
+        _event: GuildMemberUpdateEvent,
     ) {
+        let Some(new_member) = new_member else {
+            return;
+        };
+
         if let Err(err) = log_channel::member_updated(&ctx, old_member.as_ref(), &new_member).await
         {
             error!("Unable to log member update: {err:?}");

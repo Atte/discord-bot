@@ -1,6 +1,7 @@
 use super::{get_data, log_channel, ConfigKey};
 use color_eyre::eyre::{eyre, Result};
 use serenity::{
+    all::{CreateMessage, Message},
     client::Context,
     model::{
         channel::{Reaction, ReactionType},
@@ -17,7 +18,8 @@ pub async fn post_welcome(ctx: Context, member: Member) -> Result<()> {
     let guild = member
         .guild_id
         .to_guild_cached(&ctx)
-        .ok_or_else(|| eyre!("Guild not found!"))?;
+        .ok_or_else(|| eyre!("Guild not found!"))?
+        .clone();
 
     let config = get_data::<ConfigKey>(&ctx).await?;
     let url = config
@@ -26,14 +28,9 @@ pub async fn post_welcome(ctx: Context, member: Member) -> Result<()> {
         .map_or_else(|| "missing link".to_owned(), |url| url.to_string());
 
     for channel_id in config.discord.rules_channels {
-        if let Some(channel) = guild
-            .channels
-            .get(&channel_id)
-            .and_then(|channel| channel.clone().guild())
-        {
-            // TODO: pull text from DB / WebUI
-            let message = channel.send_message(&ctx, |message| {
-                message.content(
+        if let Some(channel) = guild.channels.get(&channel_id) {
+            // TODO: pull text from DB
+            let message = channel.send_message(&ctx, CreateMessage::new().content(
                     MessageBuilder::new()
                         .mention(&member)
                         .push_line_safe(":")
@@ -42,7 +39,7 @@ pub async fn post_welcome(ctx: Context, member: Member) -> Result<()> {
                         .push_safe(format!("Confirm by clicking the {EMOJI} reaction on this message."))
                         .build()
                 )
-            }).await?;
+            ).await?;
             message.react(&ctx, ReactionType::try_from(EMOJI)?).await?;
         }
     }
@@ -51,10 +48,16 @@ pub async fn post_welcome(ctx: Context, member: Member) -> Result<()> {
 }
 
 pub async fn handle_reaction(ctx: Context, reaction: Reaction) -> Result<()> {
-    let message = match ctx.cache.message(reaction.channel_id, reaction.message_id) {
+    let message: Option<Message> = ctx
+        .cache
+        .message(reaction.channel_id, reaction.message_id)
+        .map(|msg| msg.clone());
+
+    let message = match message {
         Some(msg) => msg,
-        None => reaction.message(&ctx).await?,
+        None => reaction.message(&ctx).await?.clone(),
     };
+
     if !message.is_own(&ctx) {
         // not bot message
         return Ok(());
@@ -80,10 +83,11 @@ pub async fn handle_reaction(ctx: Context, reaction: Reaction) -> Result<()> {
         .guild_id
         .ok_or_else(|| eyre!("No guild_id in reaction!"))?
         .to_guild_cached(&ctx)
-        .ok_or_else(|| eyre!("Guild not found!"))?;
+        .ok_or_else(|| eyre!("Guild not found!"))?
+        .clone();
 
     let user = reaction.user(&ctx).await?;
-    let mut member = guild.member(&ctx, user.id).await?;
+    let member = guild.member(&ctx, user.id).await?;
 
     let missing_roles: Vec<RoleId> = config
         .discord

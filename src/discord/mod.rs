@@ -1,6 +1,8 @@
 use crate::config::Config;
 use color_eyre::eyre::{eyre, Result};
 use serenity::{
+    all::standard::Configuration,
+    cache::Settings as CacheSettings,
     client::{Client, Context},
     framework::StandardFramework,
     model::gateway::GatewayIntents,
@@ -22,8 +24,6 @@ mod rules_check;
 mod safe_reply;
 mod stats;
 mod sticky_roles;
-
-pub use stats::COLLECTION_NAME as STATS_COLLECTION_NAME;
 
 #[derive(Debug)]
 pub struct ActivityKey;
@@ -77,14 +77,16 @@ impl Discord {
         db: mongodb::Database,
         #[cfg(feature = "openai")] openai: OpenAi,
     ) -> Result<Self> {
-        let framework = StandardFramework::new()
-            .configure(|c| {
-                c.prefix(config.discord.command_prefix.to_string())
-                    .owners(config.discord.owners.clone())
-                    .blocked_users(config.discord.blocked_users.clone())
-                    .allowed_channels(config.discord.command_channels.clone())
-                    .case_insensitivity(true)
-            })
+        let framework = StandardFramework::new();
+        framework.configure(
+            Configuration::new()
+                .prefix(config.discord.command_prefix.to_string())
+                .owners(config.discord.owners.clone())
+                .blocked_users(config.discord.blocked_users.clone())
+                .allowed_channels(config.discord.command_channels.clone())
+                .case_insensitivity(true),
+        );
+        let framework = framework
             .normal_message(hooks::normal_message)
             .unrecognised_command(hooks::unrecognised_command)
             .on_dispatch_error(hooks::dispatch_error)
@@ -95,8 +97,11 @@ impl Discord {
             .group(&commands::EMOTES_GROUP)
             .group(&commands::MISC_GROUP);
 
+        let mut cache_settings = CacheSettings::default();
+        cache_settings.max_messages = 1024;
+
         let builder = Client::builder(&config.discord.token, GatewayIntents::all())
-            .cache_settings(|c| c.max_messages(1024))
+            .cache_settings(cache_settings)
             .event_handler(event_handler::Handler)
             .framework(framework)
             .type_map_insert::<ActivityKey>(String::new())

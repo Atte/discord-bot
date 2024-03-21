@@ -55,7 +55,7 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 MessageBuilder::new()
                     .push_safe(original_input)
                     .push(" \u{2192} ")
-                    .push_safe(&input)
+                    .push_safe(input.clone())
                     .push(" = ")
                     .push_bold_safe(&result)
                     .build()
