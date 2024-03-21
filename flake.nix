@@ -35,10 +35,6 @@
         cargo = pkgs.rust-bin.stable.latest.minimal;
         rustc = pkgs.rust-bin.stable.latest.minimal;
       };
-      nativeBuildInputs = with pkgs; [
-        nodejs
-        (yarn.override { inherit nodejs; })
-      ];
     in
     {
       packages.default = pkgs.lib.makeOverridable
@@ -51,19 +47,6 @@
 
           buildFeatures = features;
           buildType = "debug";
-
-          inherit nativeBuildInputs;
-
-          preConfigure =
-            let webui = pkgs.mkYarnPackage {
-              name = "discord-bot-webui";
-              src = gitignore.lib.gitignoreSource ./webui;
-              packageJSON = ./webui/package.json;
-              yarnLock = ./webui/yarn.lock;
-            }; in
-            if builtins.any (pkgs.lib.hasPrefix "webui") features
-            then "cp -r ${webui}/libexec/discord-bot-webui/node_modules webui/"
-            else "";
         })
         { features = [ ]; };
 
@@ -74,7 +57,8 @@
             targets = [ "aarch64-unknown-linux-gnu" ];
           })
           cargo-outdated
-        ] ++ nativeBuildInputs;
+          nixpkgs-fmt
+        ];
       };
     });
 }

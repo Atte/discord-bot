@@ -48,15 +48,6 @@ features = ["chrono"]
 version = "0.1"
 optional = true
 
-[dependencies.oauth2]
-version = "4.1"
-optional = true
-
-[dependencies.rocket]
-version = "=0.5.0-rc.3"
-features = ["secrets", "json"]
-optional = true
-
 [dependencies.mongodb]
 version = "2.0.2"
 features = ["bson-chrono-0_4"]
@@ -78,31 +69,6 @@ features = ["fs", "macros", "rt", "sync", "time", "rt-multi-thread"]
 version = "0.1"
 optional = true
 
-# needed by includedir, must be version 0.8.0
-[dependencies.phf]
-version = "0.8.0"
-optional = true
-
-[dependencies.includedir]
-version = "0.6"
-optional = true
-
-[dependencies.governor]
-version = "0.5"
-optional = true
-
-[dependencies.juniper]
-version = "0.15"
-optional = true
-
-[dependencies.juniper_codegen]
-version = "0.15"
-optional = true
-
-[dependencies.juniper_rocket]
-version = "0.8"
-optional = true
-
 [dependencies.schemars]
 version = "0.8"
 optional = true
@@ -120,8 +86,6 @@ proptest = "1.1"
 
 [features]
 default = []
-webui = ["rocket", "oauth2", "phf", "includedir", "governor", "juniper", "juniper_codegen", "juniper_rocket"]
-webui-https = ["webui", "rocket/tls"]
 berrytube = ["reqwest/stream", "tokio-stream"]
 cron = []
 teamup = ["serde_repr"]

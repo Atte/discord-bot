@@ -27,8 +27,6 @@ mod migrations;
 mod openai;
 #[cfg(feature = "teamup")]
 mod teamup;
-#[cfg(feature = "webui")]
-mod webui;
 mod word_chunks;
 
 #[tokio::main]

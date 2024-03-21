@@ -2,24 +2,22 @@
     "files.exclude": {
         "**/.parcel-cache": true,
         "**/node_modules": true,
-        "target": true
+        "target": true,
+        ".direnv": true
     },
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
     "[rust]": {
-        "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "editor.formatOnSave": true
     },
     "[nix]": {
-        "editor.defaultFormatter": "jnoortheen.nix-ide"
+        "editor.defaultFormatter": "jnoortheen.nix-ide",
+        "editor.formatOnSave": true
     },
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
-    "rust.all_features": true,
     "rust-analyzer.cargo.features": [
         "berrytube",
-        "cron",
         "teamup",
         "openai",
-        "openai-functions",
         "openai-vision"
     ]
 }
