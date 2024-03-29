@@ -19,6 +19,8 @@ mod functions;
 #[cfg(feature = "openai-functions")]
 use self::functions::{Function, FunctionCall, FunctionCallType};
 
+pub mod event_handler;
+
 #[cfg(not(feature = "openai-vision"))]
 const MODEL: OpenAiModel = OpenAiModel::Gpt4Turbo;
 #[cfg(feature = "openai-vision")]
