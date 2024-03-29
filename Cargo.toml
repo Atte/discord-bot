@@ -78,6 +78,12 @@ optional = true
 version = "0.8"
 optional = true
 
+[dependencies.openai_dive]
+version = "0.4"
+optional = true
+default-features = false
+features = ["reqwest", "tokio", "tokio-util", "rustls-tls"]
+
 [build-dependencies]
 includedir_codegen = "0.6"
 
@@ -90,6 +96,6 @@ default = []
 berrytube = ["reqwest/stream", "tokio-stream"]
 cron = []
 teamup = ["serde_repr"]
-openai = ["schemars"]
+openai = ["schemars", "openai_dive"]
 openai-functions = ["openai", "chrono-tz"]
 openai-vision = ["openai", "linkify"]

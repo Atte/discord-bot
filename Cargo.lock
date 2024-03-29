@@ -632,6 +632,7 @@ dependencies = [
  "mock_instant",
  "mongodb",
  "nonzero_ext",
+ "openai_dive",
  "proptest",
  "rand 0.8.5",
  "regex",
@@ -1565,6 +1566,20 @@ name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
+
+[[package]]
+name = "openai_dive"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3aa66576fc564e19f507af98818e44b75b74fb412ffdfe6db777f69a9f9c3798"
+dependencies = [
+ "bytes",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+]
 
 [[package]]
 name = "owo-colors"
