@@ -16,6 +16,8 @@ command_channels = [
     409178792938962964, # BT
     722906800508239872, # BT DnD
     1113153145162448982, # BT emotes
+    1223227674894536756, # april2024 lobby
+    1223227684818128907, # april2024 arena
 ]
 log_channels = [
     439066300518760448, # test
@@ -39,6 +41,12 @@ rank_start_roles = [
 rank_end_roles = [
     1114229249646272572, # test
 ]
+
+[discord.april2024]
+# test
+role = 1223227756528009237
+lobby = 1223227674894536756
+arena = 1223227684818128907
 
 [discord.restricted_ranks]
 # test

@@ -22,6 +22,11 @@ pub use gib::{derpibooru_embed, derpibooru_search};
 mod emotes;
 pub use emotes::EMOTES_GROUP;
 
+#[cfg(feature = "april2024")]
+mod april2024;
+#[cfg(feature = "april2024")]
+pub use april2024::APRIL2024_GROUP;
+
 //mod stats;
 //pub use stats::STATS_COMMAND;
 

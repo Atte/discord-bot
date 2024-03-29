@@ -69,6 +69,15 @@ pub struct DiscordConfig {
     pub rank_start_roles: HashSet<RoleId>,
     #[serde(default)]
     pub rank_end_roles: HashSet<RoleId>,
+    #[cfg(feature = "april2024")]
+    pub april2024: April2024Config,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct April2024Config {
+    pub role: RoleId,
+    pub lobby: ChannelId,
+    pub arena: ChannelId,
 }
 
 #[derive(Debug, Clone, Deserialize)]

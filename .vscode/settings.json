@@ -14,12 +14,5 @@
         "editor.formatOnSave": true
     },
     "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
-    "rust-analyzer.cargo.features": [
-        "berrytube",
-        "cron",
-        "teamup",
-        "openai",
-        "openai-functions",
-        "openai-vision"
-    ]
+    "rust-analyzer.cargo.features": "all"
 }

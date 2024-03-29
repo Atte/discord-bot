@@ -622,6 +622,7 @@ dependencies = [
  "derive_more",
  "env_logger",
  "futures",
+ "humantime",
  "includedir_codegen",
  "itertools",
  "lazy_static",

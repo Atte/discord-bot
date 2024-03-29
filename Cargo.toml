@@ -78,6 +78,10 @@ optional = true
 version = "0.8"
 optional = true
 
+[dependencies.humantime]
+version = "2.1"
+optional = true
+
 [dependencies.openai_dive]
 version = "0.4"
 optional = true
@@ -99,3 +103,4 @@ teamup = ["serde_repr"]
 openai = ["schemars", "openai_dive"]
 openai-functions = ["openai", "chrono-tz"]
 openai-vision = ["openai", "linkify"]
+april2024 = ["humantime"]
