@@ -43,8 +43,10 @@ impl EventHandler for Handler {
             }
 
             #[cfg(feature = "april2024")]
-            if message.channel_id == config.discord.april2024.arena {
-                super::april2024::message(&ctx, &message).await;
+            if message.channel_id == config.discord.april2024.arena_channel {
+                if let Err(err) = super::april2024::message(&ctx, &message).await {
+                    error!("April2024: {err:?}");
+                }
             }
 
             #[cfg(feature = "openai")]

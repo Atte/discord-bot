@@ -1,5 +1,6 @@
 use crate::SubstitutingString;
 use color_eyre::eyre::Result;
+use reqwest::Url;
 use serde::Deserialize;
 use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
 use std::{
@@ -75,9 +76,11 @@ pub struct DiscordConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct April2024Config {
-    pub role: RoleId,
-    pub lobby: ChannelId,
-    pub arena: ChannelId,
+    pub api: Url,
+    pub guild: GuildId,
+    pub player_role: RoleId,
+    pub playing_role: RoleId,
+    pub arena_channel: ChannelId,
 }
 
 #[derive(Debug, Clone, Deserialize)]

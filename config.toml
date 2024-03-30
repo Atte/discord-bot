@@ -44,9 +44,11 @@ rank_end_roles = [
 
 [discord.april2024]
 # test
-role = 1223227756528009237
-lobby = 1223227674894536756
-arena = 1223227684818128907
+api = "http://localhost"
+guild = 324598323489013770
+player_role = 1223227756528009237
+playing_role = 1223727513306533899
+arena_channel = 1223227684818128907
 
 [discord.restricted_ranks]
 # test
