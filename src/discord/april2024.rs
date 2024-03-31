@@ -62,6 +62,14 @@ impl PlayerState {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum AnnounceTarget {
+    Lobby,
+    Arena,
+    Both,
+}
+
 pub static STATE: Mutex<RoundState> = Mutex::const_new(RoundState::new());
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -116,20 +124,40 @@ enum ApiResponse {
         #[serde(rename = "@here")]
         #[serde(default)]
         here: bool,
-        #[serde(default)]
-        lobby: bool,
+        target: AnnounceTarget,
     },
 }
 
-async fn announce(ctx: &Context, lobby: bool, message: CreateMessage) -> Result<()> {
+async fn announce(ctx: &Context, target: AnnounceTarget, message: CreateMessage) -> Result<()> {
     let config = get_data::<ConfigKey>(ctx).await?;
-    (if lobby {
-        config.april2024.lobby_channel
-    } else {
-        config.april2024.arena_channel
-    })
-    .send_message(ctx, message)
-    .await?;
+    match target {
+        AnnounceTarget::Lobby => {
+            config
+                .april2024
+                .lobby_channel
+                .send_message(ctx, message)
+                .await?;
+        }
+        AnnounceTarget::Arena => {
+            config
+                .april2024
+                .arena_channel
+                .send_message(ctx, message)
+                .await?;
+        }
+        AnnounceTarget::Both => {
+            config
+                .april2024
+                .lobby_channel
+                .send_message(ctx, message.clone())
+                .await?;
+            config
+                .april2024
+                .arena_channel
+                .send_message(ctx, message)
+                .await?;
+        }
+    }
     Ok(())
 }
 
@@ -209,7 +237,7 @@ async fn api(ctx: &Context, request: Vec<ApiRequest>) -> Result<()> {
     if config.april2024.debug {
         announce(
             ctx,
-            false,
+            AnnounceTarget::Arena,
             CreateMessage::new().content(
                 MessageBuilder::new()
                     .push_codeblock_safe(serde_json::to_string_pretty(&request)?, Some("json"))
@@ -242,7 +270,7 @@ async fn api(ctx: &Context, request: Vec<ApiRequest>) -> Result<()> {
     if config.april2024.debug {
         announce(
             ctx,
-            false,
+            AnnounceTarget::Arena,
             CreateMessage::new().content(
                 MessageBuilder::new()
                     .push_codeblock_safe(serde_json::to_string_pretty(&response)?, Some("json"))
@@ -269,18 +297,18 @@ async fn api(ctx: &Context, request: Vec<ApiRequest>) -> Result<()> {
                     }
                 }
             }
-            ApiResponse::Announce { text, here, lobby } => {
+            ApiResponse::Announce { text, here, target } => {
                 if here {
                     announce(
                         ctx,
-                        lobby,
+                        target,
                         CreateMessage::new()
                             .allowed_mentions(CreateAllowedMentions::new().everyone(true))
                             .content(format!("@here {text}")),
                     )
                     .await?;
                 } else {
-                    announce(ctx, lobby, CreateMessage::new().content(text)).await?;
+                    announce(ctx, target, CreateMessage::new().content(text)).await?;
                 }
             }
         }
@@ -381,9 +409,22 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
         }
     }
 
+    let config = get_data::<ConfigKey>(ctx).await?;
+    for player in &state.players {
+        let member = config
+            .april2024
+            .guild
+            .member(ctx, player.member.user.id)
+            .await?;
+        member
+            .remove_role(ctx, config.april2024.playing_role)
+            .await?;
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
     announce(
         ctx,
-        true,
+        AnnounceTarget::Lobby,
         CreateMessage::new()
             .allowed_mentions(
                 CreateAllowedMentions::new().users(
@@ -444,9 +485,9 @@ pub async fn eliminate(ctx: &Context, user_ids: Vec<UserId>, reason: String) -> 
     let config = get_data::<ConfigKey>(ctx).await?;
     announce(
         ctx,
-        true,
+        AnnounceTarget::Both,
         CreateMessage::new()
-            .allowed_mentions(CreateAllowedMentions::new().users(&user_ids))
+            .allowed_mentions(CreateAllowedMentions::new()) //.users(&user_ids))
             .content(message.build()),
     )
     .await?;
