@@ -28,7 +28,7 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     let Ok(time_between_rounds) = humantime::parse_duration(&args.single::<String>()?) else {
         msg.reply(
             ctx,
-            "Invalid time_between_rounds! Use something along the lines of: 1h30min",
+            "Invalid time_between_rounds! Use something along the lines of: 15min",
         )
         .await?;
         return Ok(());
@@ -37,7 +37,7 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     let Ok(time_to_post) = humantime::parse_duration(&args.single::<String>()?) else {
         msg.reply(
             ctx,
-            "Invalid time_to_post! Use something along the lines of: 1h30min",
+            "Invalid time_to_post! Use something along the lines of: 3min",
         )
         .await?;
         return Ok(());
@@ -46,7 +46,7 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     let Ok(new_rule_interval) = humantime::parse_duration(&args.single::<String>()?) else {
         msg.reply(
             ctx,
-            "Invalid new_rule_interval! Use something along the lines of: 1h30min",
+            "Invalid new_rule_interval! Use something along the lines of: 5min",
         )
         .await?;
         return Ok(());
@@ -87,7 +87,6 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
             if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
                 let _ = config
-                    .discord
                     .april2024
                     .arena_channel
                     .send_message(
@@ -128,7 +127,6 @@ async fn btbgend(ctx: &Context, msg: &Message) -> CommandResult {
 
     let config = get_data::<ConfigKey>(ctx).await?;
     config
-        .discord
         .april2024
         .arena_channel
         .send_message(&ctx, CreateMessage::new().content("Round ended manually"))

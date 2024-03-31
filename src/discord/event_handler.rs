@@ -34,6 +34,10 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, message: Message) {
+        if message.author.bot {
+            return;
+        }
+
         if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
             if config.discord.clean_channels.contains(&message.channel_id) && !message.is_own(&ctx)
             {
@@ -43,7 +47,7 @@ impl EventHandler for Handler {
             }
 
             #[cfg(feature = "april2024")]
-            if message.channel_id == config.discord.april2024.arena_channel {
+            if message.channel_id == config.april2024.arena_channel {
                 if let Err(err) = super::april2024::message(&ctx, &message).await {
                     error!("April2024: {err:?}");
                 }

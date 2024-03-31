@@ -22,6 +22,8 @@ pub struct Config {
     pub teamup: Vec<TeamupConfig>,
     #[cfg(feature = "openai")]
     pub openai: OpenAiConfig,
+    #[cfg(feature = "april2024")]
+    pub april2024: April2024Config,
 }
 
 impl Config {
@@ -70,17 +72,6 @@ pub struct DiscordConfig {
     pub rank_start_roles: HashSet<RoleId>,
     #[serde(default)]
     pub rank_end_roles: HashSet<RoleId>,
-    #[cfg(feature = "april2024")]
-    pub april2024: April2024Config,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct April2024Config {
-    pub api: Url,
-    pub guild: GuildId,
-    pub player_role: RoleId,
-    pub playing_role: RoleId,
-    pub arena_channel: ChannelId,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -126,6 +117,17 @@ pub struct OpenAiConfig {
     pub bot_replacements: HashMap<SubstitutingString, String>,
     #[serde(default)]
     pub user_replacements: HashMap<SubstitutingString, String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct April2024Config {
+    pub api: Option<Url>,
+    #[serde(default)]
+    pub debug: bool,
+    pub guild: GuildId,
+    pub player_role: RoleId,
+    pub playing_role: RoleId,
+    pub arena_channel: ChannelId,
 }
 
 #[cfg(test)]

@@ -42,14 +42,6 @@ rank_end_roles = [
     1114229249646272572, # test
 ]
 
-[discord.april2024]
-# test
-api = "http://localhost"
-guild = 324598323489013770
-player_role = 1223227756528009237
-playing_role = 1223727513306533899
-arena_channel = 1223227684818128907
-
 [discord.restricted_ranks]
 # test
 1109849696668766228 = [
@@ -98,3 +90,12 @@ You are a pegasus pony named {botname}. You use an adversarial but humorous tone
 
 [openai.bot_replacements]
 '\b([Aa])s an AI language model\b' = "${1}s a pegasus pony"
+
+[april2024]
+# test
+# api = "http://localhost"
+debug = true
+guild = 324598323489013770
+player_role = 1223227756528009237
+playing_role = 1223727513306533899
+arena_channel = 1223227684818128907

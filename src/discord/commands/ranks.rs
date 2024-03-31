@@ -203,7 +203,6 @@ async fn handle_joinleave(
 #[aliases(gain)]
 #[description("Join a rank")]
 #[min_args(1)]
-#[delimiters(',')]
 async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     handle_joinleave(
         ctx,
@@ -224,7 +223,6 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command]
 #[description("Leave a rank")]
 #[min_args(1)]
-#[delimiters(',')]
 async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     handle_joinleave(
         ctx,
@@ -249,7 +247,6 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[description("Join/leave a rank")]
 #[help_available(false)]
 #[min_args(1)]
-#[delimiters(',')]
 async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     handle_joinleave(
         ctx,
