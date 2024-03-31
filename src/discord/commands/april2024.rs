@@ -20,10 +20,12 @@ use tokio::select;
 #[usage("time_between_rounds time_to_post new_rule_interval")]
 #[num_args(3)]
 async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    if STATE.lock().await.phase != RoundPhase::Idle {
+    if STATE.lock().await.phase == RoundPhase::Active {
         msg.reply(ctx, "A round is already in progress!").await?;
         return Ok(());
     }
+
+    end_round(ctx).await?;
 
     let Ok(time_between_rounds) = humantime::parse_duration(&args.single::<String>()?) else {
         msg.reply(
@@ -88,11 +90,11 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
             if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
                 let _ = config
                     .april2024
-                    .arena_channel
+                    .lobby_channel
                     .send_message(
                         &ctx,
                         CreateMessage::new().content(format!(
-                            "Next round will start in {}",
+                            "Next round will start in {}. Check the pinned messages for details.",
                             humantime::format_duration(time_between_rounds)
                         )),
                     )
@@ -120,8 +122,7 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 #[description("End the current round")]
 #[num_args(0)]
 async fn btbgend(ctx: &Context, msg: &Message) -> CommandResult {
-    let mut state = STATE.lock().await;
-    if state.phase == RoundPhase::Idle {
+    if STATE.lock().await.phase == RoundPhase::Idle {
         msg.reply(ctx, "No round is in progress or pending!")
             .await?;
         return Ok(());
@@ -129,6 +130,7 @@ async fn btbgend(ctx: &Context, msg: &Message) -> CommandResult {
 
     end_round(ctx).await?;
 
+    let mut state = STATE.lock().await;
     let config = get_data::<ConfigKey>(ctx).await?;
     config
         .april2024

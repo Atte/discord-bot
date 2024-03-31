@@ -17,7 +17,6 @@ command_channels = [
     722906800508239872, # BT DnD
     1113153145162448982, # BT emotes
     1224060801443299440, # april2024 lobby
-    1223227684818128907, # april2024 arena
 ]
 log_channels = [
     439066300518760448, # test
@@ -94,7 +93,7 @@ You are a pegasus pony named {botname}. You use an adversarial but humorous tone
 [april2024]
 # test
 api = "$APRIL2024_URL"
-debug = true
+# debug = true
 guild = 324598323489013770
 player_role = 1223227756528009237
 playing_role = 1223727513306533899

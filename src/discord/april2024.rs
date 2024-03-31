@@ -29,7 +29,7 @@ pub struct RoundState {
     pub phase: RoundPhase,
     pub tx_end: Option<Sender<()>>,
     players: Vec<PlayerState>,
-    requests: Option<Sender<(ApiRequest, oneshot::Sender<Vec<ApiResponse>>)>>,
+    requests: Option<Sender<(Vec<ApiRequest>, oneshot::Sender<Vec<ApiResponse>>)>>,
     request_task: Option<JoinHandle<()>>,
 }
 
@@ -54,10 +54,10 @@ struct PlayerState {
 
 impl PlayerState {
     #[inline]
-    pub fn new(member: Member) -> Self {
+    pub fn new(member: Member, last_message: Instant) -> Self {
         Self {
             member,
-            last_message: Instant::now(),
+            last_message,
         }
     }
 }
@@ -134,28 +134,37 @@ async fn announce(ctx: &Context, lobby: bool, message: CreateMessage) -> Result<
 }
 
 pub async fn message(ctx: &Context, message: &Message) -> Result<()> {
+    let mut state = STATE.lock().await;
+    if state.phase != RoundPhase::Active {
+        return Ok(());
+    }
+
+    let mut found = false;
     let member = message.member(ctx).await?;
-    {
-        let mut state = STATE.lock().await;
-        for player in &mut state.players {
-            if player.member.user.id == member.user.id {
-                player.last_message = Instant::now();
-            }
+    for player in &mut state.players {
+        if player.member.user.id == member.user.id {
+            player.last_message = Instant::now();
+            found = true;
         }
     }
+    drop(state);
+    if !found {
+        return Ok(());
+    }
+
     api(
         ctx,
-        ApiRequest::Message {
+        vec![ApiRequest::Message {
             user: (&member).into(),
             text: message.content_safe(ctx),
-        },
+        }],
     )
     .await
 }
 
 async fn request_task(
     url: Option<Url>,
-    mut rx: Receiver<(ApiRequest, oneshot::Sender<Vec<ApiResponse>>)>,
+    mut rx: Receiver<(Vec<ApiRequest>, oneshot::Sender<Vec<ApiResponse>>)>,
 ) {
     let client = reqwest::ClientBuilder::new()
         .timeout(Duration::from_secs(3))
@@ -167,7 +176,7 @@ async fn request_task(
         }
 
         if let Some(ref url) = url {
-            for _ in 0..10 {
+            for _ in 0..3 {
                 match client.post(url.clone()).json(&request).send().await {
                     Ok(response) => match response.json::<Vec<ApiResponse>>().await {
                         Ok(response) => {
@@ -180,9 +189,11 @@ async fn request_task(
                     },
                     Err(err) => {
                         warn!("request_task send: {err:?}");
+                        if !err.is_timeout() {
+                            tokio::time::sleep(Duration::from_secs(1)).await;
+                        }
                     }
                 }
-                tokio::time::sleep(Duration::from_secs(1)).await;
             }
         } else {
             tokio::time::sleep(Duration::from_secs(1)).await;
@@ -192,8 +203,9 @@ async fn request_task(
 }
 
 #[async_recursion]
-async fn api(ctx: &Context, request: ApiRequest) -> Result<()> {
+async fn api(ctx: &Context, request: Vec<ApiRequest>) -> Result<()> {
     let config = get_data::<ConfigKey>(ctx).await?;
+    log::debug!("{request:?}");
     if config.april2024.debug {
         announce(
             ctx,
@@ -221,6 +233,12 @@ async fn api(ctx: &Context, request: ApiRequest) -> Result<()> {
         }
     };
 
+    let state = STATE.lock().await;
+    if state.phase != RoundPhase::Active {
+        return Ok(());
+    }
+
+    log::debug!("{response:?}");
     if config.april2024.debug {
         announce(
             ctx,
@@ -239,10 +257,16 @@ async fn api(ctx: &Context, request: ApiRequest) -> Result<()> {
         match action {
             ApiResponse::Eliminate { user, reason } => {
                 if let Ok(id) = user.id.parse::<u64>() {
-                    eliminations
-                        .entry(reason)
-                        .or_default()
-                        .push(UserId::new(id));
+                    if state
+                        .players
+                        .iter()
+                        .any(|player| player.member.user.id == id)
+                    {
+                        eliminations
+                            .entry(reason)
+                            .or_default()
+                            .push(UserId::new(id));
+                    }
                 }
             }
             ApiResponse::Announce { text, here, lobby } => {
@@ -262,6 +286,7 @@ async fn api(ctx: &Context, request: ApiRequest) -> Result<()> {
         }
     }
 
+    drop(state);
     for (reason, user_ids) in eliminations {
         eliminate(
             ctx,
@@ -288,6 +313,9 @@ pub async fn start_round(ctx: &Context) -> Result<()> {
             rx,
         )));
 
+        let gap = Duration::from_millis(100);
+        let now = Instant::now() + gap * 50;
+
         state.players = Vec::new();
         let mut members = config.april2024.guild.members_iter(ctx).boxed();
         while let Some(member) = members.next().await {
@@ -296,14 +324,14 @@ pub async fn start_round(ctx: &Context) -> Result<()> {
             if member.roles.contains(&config.april2024.player_role) {
                 match member.add_role(ctx, config.april2024.playing_role).await {
                     Ok(_) => {
-                        state.players.push(PlayerState::new(member));
+                        state.players.push(PlayerState::new(member, now));
                     }
                     Err(err) => {
                         warn!("Granting playing_role: {err:?}");
                     }
                 }
             }
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(gap).await;
         }
 
         state
@@ -313,7 +341,7 @@ pub async fn start_round(ctx: &Context) -> Result<()> {
             .collect()
     };
 
-    api(ctx, ApiRequest::RoundStart { users: players }).await?;
+    api(ctx, vec![ApiRequest::RoundStart { users: players }]).await?;
 
     // announce(
     //     ctx,
@@ -336,17 +364,16 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
     state.phase = RoundPhase::Pending;
 
     let mut message = MessageBuilder::new();
-    message.push("Round has ended! ");
     match state.players.len() {
         0 => {
             message.push("Everyone was eliminated; no one wins!");
         }
         1 => {
             message.mention(&state.players[0].member);
-            message.push("wins!");
+            message.push(" wins!");
         }
         _ => {
-            message.push("The winners are: ");
+            message.push("It's a tie! The winners are: ");
             for player in &state.players {
                 message.mention(&player.member);
                 message.push(" ");
@@ -381,10 +408,26 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
 }
 
 pub async fn eliminate(ctx: &Context, user_ids: Vec<UserId>, reason: String) -> Result<()> {
+    let user_ids = {
+        let mut state = STATE.lock().await;
+        let user_ids = user_ids
+            .into_iter()
+            .unique()
+            .filter(|uid| {
+                state
+                    .players
+                    .iter()
+                    .any(|player| player.member.user.id == *uid)
+            })
+            .collect_vec();
+        state
+            .players
+            .retain(|player| !user_ids.contains(&player.member.user.id));
+        user_ids
+    };
     if user_ids.is_empty() {
         return Ok(());
     }
-    let user_ids = user_ids.into_iter().unique().collect_vec();
 
     let mut message = MessageBuilder::new();
     if user_ids.len() == 1 {
@@ -408,30 +451,28 @@ pub async fn eliminate(ctx: &Context, user_ids: Vec<UserId>, reason: String) -> 
     )
     .await?;
 
+    let mut members = Vec::new();
     for user_id in &user_ids {
         let member = config.april2024.guild.member(ctx, user_id).await?;
         member
             .remove_role(ctx, config.april2024.playing_role)
             .await?;
-        api(
-            ctx,
-            ApiRequest::Eliminated {
-                user: (&member).into(),
-            },
-        )
-        .await?;
+        members.push(member);
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
 
-    let should_end = {
-        let mut state = STATE.lock().await;
-        state
-            .players
-            .retain(|player| !user_ids.contains(&player.member.user.id));
-        state.players.len() <= 1
-    };
+    api(
+        ctx,
+        members
+            .into_iter()
+            .map(|member| ApiRequest::Eliminated {
+                user: (&member).into(),
+            })
+            .collect(),
+    )
+    .await?;
 
-    if should_end {
+    if STATE.lock().await.players.len() <= 1 {
         end_round(ctx).await?;
     }
 
@@ -466,6 +507,6 @@ pub async fn idle_check(ctx: &Context, time_to_post: Duration) -> Result<()> {
 }
 
 pub async fn add_rule(ctx: &Context) -> Result<()> {
-    api(ctx, ApiRequest::AddRule).await?;
+    api(ctx, vec![ApiRequest::AddRule]).await?;
     Ok(())
 }
