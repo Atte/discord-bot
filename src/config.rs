@@ -121,12 +121,13 @@ pub struct OpenAiConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct April2024Config {
-    pub api: Option<Url>,
+    pub api: Option<SubstitutingString>,
     #[serde(default)]
     pub debug: bool,
     pub guild: GuildId,
     pub player_role: RoleId,
     pub playing_role: RoleId,
+    pub lobby_channel: ChannelId,
     pub arena_channel: ChannelId,
 }
 

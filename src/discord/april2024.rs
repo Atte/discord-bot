@@ -1,13 +1,12 @@
 use async_recursion::async_recursion;
-use color_eyre::eyre::{OptionExt, Result};
+use color_eyre::eyre::Result;
 use futures::StreamExt;
 use itertools::Itertools;
 use log::warn;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serenity::all::{
-    Context, CreateAllowedMentions, CreateMessage, Member, Message, MessageBuilder, PartialMember,
-    User, UserId,
+    Context, CreateAllowedMentions, CreateMessage, Member, Message, MessageBuilder, User, UserId,
 };
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -20,7 +19,8 @@ use super::{get_data, ConfigKey};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoundPhase {
-    Inactive,
+    Idle,
+    Pending,
     Active,
 }
 
@@ -37,7 +37,7 @@ impl RoundState {
     #[inline]
     pub const fn new() -> Self {
         Self {
-            phase: RoundPhase::Inactive,
+            phase: RoundPhase::Idle,
             tx_end: None,
             players: Vec::new(),
             requests: None,
@@ -100,7 +100,6 @@ enum ApiRequest {
     Message { user: ApiUser, text: String },
     Eliminated { user: ApiUser },
     RoundStart { users: Vec<ApiUser> },
-    RoundEnd,
     AddRule,
 }
 
@@ -117,21 +116,33 @@ enum ApiResponse {
         #[serde(rename = "@here")]
         #[serde(default)]
         here: bool,
+        #[serde(default)]
+        lobby: bool,
     },
 }
 
-async fn announce(ctx: &Context, message: CreateMessage) -> Result<()> {
+async fn announce(ctx: &Context, lobby: bool, message: CreateMessage) -> Result<()> {
     let config = get_data::<ConfigKey>(ctx).await?;
-    config
-        .april2024
-        .arena_channel
-        .send_message(ctx, message)
-        .await?;
+    (if lobby {
+        config.april2024.lobby_channel
+    } else {
+        config.april2024.arena_channel
+    })
+    .send_message(ctx, message)
+    .await?;
     Ok(())
 }
 
 pub async fn message(ctx: &Context, message: &Message) -> Result<()> {
     let member = message.member(ctx).await?;
+    {
+        let mut state = STATE.lock().await;
+        for player in &mut state.players {
+            if player.member.user.id == member.user.id {
+                player.last_message = Instant::now();
+            }
+        }
+    }
     api(
         ctx,
         ApiRequest::Message {
@@ -151,6 +162,10 @@ async fn request_task(
         .build()
         .expect("failed to build API client");
     while let Some((request, tx)) = rx.recv().await {
+        if STATE.lock().await.requests.is_none() {
+            return;
+        }
+
         if let Some(ref url) = url {
             for _ in 0..10 {
                 match client.post(url.clone()).json(&request).send().await {
@@ -182,6 +197,7 @@ async fn api(ctx: &Context, request: ApiRequest) -> Result<()> {
     if config.april2024.debug {
         announce(
             ctx,
+            false,
             CreateMessage::new().content(
                 MessageBuilder::new()
                     .push_codeblock_safe(serde_json::to_string_pretty(&request)?, Some("json"))
@@ -196,12 +212,19 @@ async fn api(ctx: &Context, request: ApiRequest) -> Result<()> {
         if let Some(ref requests_tx) = STATE.lock().await.requests {
             requests_tx.send((request, tx)).await?;
         }
-        rx.await?
+        match rx.await {
+            Ok(response) => response,
+            Err(err) => {
+                warn!("API response error: {err:?}");
+                return Ok(());
+            }
+        }
     };
 
     if config.april2024.debug {
         announce(
             ctx,
+            false,
             CreateMessage::new().content(
                 MessageBuilder::new()
                     .push_codeblock_safe(serde_json::to_string_pretty(&response)?, Some("json"))
@@ -222,17 +245,18 @@ async fn api(ctx: &Context, request: ApiRequest) -> Result<()> {
                         .push(UserId::new(id));
                 }
             }
-            ApiResponse::Announce { text, here } => {
+            ApiResponse::Announce { text, here, lobby } => {
                 if here {
                     announce(
                         ctx,
+                        lobby,
                         CreateMessage::new()
                             .allowed_mentions(CreateAllowedMentions::new().everyone(true))
                             .content(format!("@here {text}")),
                     )
                     .await?;
                 } else {
-                    announce(ctx, CreateMessage::new().content(text)).await?;
+                    announce(ctx, lobby, CreateMessage::new().content(text)).await?;
                 }
             }
         }
@@ -241,7 +265,7 @@ async fn api(ctx: &Context, request: ApiRequest) -> Result<()> {
     for (reason, user_ids) in eliminations {
         eliminate(
             ctx,
-            &user_ids,
+            user_ids,
             reason.unwrap_or_else(|| "They broke the rules.".to_owned()),
         )
         .await?;
@@ -259,7 +283,10 @@ pub async fn start_round(ctx: &Context) -> Result<()> {
 
         let (tx, rx) = tokio::sync::mpsc::channel(128);
         state.requests = Some(tx);
-        state.request_task = Some(tokio::spawn(request_task(config.april2024.api, rx)));
+        state.request_task = Some(tokio::spawn(request_task(
+            config.april2024.api.and_then(|url| url.parse().ok()),
+            rx,
+        )));
 
         state.players = Vec::new();
         let mut members = config.april2024.guild.members_iter(ctx).boxed();
@@ -288,13 +315,14 @@ pub async fn start_round(ctx: &Context) -> Result<()> {
 
     api(ctx, ApiRequest::RoundStart { users: players }).await?;
 
-    announce(
-        ctx,
-        CreateMessage::new().content("@here New round has started!"),
-    )
-    .await?;
+    // announce(
+    //     ctx,
+    //     false,
+    //     CreateMessage::new().content("@here New round has started!"),
+    // )
+    // .await?;
 
-    add_rule(ctx).await?;
+    // `add_rule` is called by initial tokio interval
 
     Ok(())
 }
@@ -302,16 +330,10 @@ pub async fn start_round(ctx: &Context) -> Result<()> {
 pub async fn end_round(ctx: &Context) -> Result<()> {
     let mut state = STATE.lock().await;
 
-    state.requests.take();
-    if let Some(task) = state.request_task.take() {
-        task.abort();
-        let _ = task.await;
-    }
-
-    if state.phase == RoundPhase::Inactive {
+    if state.phase != RoundPhase::Active {
         return Ok(());
     }
-    state.phase = RoundPhase::Inactive;
+    state.phase = RoundPhase::Pending;
 
     let mut message = MessageBuilder::new();
     message.push("Round has ended! ");
@@ -334,26 +356,41 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
 
     announce(
         ctx,
+        true,
         CreateMessage::new()
             .allowed_mentions(
-                CreateAllowedMentions::new()
-                    .users(state.players.iter().map(|player| player.member.user.id)),
+                CreateAllowedMentions::new().users(
+                    state
+                        .players
+                        .iter()
+                        .map(|player| player.member.user.id)
+                        .unique(),
+                ),
             )
             .content(message.build()),
     )
     .await?;
 
-    api(ctx, ApiRequest::RoundEnd).await?;
+    state.requests.take();
+    if let Some(task) = state.request_task.take() {
+        task.abort();
+        let _ = task.await;
+    }
 
     Ok(())
 }
 
-pub async fn eliminate(ctx: &Context, user_ids: &[UserId], reason: String) -> Result<()> {
+pub async fn eliminate(ctx: &Context, user_ids: Vec<UserId>, reason: String) -> Result<()> {
+    if user_ids.is_empty() {
+        return Ok(());
+    }
+    let user_ids = user_ids.into_iter().unique().collect_vec();
+
     let mut message = MessageBuilder::new();
     if user_ids.len() == 1 {
         message.mention(&user_ids[0]).push(" has been eliminated! ");
     } else {
-        for user_id in user_ids {
+        for user_id in &user_ids {
             message.mention(user_id);
             message.push(" ");
         }
@@ -364,13 +401,14 @@ pub async fn eliminate(ctx: &Context, user_ids: &[UserId], reason: String) -> Re
     let config = get_data::<ConfigKey>(ctx).await?;
     announce(
         ctx,
+        true,
         CreateMessage::new()
-            .allowed_mentions(CreateAllowedMentions::new().users(user_ids))
+            .allowed_mentions(CreateAllowedMentions::new().users(&user_ids))
             .content(message.build()),
     )
     .await?;
 
-    for user_id in user_ids {
+    for user_id in &user_ids {
         let member = config.april2024.guild.member(ctx, user_id).await?;
         member
             .remove_role(ctx, config.april2024.playing_role)
@@ -417,7 +455,7 @@ pub async fn idle_check(ctx: &Context, time_to_post: Duration) -> Result<()> {
         .collect_vec();
     eliminate(
         ctx,
-        &user_ids,
+        user_ids,
         format!(
             "They didn't post anything for {}.",
             humantime::format_duration(time_to_post)

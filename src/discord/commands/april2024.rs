@@ -20,7 +20,7 @@ use tokio::select;
 #[usage("time_between_rounds time_to_post new_rule_interval")]
 #[num_args(3)]
 async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    if STATE.lock().await.phase != RoundPhase::Inactive {
+    if STATE.lock().await.phase != RoundPhase::Idle {
         msg.reply(ctx, "A round is already in progress!").await?;
         return Ok(());
     }
@@ -80,7 +80,7 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
                     }
                 }
 
-                if STATE.lock().await.phase == RoundPhase::Inactive {
+                if STATE.lock().await.phase != RoundPhase::Active {
                     break;
                 }
             }
@@ -120,26 +120,37 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 #[description("End the current round")]
 #[num_args(0)]
 async fn btbgend(ctx: &Context, msg: &Message) -> CommandResult {
-    if STATE.lock().await.phase == RoundPhase::Inactive {
-        msg.reply(ctx, "No round is in progress!").await?;
+    let mut state = STATE.lock().await;
+    if state.phase == RoundPhase::Idle {
+        msg.reply(ctx, "No round is in progress or pending!")
+            .await?;
         return Ok(());
     }
+
+    end_round(ctx).await?;
 
     let config = get_data::<ConfigKey>(ctx).await?;
     config
         .april2024
-        .arena_channel
-        .send_message(&ctx, CreateMessage::new().content("Round ended manually"))
+        .lobby_channel
+        .send_message(
+            &ctx,
+            CreateMessage::new().content(if state.phase == RoundPhase::Pending {
+                "Cancelled automatic start of next round."
+            } else {
+                "Round ended manually. Cancelled automatic start of next round."
+            }),
+        )
         .await?;
 
-    if let Some(tx) = STATE.lock().await.tx_end.take() {
+    if let Some(tx) = state.tx_end.take() {
         tx.send(()).await?;
     }
 
     Ok(())
 }
 
-#[group]
+#[group("BTBG")]
 #[only_in(guilds)]
 #[commands(btbgstart, btbgend)]
 pub struct April2024;
