@@ -517,7 +517,7 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
             ctx,
             AnnounceTarget::Lobby,
             CreateMessage::new()
-                // .allowed_mentions(CreateAllowedMentions::new().users(idle_user_ids))
+                .allowed_mentions(CreateAllowedMentions::new()) //.users(idle_user_ids))
                 .content(message.build()),
         )
         .await?;
