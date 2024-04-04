@@ -1,5 +1,5 @@
 use crate::discord::{
-    april2024::{add_rule, end_round, idle_check, start_round, RoundPhase},
+    april2024::{add_rule, end_round, idle_check, start_round, RoundPhase, MIN_PLAYERS},
     get_data, ConfigKey,
 };
 
@@ -60,45 +60,50 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     let ctx = ctx.clone();
     tokio::spawn(async move {
         'outer: loop {
-            if let Err(err) = start_round(&ctx).await {
-                error!("start_round: {err:?}");
-                break;
-            }
-
-            let mut new_rule_interval = tokio::time::interval(new_rule_interval);
-            loop {
-                let second = tokio::time::sleep(tokio::time::Duration::from_secs(1));
-                select! {
-                    _ = rx_end.recv() => { break 'outer; }
-                    _ = second => {
-                        if let Err(err) = idle_check(&ctx, time_to_post).await {
-                            error!("idle_check: {err:?}");
-                        }
-                    }
-                    _ = new_rule_interval.tick() => {
-                        if let Err(err) = add_rule(&ctx).await {
-                            error!("add_rule: {err:?}");
-                        }
-                    }
-                }
-
-                if STATE.lock().await.phase != RoundPhase::Active {
+            let round_started = match start_round(&ctx).await {
+                Ok(round_started) => round_started,
+                Err(err) => {
+                    error!("start_round: {err:?}");
                     break;
                 }
-            }
+            };
 
-            if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
-                let _ = config
-                    .april2024
-                    .lobby_channel
-                    .send_message(
-                        &ctx,
-                        CreateMessage::new().content(format!(
-                            "Next round will start in {}. Check the pinned messages for details.",
-                            humantime::format_duration(time_between_rounds)
+            if round_started {
+                let mut new_rule_interval = tokio::time::interval(new_rule_interval);
+                loop {
+                    let second = tokio::time::sleep(tokio::time::Duration::from_secs(1));
+                    select! {
+                        _ = rx_end.recv() => { break 'outer; }
+                        _ = second => {
+                            if let Err(err) = idle_check(&ctx, time_to_post).await {
+                                error!("idle_check: {err:?}");
+                            }
+                        }
+                        _ = new_rule_interval.tick() => {
+                            if let Err(err) = add_rule(&ctx).await {
+                                error!("add_rule: {err:?}");
+                            }
+                        }
+                    }
+
+                    if STATE.lock().await.phase != RoundPhase::Active {
+                        break;
+                    }
+                }
+
+                if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
+                    let _ = config
+                        .april2024
+                        .lobby_channel
+                        .send_message(
+                            &ctx,
+                            CreateMessage::new().content(format!(
+                            "Next round will start in {}, if there are at least {MIN_PLAYERS} players. Check the pinned messages for details.",
+                            humantime::format_duration(time_between_rounds),
                         )),
-                    )
-                    .await;
+                        )
+                        .await;
+                }
             }
 
             let between_rounds = tokio::time::sleep(time_between_rounds);
