@@ -99,3 +99,5 @@ player_role = 1223227756528009237
 playing_role = 1223727513306533899
 lobby_channel = 1224060801443299440
 arena_channel = 1223227684818128907
+max_idle_rounds = 3
+min_players = 2

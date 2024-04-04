@@ -129,6 +129,8 @@ pub struct April2024Config {
     pub playing_role: RoleId,
     pub lobby_channel: ChannelId,
     pub arena_channel: ChannelId,
+    pub max_idle_rounds: usize,
+    pub min_players: usize,
 }
 
 #[cfg(test)]

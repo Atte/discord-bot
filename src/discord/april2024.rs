@@ -18,10 +18,7 @@ use tokio::task::JoinHandle;
 
 use super::{get_data, ConfigKey};
 
-pub const MIN_PLAYERS: usize = 2;
-pub const MAX_IDLE_ROUNDS: usize = 3;
-
-static ROUND_ID: AtomicUsize = AtomicUsize::new(MAX_IDLE_ROUNDS);
+static ROUND_ID: AtomicUsize = AtomicUsize::new(100);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoundPhase {
@@ -356,16 +353,18 @@ pub async fn start_round(ctx: &Context) -> Result<bool> {
         }
     }
 
-    if players.len() < MIN_PLAYERS {
+    if players.len() < config.april2024.min_players {
         log::info!(
-            "not enough players, have {}, need at least {MIN_PLAYERS}",
-            players.len()
+            "not enough players, have {}, need at least {}",
+            players.len(),
+            config.april2024.min_players
         );
         // announce(
         //     ctx,
         //     AnnounceTarget::Lobby,
         //     CreateMessage::new().content(format!(
-        //         "Not enough players! Need at least {MIN_PLAYERS} to start a round."
+        //         "Not enough players! Need at least {} to start a round.",
+        //         config.april2024.min_players
         //     )),
         // )
         // .await?;
@@ -449,11 +448,12 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
         }
     }
 
+    let config = get_data::<ConfigKey>(ctx).await?;
     let idle_user_ids: BTreeSet<UserId> = state
         .player_last_rounds
         .iter()
         .filter_map(|(id, last)| {
-            if *last <= state.id.saturating_sub(MAX_IDLE_ROUNDS) {
+            if *last <= state.id.saturating_sub(config.april2024.max_idle_rounds) {
                 Some(*id)
             } else {
                 None
@@ -461,7 +461,6 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
         })
         .collect();
 
-    let config = get_data::<ConfigKey>(ctx).await?;
     for player in &state.players {
         player
             .member
@@ -511,7 +510,10 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
                 message.push(" haven't ");
             }
         }
-        message.push(format!("said anything in {MAX_IDLE_ROUNDS} rounds, so won't be added to the next round. To join back, use "));
+        message.push(format!(
+            "said anything in {} rounds, so won't be added to the next round. To join back, use ",
+            config.april2024.max_idle_rounds
+        ));
         message.push_mono(format!("{}rank btbg", config.discord.command_prefix));
         announce(
             ctx,

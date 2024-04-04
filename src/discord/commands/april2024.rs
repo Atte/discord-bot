@@ -1,5 +1,5 @@
 use crate::discord::{
-    april2024::{add_rule, end_round, idle_check, start_round, RoundPhase, MIN_PLAYERS},
+    april2024::{add_rule, end_round, idle_check, start_round, RoundPhase},
     get_data, ConfigKey,
 };
 
@@ -98,8 +98,9 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
                         .send_message(
                             &ctx,
                             CreateMessage::new().content(format!(
-                            "Next round will start in {}, if there are at least {MIN_PLAYERS} players. Check the pinned messages for details.",
+                            "Next round will start in {}, if there are at least {} players. Check the pinned messages for details.",
                             humantime::format_duration(time_between_rounds),
+                            config.april2024.min_players
                         )),
                         )
                         .await;
