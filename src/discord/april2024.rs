@@ -514,7 +514,7 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
             "said anything in {} rounds, so won't be added to the next round. To join back, use ",
             config.april2024.max_idle_rounds
         ));
-        message.push_mono(format!("{}rank btbg", config.discord.command_prefix));
+        message.push_mono(format!("{}join btbg", config.discord.command_prefix));
         announce(
             ctx,
             AnnounceTarget::Lobby,
