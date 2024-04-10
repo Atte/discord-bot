@@ -21,6 +21,8 @@ pub struct Config {
     pub teamup: Vec<TeamupConfig>,
     #[cfg(feature = "openai")]
     pub openai: OpenAiConfig,
+    #[cfg(feature = "battlegrounds")]
+    pub battlegrounds: BattlegroundsConfig,
 }
 
 impl Config {
@@ -114,6 +116,20 @@ pub struct OpenAiConfig {
     pub bot_replacements: HashMap<SubstitutingString, String>,
     #[serde(default)]
     pub user_replacements: HashMap<SubstitutingString, String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BattlegroundsConfig {
+    pub api: Option<SubstitutingString>,
+    #[serde(default)]
+    pub debug: bool,
+    pub guild: GuildId,
+    pub player_role: RoleId,
+    pub playing_role: RoleId,
+    pub lobby_channel: ChannelId,
+    pub arena_channel: ChannelId,
+    pub max_idle_rounds: usize,
+    pub min_players: usize,
 }
 
 #[cfg(test)]
