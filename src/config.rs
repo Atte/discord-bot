@@ -1,6 +1,5 @@
 use crate::SubstitutingString;
 use color_eyre::eyre::Result;
-use reqwest::Url;
 use serde::Deserialize;
 use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
 use std::{
@@ -22,8 +21,8 @@ pub struct Config {
     pub teamup: Vec<TeamupConfig>,
     #[cfg(feature = "openai")]
     pub openai: OpenAiConfig,
-    #[cfg(feature = "april2024")]
-    pub april2024: April2024Config,
+    #[cfg(feature = "battlegrounds")]
+    pub battlegrounds: BattlegroundsConfig,
 }
 
 impl Config {
@@ -120,7 +119,7 @@ pub struct OpenAiConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct April2024Config {
+pub struct BattlegroundsConfig {
     pub api: Option<SubstitutingString>,
     #[serde(default)]
     pub debug: bool,

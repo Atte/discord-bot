@@ -1,9 +1,9 @@
 use crate::discord::{
-    april2024::{add_rule, end_round, idle_check, start_round, RoundPhase},
+    battlegrounds::{add_rule, end_round, idle_check, start_round, RoundPhase},
     get_data, ConfigKey,
 };
 
-use super::super::april2024::STATE;
+use super::super::battlegrounds::STATE;
 use log::error;
 use serenity::all::{
     standard::{
@@ -93,14 +93,14 @@ async fn btbgstart(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
                 if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
                     let _ = config
-                        .april2024
+                        .battlegrounds
                         .lobby_channel
                         .send_message(
                             &ctx,
                             CreateMessage::new().content(format!(
                             "Next round will start in {}, if there are at least {} players. Check the pinned messages for details.",
                             humantime::format_duration(time_between_rounds),
-                            config.april2024.min_players
+                            config.battlegrounds.min_players
                         )),
                         )
                         .await;
@@ -139,7 +139,7 @@ async fn btbgend(ctx: &Context, msg: &Message) -> CommandResult {
     let mut state = STATE.lock().await;
     let config = get_data::<ConfigKey>(ctx).await?;
     config
-        .april2024
+        .battlegrounds
         .lobby_channel
         .send_message(
             &ctx,
@@ -158,7 +158,7 @@ async fn btbgend(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
-#[group("BTBG")]
+#[group("Battlegrounds")]
 #[only_in(guilds)]
 #[commands(btbgstart, btbgend)]
-pub struct April2024;
+pub struct Battlegrounds;

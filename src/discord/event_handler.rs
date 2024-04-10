@@ -46,13 +46,13 @@ impl EventHandler for Handler {
                 }
             }
 
-            #[cfg(feature = "april2024")]
-            if message.channel_id == config.april2024.arena_channel {
+            #[cfg(feature = "battlegrounds")]
+            if message.channel_id == config.battlegrounds.arena_channel {
                 tokio::spawn(async {
                     let ctx = ctx;
                     let message = message;
-                    if let Err(err) = super::april2024::message(&ctx, &message).await {
-                        error!("April2024: {err:?}");
+                    if let Err(err) = super::battlegrounds::message(&ctx, &message).await {
+                        error!("Battlegrounds: {err:?}");
                     }
                 });
                 return;

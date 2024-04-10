@@ -25,8 +25,8 @@ mod safe_reply;
 mod stats;
 mod sticky_roles;
 
-#[cfg(feature = "april2024")]
-mod april2024;
+#[cfg(feature = "battlegrounds")]
+mod battlegrounds;
 
 #[derive(Debug)]
 pub struct ActivityKey;
@@ -100,8 +100,8 @@ impl Discord {
             .group(&commands::EMOTES_GROUP)
             .group(&commands::MISC_GROUP);
 
-        #[cfg(feature = "april2024")]
-        let framework = framework.group(&commands::APRIL2024_GROUP);
+        #[cfg(feature = "battlegrounds")]
+        let framework = framework.group(&commands::BATTLEGROUNDS_GROUP);
 
         let mut cache_settings = CacheSettings::default();
         cache_settings.max_messages = 1024;

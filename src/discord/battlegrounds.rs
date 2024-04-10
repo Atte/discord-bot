@@ -140,26 +140,26 @@ async fn announce(ctx: &Context, target: AnnounceTarget, message: CreateMessage)
     match target {
         AnnounceTarget::Lobby => {
             config
-                .april2024
+                .battlegrounds
                 .lobby_channel
                 .send_message(ctx, message)
                 .await?;
         }
         AnnounceTarget::Arena => {
             config
-                .april2024
+                .battlegrounds
                 .arena_channel
                 .send_message(ctx, message)
                 .await?;
         }
         AnnounceTarget::Both => {
             config
-                .april2024
+                .battlegrounds
                 .lobby_channel
                 .send_message(ctx, message.clone())
                 .await?;
             config
-                .april2024
+                .battlegrounds
                 .arena_channel
                 .send_message(ctx, message)
                 .await?;
@@ -244,7 +244,7 @@ async fn request_task(
 async fn api(ctx: &Context, request: Vec<ApiRequest>) -> Result<()> {
     let config = get_data::<ConfigKey>(ctx).await?;
     log::debug!("{request:?}");
-    if config.april2024.debug {
+    if config.battlegrounds.debug {
         announce(
             ctx,
             AnnounceTarget::Arena,
@@ -277,7 +277,7 @@ async fn api(ctx: &Context, request: Vec<ApiRequest>) -> Result<()> {
     }
 
     log::debug!("{response:?}");
-    if config.april2024.debug {
+    if config.battlegrounds.debug {
         announce(
             ctx,
             AnnounceTarget::Arena,
@@ -344,27 +344,27 @@ pub async fn start_round(ctx: &Context) -> Result<bool> {
 
     let config = get_data::<ConfigKey>(ctx).await?;
     let mut players: Vec<PlayerState> = Vec::new();
-    let mut members = config.april2024.guild.members_iter(ctx).boxed();
+    let mut members = config.battlegrounds.guild.members_iter(ctx).boxed();
     while let Some(member) = members.next().await {
         let member = member?;
 
-        if member.roles.contains(&config.april2024.player_role) {
+        if member.roles.contains(&config.battlegrounds.player_role) {
             players.push(PlayerState::new(member, now));
         }
     }
 
-    if players.len() < config.april2024.min_players {
+    if players.len() < config.battlegrounds.min_players {
         log::info!(
             "not enough players, have {}, need at least {}",
             players.len(),
-            config.april2024.min_players
+            config.battlegrounds.min_players
         );
         // announce(
         //     ctx,
         //     AnnounceTarget::Lobby,
         //     CreateMessage::new().content(format!(
         //         "Not enough players! Need at least {} to start a round.",
-        //         config.april2024.min_players
+        //         config.battlegrounds.min_players
         //     )),
         // )
         // .await?;
@@ -378,7 +378,7 @@ pub async fn start_round(ctx: &Context) -> Result<bool> {
     let (tx, rx) = tokio::sync::mpsc::channel(128);
     state.requests = Some(tx);
     state.request_task = Some(tokio::spawn(request_task(
-        config.april2024.api.and_then(|url| url.parse().ok()),
+        config.battlegrounds.api.and_then(|url| url.parse().ok()),
         rx,
     )));
 
@@ -386,7 +386,7 @@ pub async fn start_round(ctx: &Context) -> Result<bool> {
     for player in players {
         match player
             .member
-            .add_role(ctx, config.april2024.playing_role)
+            .add_role(ctx, config.battlegrounds.playing_role)
             .await
         {
             Ok(_) => {
@@ -453,7 +453,11 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
         .player_last_rounds
         .iter()
         .filter_map(|(id, last)| {
-            if *last <= state.id.saturating_sub(config.april2024.max_idle_rounds) {
+            if *last
+                <= state
+                    .id
+                    .saturating_sub(config.battlegrounds.max_idle_rounds)
+            {
                 Some(*id)
             } else {
                 None
@@ -464,7 +468,7 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
     for player in &state.players {
         player
             .member
-            .remove_role(ctx, config.april2024.playing_role)
+            .remove_role(ctx, config.battlegrounds.playing_role)
             .await?;
     }
 
@@ -487,9 +491,9 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
 
     if !idle_user_ids.is_empty() {
         for user_id in &idle_user_ids {
-            let member = config.april2024.guild.member(ctx, user_id).await?;
+            let member = config.battlegrounds.guild.member(ctx, user_id).await?;
             member
-                .remove_role(ctx, config.april2024.player_role)
+                .remove_role(ctx, config.battlegrounds.player_role)
                 .await?;
         }
 
@@ -512,7 +516,7 @@ pub async fn end_round(ctx: &Context) -> Result<()> {
         }
         message.push(format!(
             "said anything in {} rounds, so won't be added to the next round. To join back, use ",
-            config.april2024.max_idle_rounds
+            config.battlegrounds.max_idle_rounds
         ));
         message.push_mono(format!("{}join btbg", config.discord.command_prefix));
         announce(
@@ -580,9 +584,9 @@ pub async fn eliminate(ctx: &Context, user_ids: Vec<UserId>, reason: String) -> 
 
     let mut members = Vec::new();
     for user_id in &user_ids {
-        let member = config.april2024.guild.member(ctx, user_id).await?;
+        let member = config.battlegrounds.guild.member(ctx, user_id).await?;
         member
-            .remove_role(ctx, config.april2024.playing_role)
+            .remove_role(ctx, config.battlegrounds.playing_role)
             .await?;
         members.push(member);
     }
