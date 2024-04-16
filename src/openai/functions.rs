@@ -6,48 +6,22 @@ use chrono::Utc;
 use chrono_tz::Tz;
 use color_eyre::eyre::{bail, eyre};
 use itertools::Itertools;
-use schemars::{gen::SchemaSettings, schema::SchemaObject, JsonSchema};
-use serde::{Deserialize, Serialize};
+use openai_dive::v1::resources::{
+    assistant::assistant::{AssistantFunction, AssistantFunctionTool, AssistantTools},
+    chat::Function,
+};
+use schemars::{gen::SchemaSettings, JsonSchema};
+use serde::Deserialize;
 use serenity::{http::CacheHttp, model::prelude::Message, prelude::Context};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum FunctionCallType {
-    Auto,
-    None,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::EnumString)]
+#[strum(serialize_all = "snake_case")]
 pub enum FunctionName {
     GetTime,
     GetDate,
+    GetDayOfWeek,
     GetEvents,
     ShowImage,
-}
-
-impl From<&FunctionName> for String {
-    #[inline]
-    fn from(value: &FunctionName) -> Self {
-        serde_json::to_value(value)
-            .unwrap()
-            .as_str()
-            .unwrap()
-            .to_owned()
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct Function {
-    name: FunctionName,
-    description: &'static str,
-    parameters: SchemaObject,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FunctionCall {
-    pub name: FunctionName,
-    pub arguments: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -59,6 +33,12 @@ struct GetTimeParameters {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 struct GetDateParameters {
     #[schemars(description = "Timezone to return the current date for.")]
+    timezone: String,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+struct GetDayOfWeekParameters {
+    #[schemars(description = "Timezone to return the current day of the week for.")]
     timezone: String,
 }
 
@@ -76,7 +56,7 @@ struct ShowImageParameters {
     keywords: Vec<String>,
 }
 
-fn parameters<T>() -> Result<SchemaObject>
+fn parameters<T>() -> Result<serde_json::Value>
 where
     T: JsonSchema,
 {
@@ -89,36 +69,53 @@ where
     if !schema.definitions.is_empty() {
         bail!("Generated schema contains definitions.");
     }
-    Ok(schema.schema)
+    Ok(serde_json::to_value(schema.schema)?)
 }
 
-pub fn all() -> Result<Vec<Function>> {
-    Ok(vec![
-        Function {
-            name: FunctionName::GetTime,
-            description: "Get the current time.",
+pub fn as_tools() -> Result<Vec<AssistantTools>> {
+    let functions = [
+        AssistantFunction {
+            name: FunctionName::GetTime.to_string(),
+            description: Some(String::from("Get the current time.")),
             parameters: parameters::<GetTimeParameters>()?,
         },
-        Function {
-            name: FunctionName::GetDate,
-            description: "Get the current date.",
+        AssistantFunction {
+            name: FunctionName::GetDate.to_string(),
+            description: Some(String::from("Get the current date.")),
             parameters: parameters::<GetDateParameters>()?,
         },
-        Function {
-            name: FunctionName::GetEvents,
-            description: "Get a list of upcoming events.",
+        AssistantFunction {
+            name: FunctionName::GetDayOfWeek.to_string(),
+            description: Some(String::from("Get the current day of the week.")),
+            parameters: parameters::<GetDayOfWeekParameters>()?,
+        },
+        AssistantFunction {
+            name: FunctionName::GetEvents.to_string(),
+            description: Some(String::from("Get a list of upcoming events.")),
             parameters: parameters::<GetEventsParameters>()?,
         },
-        Function {
-            name: FunctionName::ShowImage,
-            description: "Search for an image on Derpibooru. If one is found, show it to the user.",
+        AssistantFunction {
+            name: FunctionName::ShowImage.to_string(),
+            description: Some(String::from(
+                "Search for an image on Derpibooru. If one is found, show it to the user.",
+            )),
             parameters: parameters::<ShowImageParameters>()?,
         },
-    ])
+    ];
+    Ok(functions
+        .iter()
+        .cloned()
+        .map(|function| {
+            AssistantTools::Function(AssistantFunctionTool {
+                r#type: String::from("function"),
+                function,
+            })
+        })
+        .collect())
 }
 
-pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<String> {
-    match call.name {
+pub async fn call(ctx: &Context, msg: &Message, call: &Function) -> Result<String> {
+    match call.name.parse()? {
         FunctionName::GetTime => {
             let params: GetTimeParameters = serde_json::from_str(&call.arguments)
                 .map_err(|_| eyre!("Invalid function arguments."))?;
@@ -145,6 +142,17 @@ pub async fn call(ctx: &Context, msg: &Message, call: &FunctionCall) -> Result<S
                 .with_timezone(&timezone)
                 .format("%A %Y-%m-%d")
                 .to_string())
+        }
+
+        FunctionName::GetDayOfWeek => {
+            let params: GetDayOfWeekParameters = serde_json::from_str(&call.arguments)
+                .map_err(|_| eyre!("Invalid function arguments."))?;
+
+            let timezone: Tz = params
+                .timezone
+                .parse()
+                .map_err(|_| eyre!("Invalid timezone."))?;
+            Ok(Utc::now().with_timezone(&timezone).format("%A").to_string())
         }
 
         FunctionName::GetEvents => {

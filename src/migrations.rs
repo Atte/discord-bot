@@ -116,12 +116,25 @@ pub async fn mongo(db: &Database) -> Result<()> {
         vec![(doc! { "image.id": 1 }, true), (doc! { "time": 1 }, false)],
     )
     .await?;
-    mongo_ensure_indexes(
-        db,
-        "openai-user-log",
-        vec![(doc! { "user_id": 1 }, false), (doc! { "time": 1 }, false)],
-    )
-    .await?;
+
+    #[cfg(feature = "openai")]
+    {
+        mongo_ensure_indexes(
+            db,
+            crate::openai::THREADS_COLLECTION_NAME,
+            vec![
+                (doc! { "id": 1 }, false),
+                (doc! { "message_ids": 1 }, false),
+            ],
+        )
+        .await?;
+        mongo_ensure_indexes(
+            db,
+            crate::openai::USER_LOG_COLLECTION_NAME,
+            vec![(doc! { "user_id": 1 }, false), (doc! { "time": 1 }, false)],
+        )
+        .await?;
+    }
 
     Ok(())
 }

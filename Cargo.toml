@@ -33,6 +33,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 serenity = "0.12"
+strum = { version = "0.26.2", features = ["derive"] }
 tabwriter = "1.2"
 toml = "0.8"
 void = "1.0"
@@ -76,7 +77,7 @@ version = "0.8"
 optional = true
 
 [dependencies.chrono-tz]
-version = "0.8"
+version = "0.9"
 optional = true
 
 [dependencies.humantime]
@@ -93,7 +94,7 @@ features = ["reqwest", "tokio", "tokio-util", "rustls-tls"]
 includedir_codegen = "0.6"
 
 [dev-dependencies]
-mock_instant = "0.3"
+mock_instant = "0.4"
 proptest = "1.1"
 
 [features]
@@ -101,7 +102,5 @@ default = []
 berrytube = ["reqwest/stream", "tokio-stream"]
 cron = []
 teamup = ["serde_repr"]
-openai = ["schemars", "openai_dive"]
-openai-functions = ["openai", "chrono-tz"]
-openai-vision = ["openai", "linkify"]
+openai = ["schemars", "openai_dive", "chrono-tz", "linkify"]
 battlegrounds = ["humantime"]

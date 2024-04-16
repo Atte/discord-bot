@@ -81,6 +81,7 @@ pub struct GibConfig {
     pub shy_artists: HashSet<String>,
 }
 
+#[cfg(feature = "cron")]
 #[derive(Debug, Clone, Deserialize)]
 pub struct CronConfig {
     pub rate: u64,
@@ -88,11 +89,13 @@ pub struct CronConfig {
     pub delete_old_messages: HashMap<ChannelId, i64>,
 }
 
+#[cfg(feature = "berrytube")]
 #[derive(Debug, Clone, Deserialize)]
 pub struct BerrytubeConfig {
     pub url: SubstitutingString,
 }
 
+#[cfg(feature = "teamup")]
 #[derive(Debug, Clone, Deserialize)]
 pub struct TeamupConfig {
     pub guild: GuildId,
@@ -105,19 +108,15 @@ pub struct TeamupConfig {
     pub location: SubstitutingString,
 }
 
+#[cfg(feature = "openai")]
 #[derive(Debug, Clone, Deserialize)]
 pub struct OpenAiConfig {
     pub api_key: SubstitutingString,
+    pub assistant_id: SubstitutingString,
     pub temperature: Option<f32>,
-    pub prompt: SubstitutingString,
-    #[serde(default)]
-    pub examples: HashMap<SubstitutingString, SubstitutingString>,
-    #[serde(default)]
-    pub bot_replacements: HashMap<SubstitutingString, String>,
-    #[serde(default)]
-    pub user_replacements: HashMap<SubstitutingString, String>,
 }
 
+#[cfg(feature = "battlegrounds")]
 #[derive(Debug, Clone, Deserialize)]
 pub struct BattlegroundsConfig {
     pub api: Option<SubstitutingString>,
