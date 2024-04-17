@@ -31,8 +31,19 @@ pub async fn message(ctx: &Context, message: &Message) {
         typing.stop();
         for response in responses {
             match response {
-                MessageContent::ImageFile(_) => {
-                    // TODO
+                MessageContent::ImageFile(content) => {
+                    if let Ok(attachment) = openai.file_to_attachment(content).await {
+                        match message
+                            .channel_id
+                            .send_files(&ctx, std::iter::once(attachment), CreateMessage::new())
+                            .await
+                        {
+                            Ok(_) => {}
+                            Err(err) => {
+                                log::error!("error sending response file: {:?}", err);
+                            }
+                        }
+                    }
                 }
                 MessageContent::Text(content) => {
                     let response =

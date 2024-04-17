@@ -16,8 +16,11 @@ use openai_dive::v1::{
     resources::{
         assistant::{
             assistant::{AssistantParameters, ToolOutput, ToolOutputsParameters},
-            message::{CreateMessageParameters, ListMessagesResponse, MessageContent, MessageRole},
-            run::{CreateRunParameters, Run, RunAction, RunStatus},
+            message::{
+                CreateMessageParameters, ImageFileContent, ListMessagesResponse, MessageContent,
+                MessageRole,
+            },
+            run::{CreateRunParameters, Run, RunStatus},
             thread::{CreateThreadParameters, Thread},
         },
         shared::Usage,
@@ -26,6 +29,7 @@ use openai_dive::v1::{
 use regex::Regex;
 use serde::Serialize;
 use serenity::{
+    all::CreateAttachment,
     model::prelude::Message,
     prelude::{Context, TypeMapKey},
 };
@@ -246,6 +250,26 @@ impl OpenAi {
             .into_iter()
             .flat_map(|message| message.content)
             .collect_vec())
+    }
+
+    async fn file_to_attachment(&self, content: ImageFileContent) -> Result<CreateAttachment> {
+        assert_eq!(content.r#type, "image_file");
+
+        let file = self
+            .client
+            .files()
+            .retrieve(&content.image_file.file_id)
+            .await
+            .map_err(|err| eyre!("file retrieve {err:?}"))?;
+
+        let content = self
+            .client
+            .files()
+            .retrieve_content(&content.image_file.file_id)
+            .await
+            .map_err(|err| eyre!("file retrieve content {err:?}"))?;
+
+        Ok(CreateAttachment::bytes(content, file.filename))
     }
 
     async fn resolve_and_update_thread(

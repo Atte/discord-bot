@@ -81,5 +81,5 @@ location = "https://berrytube.tv/"
 
 [openai]
 api_key = "$OPENAI_API_KEY"
-assistant_id = "asst_Z8hoTLEqj3Hi4wEgLmGTG5k7"
+assistant_id = "asst_vEyZ258EKXqWEXXh9HOIoFWO"
 temperature = 0.8
