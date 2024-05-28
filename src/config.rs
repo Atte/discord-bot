@@ -71,6 +71,8 @@ pub struct DiscordConfig {
     pub rank_start_roles: HashSet<RoleId>,
     #[serde(default)]
     pub rank_end_roles: HashSet<RoleId>,
+    #[cfg(feature = "colors")]
+    pub colors: ColorsConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -130,6 +132,16 @@ pub struct BattlegroundsConfig {
     pub arena_channel: ChannelId,
     pub max_idle_rounds: usize,
     pub min_players: usize,
+}
+
+#[cfg(feature = "colors")]
+#[derive(Debug, Clone, Deserialize)]
+pub struct ColorsConfig {
+    pub guilds: HashSet<GuildId>,
+    pub start_roles: HashSet<RoleId>,
+    pub end_roles: HashSet<RoleId>,
+    #[serde(with = "humantime_serde")]
+    pub rate: std::time::Duration,
 }
 
 #[cfg(test)]

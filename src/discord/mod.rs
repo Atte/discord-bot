@@ -12,7 +12,6 @@ use serenity::{
 #[cfg(feature = "openai")]
 use crate::openai::{OpenAi, OpenAiKey};
 
-#[cfg(feature = "openai")]
 use std::sync::Arc;
 
 pub mod commands;
@@ -27,6 +26,8 @@ mod sticky_roles;
 
 #[cfg(feature = "battlegrounds")]
 mod battlegrounds;
+#[cfg(feature = "colors")]
+mod colors;
 
 #[derive(Debug)]
 pub struct ActivityKey;
@@ -123,6 +124,18 @@ impl Discord {
     }
 
     pub async fn run(&mut self) -> Result<()> {
+        #[cfg(feature = "colors")]
+        if let Some(config) = self.client.data.read().await.get::<ConfigKey>() {
+            if let Some(db) = self.client.data.read().await.get::<DbKey>() {
+                colors::spawn(
+                    Arc::clone(&self.client.http),
+                    Arc::clone(&self.client.cache),
+                    config.discord.colors.clone(),
+                    db.clone(),
+                );
+            }
+        }
+
         self.client.start().await?;
         Ok(())
     }

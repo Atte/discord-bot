@@ -35,10 +35,24 @@ emote_reward_roles = [
 ]
 rank_start_roles = [
     1121483889253294211, # test
+    1245066501082316851, # test (colors)
 ]
 rank_end_roles = [
     1114229249646272572, # test
+    1245069255872090344, # test (colors)
 ]
+
+[discord.colors]
+guilds = [
+    324598323489013770, # test
+]
+start_roles = [
+    1245066501082316851, # test
+]
+end_roles = [
+    1245069255872090344, # test
+]
+rate = "10s"
 
 [discord.restricted_ranks]
 # test

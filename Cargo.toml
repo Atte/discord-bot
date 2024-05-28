@@ -83,6 +83,10 @@ optional = true
 version = "2.1"
 optional = true
 
+[dependencies.humantime-serde]
+version = "1.1"
+optional = true
+
 [dependencies.openai_dive]
 version = "0.4"
 optional = true
@@ -105,3 +109,4 @@ openai = ["schemars", "openai_dive"]
 openai-functions = ["openai", "chrono-tz"]
 openai-vision = ["openai", "linkify"]
 battlegrounds = ["humantime"]
+colors = ["humantime", "humantime-serde"]

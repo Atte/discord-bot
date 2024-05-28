@@ -47,39 +47,36 @@ impl Ranks {
     }
 
     async fn from_guild(ctx: &Context, guild_id: impl Into<GuildId>) -> Result<Self> {
-        let current_user_id = ctx.cache.current_user().id.clone();
         let config = get_data::<ConfigKey>(ctx).await?;
         let guild = guild_id
             .into()
             .to_guild_cached(ctx)
             .ok_or_else(|| eyre!("Guild not found!"))?
             .clone();
-        let bot_roles = guild
-            .member(&ctx, current_user_id)
-            .await?
-            .roles(ctx)
-            .ok_or_else(|| eyre!("Roles for bot not found!"))?;
 
         let highest_position = guild
             .roles
             .values()
             .filter(|role| config.discord.rank_start_roles.contains(&role.id))
-            .chain(bot_roles.iter())
             .map(|role| role.position)
-            .min()
+            .max()
             .ok_or_else(|| eyre!("Ranks start marker not found!"))?;
         let lowest_position = guild
             .roles
             .values()
-            .find(|role| config.discord.rank_end_roles.contains(&role.id))
-            .map_or(0, |role| role.position);
+            .filter(|role| config.discord.rank_end_roles.contains(&role.id))
+            .map(|role| role.position)
+            .min()
+            .ok_or_else(|| eyre!("Ranks end marker not found!"))?;
 
         Ok(Self::new(
             guild
                 .roles
                 .values()
                 .filter(|role| {
-                    role.position > lowest_position
+                    !config.discord.rank_start_roles.contains(&role.id)
+                        && !config.discord.rank_end_roles.contains(&role.id)
+                        && role.position > lowest_position
                         && role.position < highest_position
                         && !role.name.starts_with('@')
                 })
