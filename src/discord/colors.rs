@@ -6,17 +6,17 @@ use std::{
 use color_eyre::eyre::{eyre, OptionExt, Result};
 use mongodb::{bson::doc, options::FindOneOptions, Database};
 use serde::{Deserialize, Serialize};
-use serenity::all::{Cache, GuildId, Http, RoleId, UserId};
+use serenity::all::{Cache, CreateMessage, GuildId, Http, RoleId, UserId};
 use std::collections::HashMap;
 
-use crate::config::ColorsConfig;
+use crate::config::{ColorsConfig, DiscordConfig};
 
 const COLLECTION_NAME: &str = "colors";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Stats {
     time: SystemTime,
-    guild_id: String,
+    guild_id: GuildId,
     names: HashMap<RoleId, String>,
     colors: HashMap<RoleId, (u8, u8, u8)>,
     users: HashMap<RoleId, Vec<UserId>>,
@@ -26,7 +26,7 @@ impl Stats {
     pub fn new(guild_id: GuildId) -> Self {
         Self {
             time: SystemTime::now(),
-            guild_id: guild_id.to_string(),
+            guild_id,
             names: Default::default(),
             colors: Default::default(),
             users: Default::default(),
@@ -121,14 +121,14 @@ async fn save_to_database(db: &Database, stats: &Stats) -> Result<()> {
 pub fn spawn(
     http: Arc<Http>,
     cache: Arc<Cache>,
-    config: ColorsConfig,
+    config: DiscordConfig,
     db: Database,
 ) -> tokio::task::JoinHandle<()> {
     tokio::task::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(60)).await;
 
-            for guild_id in &config.guilds {
+            'guilds: for guild_id in &config.colors.guilds {
                 match latest_from_database(&db, *guild_id).await {
                     Err(err) => {
                         log::error!("Failed to get latest from database for {guild_id}: {err}");
@@ -137,14 +137,14 @@ pub fn spawn(
                     Ok(None) => {}
                     Ok(Some(latest)) => {
                         if let Ok(duration) = SystemTime::now().duration_since(latest) {
-                            if duration < config.rate {
+                            if duration < config.colors.rate {
                                 continue;
                             }
                         }
                     }
                 }
 
-                match collect_stats(&cache, &config, *guild_id).await {
+                match collect_stats(&cache, &config.colors, *guild_id).await {
                     Err(err) => {
                         log::error!("Failed to collect stats for {guild_id}: {err}");
                         continue;
@@ -159,6 +159,27 @@ pub fn spawn(
                             log::error!("Failed to remove ranks from {guild_id}: {err}");
                             continue;
                         }
+
+                        for channel_id in &config.command_channels {
+                            if channel_id
+                                .to_channel_cached(&cache)
+                                .map_or(false, |channel| channel.guild_id == *guild_id)
+                            {
+                                if let Err(err) = channel_id
+                                    .send_message(
+                                        &http,
+                                        CreateMessage::new().content("Colors have been reset!"),
+                                    )
+                                    .await
+                                {
+                                    log::error!("Failed to announce rank removal on {guild_id} on {channel_id}: {err}");
+                                } else {
+                                    continue 'guilds;
+                                }
+                            }
+                        }
+
+                        log::error!("No cahnnel to announce removal of ranks on {guild_id}");
                     }
                 }
 

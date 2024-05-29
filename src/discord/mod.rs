@@ -130,7 +130,7 @@ impl Discord {
                 colors::spawn(
                     Arc::clone(&self.client.http),
                     Arc::clone(&self.client.cache),
-                    config.discord.colors.clone(),
+                    config.discord.clone(),
                     db.clone(),
                 );
             }
