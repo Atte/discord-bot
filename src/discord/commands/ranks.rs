@@ -24,7 +24,8 @@ use std::{cmp::Ordering, collections::HashSet, io::Write};
 use tabwriter::TabWriter;
 
 pub fn cmp_roles(a: &Role, b: &Role) -> Option<Ordering> {
-    a.name.to_lowercase().partial_cmp(&b.name.to_lowercase())
+    a.name.partial_cmp(&b.name)
+    // a.name.to_lowercase().partial_cmp(&b.name.to_lowercase())
 }
 
 #[derive(Derivative, Debug, Clone)]
