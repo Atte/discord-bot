@@ -121,14 +121,14 @@ async fn save_to_database(db: &Database, stats: &Stats) -> Result<()> {
 pub fn spawn(
     http: Arc<Http>,
     cache: Arc<Cache>,
-    config: DiscordConfig,
+    config: ColorsConfig,
     db: Database,
 ) -> tokio::task::JoinHandle<()> {
     tokio::task::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(60)).await;
 
-            'guilds: for guild_id in &config.colors.guilds {
+            'guilds: for guild_id in &config.guilds {
                 match latest_from_database(&db, *guild_id).await {
                     Err(err) => {
                         log::error!("Failed to get latest from database for {guild_id}: {err}");
@@ -137,14 +137,14 @@ pub fn spawn(
                     Ok(None) => {}
                     Ok(Some(latest)) => {
                         if let Ok(duration) = SystemTime::now().duration_since(latest) {
-                            if duration < config.colors.rate {
+                            if duration < config.rate {
                                 continue;
                             }
                         }
                     }
                 }
 
-                match collect_stats(&cache, &config.colors, *guild_id).await {
+                match collect_stats(&cache, &config, *guild_id).await {
                     Err(err) => {
                         log::error!("Failed to collect stats for {guild_id}: {err}");
                         continue;
@@ -160,7 +160,7 @@ pub fn spawn(
                             continue;
                         }
 
-                        for channel_id in &config.command_channels {
+                        for channel_id in &config.channels {
                             if channel_id
                                 .to_channel_cached(&cache)
                                 .map_or(false, |channel| channel.guild_id == *guild_id)

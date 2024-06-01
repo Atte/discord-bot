@@ -13,14 +13,9 @@ owners = [
 blocked_users = []
 command_channels = [
     1109849190344949793, # test
-    409178792938962964, # BT
-    722906800508239872, # BT DnD
-    1113153145162448982, # BT emotes
 ]
 log_channels = [
     439066300518760448, # test
-    409294723572957185, # BT
-    842082195018481684, # BTCon 2021
 ]
 clean_channels = []
 rules_channels = [
@@ -30,9 +25,6 @@ rules_roles = [
     967412631411503104, # test
 ]
 rules_url = "https://berrytube.tv/rules/"
-emote_reward_roles = [
-    1109849696668766228, # test
-]
 rank_start_roles = [
     1121483889253294211, # test
     1245066501082316851, # test (colors)
@@ -46,13 +38,16 @@ rank_end_roles = [
 guilds = [
     324598323489013770, # test
 ]
+channels = [
+    1109849190344949793, # test
+]
 start_roles = [
     1245066501082316851, # test
 ]
 end_roles = [
     1245069255872090344, # test
 ]
-rate = "10s"
+rate = "1min"
 
 [discord.restricted_ranks]
 # test

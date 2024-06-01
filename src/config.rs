@@ -138,6 +138,7 @@ pub struct BattlegroundsConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ColorsConfig {
     pub guilds: HashSet<GuildId>,
+    pub channels: HashSet<ChannelId>,
     pub start_roles: HashSet<RoleId>,
     pub end_roles: HashSet<RoleId>,
     #[serde(with = "humantime_serde")]
