@@ -21,10 +21,7 @@ use self::functions::{Function, FunctionCall, FunctionCallType};
 
 pub mod event_handler;
 
-#[cfg(not(feature = "openai-vision"))]
-const MODEL: OpenAiModel = OpenAiModel::Gpt4Turbo;
-#[cfg(feature = "openai-vision")]
-const MODEL: OpenAiModel = OpenAiModel::Gpt4Vision;
+const MODEL: OpenAiModel = OpenAiModel::Gpt4O;
 const MAX_TOKENS: usize = 1024 * 8;
 const MAX_RESULT_TOKENS: usize = 1024 * 4;
 
@@ -203,6 +200,8 @@ enum OpenAiModel {
     Gpt4Turbo,
     #[serde(rename = "gpt-4-vision-preview")]
     Gpt4Vision,
+    #[serde(rename = "gpt-4o")]
+    Gpt4O,
 }
 
 #[derive(Debug, Clone, Deserialize)]
