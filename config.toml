@@ -48,6 +48,7 @@ end_roles = [
     1245069255872090344, # test
 ]
 rate = "1min"
+reset_message = "Colors have been removed! Please pick a new one."
 
 [discord.restricted_ranks]
 # test

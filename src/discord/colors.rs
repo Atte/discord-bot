@@ -168,7 +168,14 @@ pub fn spawn(
                                 if let Err(err) = channel_id
                                     .send_message(
                                         &http,
-                                        CreateMessage::new().content("Colors have been reset!"),
+                                        CreateMessage::new().content(
+                                            config
+                                                .reset_message
+                                                .as_ref()
+                                                .map_or("Colors have been removed!", |s| {
+                                                    s.as_str()
+                                                }),
+                                        ),
                                     )
                                     .await
                                 {
@@ -179,7 +186,7 @@ pub fn spawn(
                             }
                         }
 
-                        log::error!("No cahnnel to announce removal of ranks on {guild_id}");
+                        log::error!("No channel to announce removal of ranks on {guild_id}");
                     }
                 }
 

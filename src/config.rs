@@ -143,6 +143,7 @@ pub struct ColorsConfig {
     pub end_roles: HashSet<RoleId>,
     #[serde(with = "humantime_serde")]
     pub rate: std::time::Duration,
+    pub reset_message: Option<String>,
 }
 
 #[cfg(test)]
