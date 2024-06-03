@@ -2,7 +2,7 @@ use crate::{
     config::OpenAiConfig,
     discord::{get_data, DbKey},
 };
-use chrono::{DateTime, Datelike, Timelike, Utc};
+use chrono::{DateTime, Datelike, Timelike, Utc, Weekday};
 use color_eyre::eyre::{bail, Result};
 use conv::{UnwrapOrSaturate, ValueFrom};
 use lazy_static::lazy_static;
@@ -409,21 +409,24 @@ impl OpenAi {
                 content: vec![OpenAiUserMessage::Text { text: user.clone() }],
             });
         }
+
+        let now = Utc::now();
         request.unshift_message(OpenAiMessage::System {
             content: self
                 .prompt
                 .replace("{botname}", botname.as_ref())
-                .replace("{date}", &Utc::now().format("%A, %B %d, %Y").to_string())
-                .replace("{time}", &Utc::now().format("%I:%M %p").to_string())
+                .replace("{date}", &now.format("%A, %B %d, %Y").to_string())
+                .replace("{time}", &now.format("%I:%M %p").to_string())
                 .replace(
-                    "{is_weekend}",
-                    if Utc::now().weekday().number_from_monday() >= 6
-                        || (Utc::now().weekday().number_from_monday() == 5
-                            && Utc::now().hour() >= 16)
-                    {
-                        "is"
-                    } else {
-                        "is not"
+                    "{weekday}",
+                    match now.weekday() {
+                        Weekday::Mon => "Monday",
+                        Weekday::Tue => "Tuesday",
+                        Weekday::Wed => "Wednesday",
+                        Weekday::Thu => "Thursday",
+                        Weekday::Fri => "Friday",
+                        Weekday::Sat => "Saturday",
+                        Weekday::Sun => "Sunday",
                     },
                 ),
         });
