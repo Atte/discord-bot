@@ -155,38 +155,38 @@ pub fn spawn(
                             continue;
                         }
 
-                        if let Err(err) = remove_ranks(&http, *guild_id, &stats).await {
-                            log::error!("Failed to remove ranks from {guild_id}: {err}");
-                            continue;
-                        }
+                        // if let Err(err) = remove_ranks(&http, *guild_id, &stats).await {
+                        //     log::error!("Failed to remove ranks from {guild_id}: {err}");
+                        //     continue;
+                        // }
 
-                        for channel_id in &config.channels {
-                            if channel_id
-                                .to_channel_cached(&cache)
-                                .map_or(false, |channel| channel.guild_id == *guild_id)
-                            {
-                                if let Err(err) = channel_id
-                                    .send_message(
-                                        &http,
-                                        CreateMessage::new().content(
-                                            config
-                                                .reset_message
-                                                .as_ref()
-                                                .map_or("Colors have been removed!", |s| {
-                                                    s.as_str()
-                                                }),
-                                        ),
-                                    )
-                                    .await
-                                {
-                                    log::error!("Failed to announce rank removal on {guild_id} on {channel_id}: {err}");
-                                } else {
-                                    continue 'guilds;
-                                }
-                            }
-                        }
+                        // for channel_id in &config.channels {
+                        //     if channel_id
+                        //         .to_channel_cached(&cache)
+                        //         .map_or(false, |channel| channel.guild_id == *guild_id)
+                        //     {
+                        //         if let Err(err) = channel_id
+                        //             .send_message(
+                        //                 &http,
+                        //                 CreateMessage::new().content(
+                        //                     config
+                        //                         .reset_message
+                        //                         .as_ref()
+                        //                         .map_or("Colors have been removed!", |s| {
+                        //                             s.as_str()
+                        //                         }),
+                        //                 ),
+                        //             )
+                        //             .await
+                        //         {
+                        //             log::error!("Failed to announce rank removal on {guild_id} on {channel_id}: {err}");
+                        //         } else {
+                        //             continue 'guilds;
+                        //         }
+                        //     }
+                        // }
 
-                        log::error!("No channel to announce removal of ranks on {guild_id}");
+                        // log::error!("No channel to announce removal of ranks on {guild_id}");
                     }
                 }
 
