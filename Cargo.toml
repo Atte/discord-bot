@@ -20,7 +20,7 @@ derivative = "2.2"
 derive_more = "0.99"
 env_logger = "0.11"
 futures = "0.3"
-itertools = "0.12"
+itertools = "0.13"
 lazy_static = "1.4"
 linkify = { version = "0.10", optional = true }
 log = "0.4"
@@ -87,12 +87,6 @@ optional = true
 version = "1.1"
 optional = true
 
-[dependencies.openai_dive]
-version = "0.4"
-optional = true
-default-features = false
-features = ["reqwest", "tokio", "tokio-util", "rustls-tls"]
-
 [build-dependencies]
 includedir_codegen = "0.6"
 
@@ -105,7 +99,7 @@ default = []
 berrytube = ["reqwest/stream", "tokio-stream"]
 cron = []
 teamup = ["serde_repr"]
-openai = ["schemars", "openai_dive"]
+openai = ["schemars"]
 openai-functions = ["openai", "chrono-tz"]
 openai-vision = ["openai", "linkify"]
 battlegrounds = ["humantime"]
