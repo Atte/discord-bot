@@ -119,6 +119,17 @@ pub async fn mongo(db: &Database) -> Result<()> {
         vec![(doc! { "user_id": 1 }, false), (doc! { "time": 1 }, false)],
     )
     .await?;
+    mongo_ensure_indexes(
+        db,
+        "openai-log",
+        vec![
+            (doc! { "user.id": 1 }, false),
+            (doc! { "message.id": 1 }, false),
+            (doc! { "responses.id": 1 }, false),
+            (doc! { "time": 1 }, false),
+        ],
+    )
+    .await?;
 
     Ok(())
 }

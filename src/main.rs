@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
     migrations::mongo(&db).await?;
 
     #[cfg(feature = "openai")]
-    let openai = openai::OpenAi::new(&config.openai);
+    let openai = openai::OpenAi::new(&config.openai, db.clone());
 
     info!("Spawning Discord...");
     let mut discord = discord::Discord::try_new(

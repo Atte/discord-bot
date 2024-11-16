@@ -2,10 +2,10 @@ use super::{
     get_data, limits::ACTIVITY_LENGTH, log_channel, rules_check, sticky_roles, ActivityKey,
     ConfigKey,
 };
-use crate::util::ellipsis_string;
+use crate::{openai::OpenAiKey, util::ellipsis_string};
 use log::error;
 use serenity::{
-    all::{ActivityData, GuildMemberUpdateEvent},
+    all::{ActivityData, GuildMemberUpdateEvent, MessageBuilder},
     async_trait,
     client::{Context, EventHandler},
     model::{
@@ -53,7 +53,19 @@ impl EventHandler for Handler {
                 .contains(&message.channel_id)
                 && matches!(message.mentions_me(&ctx).await, Ok(true))
             {
-                crate::openai::event_handler::message(&ctx, &message).await;
+                if let Ok(openai) = get_data::<OpenAiKey>(&ctx).await {
+                    if let Err(err) = openai.handle_message(&ctx, &message).await {
+                        error!("OpenAI error: {err:?}");
+                        let _ = message
+                            .reply(
+                                ctx,
+                                MessageBuilder::new()
+                                    .push_codeblock_safe(err.to_string(), None)
+                                    .build(),
+                            )
+                            .await;
+                    }
+                }
             }
         }
     }

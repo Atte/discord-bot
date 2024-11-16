@@ -1,46 +1,39 @@
-use crate::{
-    config::OpenAiConfig,
-    discord::{get_data, DbKey},
+use std::{iter::once, sync::Arc};
+
+use crate::{word_chunks::WordChunks, Result};
+use async_openai::{
+    config::OpenAIConfig,
+    types::{
+        AssistantStreamEvent, AssistantsApiResponseFormatOption, CreateMessageRequestArgs,
+        CreateMessageRequestContent, CreateRunRequestArgs, CreateThreadRequestArgs, ImageDetail,
+        ImageUrlArgs, MessageContent, MessageContentImageUrlObject, MessageContentInput,
+        MessageRequestContentTextObject, MessageRole, ResponseFormat, RunObject,
+        SubmitToolOutputsRunRequest, ToolsOutputsArgs,
+    },
+    Client,
 };
-use chrono::{DateTime, Datelike, Utc, Weekday};
-use color_eyre::eyre::{bail, Result};
-use conv::{UnwrapOrSaturate, ValueFrom};
+use bson::{doc, Bson};
+use futures::StreamExt;
 use lazy_static::lazy_static;
+use maplit::{convert_args, hashmap};
+use mongodb::{Collection, Database};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use serenity::{
-    model::prelude::Message,
-    prelude::{Context, TypeMapKey},
+    all::{
+        Context, CreateAttachment, CreateEmbed, CreateMessage, Message, MessageBuilder,
+        MESSAGE_CODE_LIMIT,
+    },
+    prelude::TypeMapKey,
 };
-use std::{sync::Arc, time::Duration};
 
-#[cfg(feature = "openai-functions")]
-mod functions;
-#[cfg(feature = "openai-functions")]
-use self::functions::{Function, FunctionCall, FunctionCallType};
-
-pub mod event_handler;
-
-const MODEL: OpenAiModel = OpenAiModel::Gpt4O;
-const MAX_TOKENS: usize = 1024 * 8;
-const MAX_RESULT_TOKENS: usize = 1024 * 4;
+mod models;
+mod tools;
+use models::*;
+use tokio::task::JoinSet;
 
 lazy_static! {
-    static ref CLEANUP_REGEX: Regex = Regex::new(r"\bhttps?:\/\/\S+").unwrap();
-}
-
-const USER_LOG_COLLECTION_NAME: &str = "openai-user-log";
-
-#[derive(Debug, Clone, Serialize)]
-struct UserLog {
-    time: DateTime<Utc>,
-    user_id: String,
-    model: String,
-    prompt_tokens: i64,
-    completion_tokens: i64,
-    total_tokens: i64,
-    #[cfg(feature = "openai-functions")]
-    function_call: Option<FunctionCall>,
+    static ref MESSAGE_CLEANUP_RE: Regex =
+        Regex::new(r"^<@[0-9]+>\s*").expect("invalid message cleanup regex");
 }
 
 #[derive(Debug)]
@@ -50,461 +43,322 @@ impl TypeMapKey for OpenAiKey {
     type Value = Arc<OpenAi>;
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct OpenAiRequest {
-    model: OpenAiModel,
-    messages: Vec<OpenAiMessage>,
-    #[cfg(feature = "openai-functions")]
-    function_call: FunctionCallType,
-    #[cfg(feature = "openai-functions")]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    functions: Vec<Function>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    temperature: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    user: Option<String>,
-    max_tokens: usize,
+pub struct OpenAi {
+    client: Client<OpenAIConfig>,
+    assistant_id: String,
+    log: Collection<LogEntry>,
 }
 
-impl OpenAiRequest {
-    pub fn new(user: Option<impl Into<String>>) -> Self {
-        #[cfg(feature = "openai-functions")]
-        let functions = match functions::all() {
-            Ok(funs) => funs,
-            Err(err) => {
-                log::error!("Unable to define OpenAI functions: {:?}", err);
-                Vec::new()
-            }
-        };
-        OpenAiRequest {
-            model: MODEL,
-            messages: Vec::new(),
-            #[cfg(feature = "openai-functions")]
-            function_call: if functions.is_empty() {
-                FunctionCallType::None
-            } else {
-                FunctionCallType::Auto
-            },
-            #[cfg(feature = "openai-functions")]
-            functions,
-            temperature: None,
-            user: user.map(Into::into),
-            max_tokens: MAX_RESULT_TOKENS,
+impl OpenAi {
+    pub fn new(config: &crate::config::OpenAiConfig, db: Database) -> Self {
+        Self {
+            client: Client::with_config(
+                OpenAIConfig::new()
+                    .with_api_key(config.api_key.to_string())
+                    .with_org_id(config.organization_id.to_string())
+                    .with_project_id(config.project_id.to_string()),
+            )
+            .with_http_client(
+                reqwest::ClientBuilder::new()
+                    .proxy(reqwest::Proxy::all("http://127.0.0.1:8080").unwrap())
+                    .danger_accept_invalid_certs(true)
+                    .danger_accept_invalid_hostnames(true)
+                    .build()
+                    .unwrap(),
+            ),
+            assistant_id: config.assistant_id.to_string(),
+            log: db.collection("openai-log"),
         }
     }
 
-    fn shift_message(&mut self) -> Option<OpenAiMessage> {
-        if self.messages.is_empty() {
-            None
-        } else {
-            Some(self.messages.remove(0))
+    async fn find_thread_id(&self, msg: &Message) -> Result<Option<String>> {
+        let mut ids = Vec::with_capacity(2);
+        ids.push(msg.id.to_string());
+
+        if let Some(ref msgref) = msg.message_reference {
+            ids.extend(msgref.message_id.map(|r| r.to_string()));
         }
+
+        let entry = self
+            .log
+            .find_one(doc! {
+                "$or": [
+                    { "message.id": &ids },
+                    { "responses": { "id": ids } }
+                ]
+            })
+            .sort(doc! {
+                "time": -1
+            })
+            .await?;
+        Ok(entry.map(|e| e.thread.id))
     }
 
-    #[inline]
-    fn push_message(&mut self, message: OpenAiMessage) {
-        self.messages.push(message);
-    }
+    async fn after_run(&self, entry_id: &Bson, run: RunObject) -> Result<()> {
+        self.log
+            .update_one(
+                doc! { "_id": &entry_id },
+                doc! { "$set": { "usage": bson::to_bson(&run.usage)? } },
+            )
+            .await?;
 
-    #[inline]
-    fn unshift_message(&mut self, message: OpenAiMessage) {
-        self.messages.insert(0, message);
-    }
-
-    pub fn try_unshift_message(&mut self, message: OpenAiMessage) -> Result<()> {
-        self.unshift_message(message);
-
-        if self.approximate_num_tokens() > MAX_TOKENS / 2 {
-            self.shift_message();
-            bail!("too many tokens");
+        if let Some(err) = run.last_error {
+            self.log
+                .update_one(
+                    doc! { "_id": &entry_id },
+                    doc! { "$push": { "errors": err.message } },
+                )
+                .await?;
         }
 
         Ok(())
     }
 
-    fn approximate_num_tokens(&self) -> usize {
-        let words: usize = self
-            .messages
-            .iter()
-            .filter_map(|msg| {
-                msg.content()
-                    .map(|content| content.split_whitespace().count())
-            })
-            .sum();
-        words * 4 / 3
-    }
-
-    #[cfg(feature = "openai-vision")]
-    pub fn expand_vision(&mut self) {
-        use std::collections::HashSet;
-
-        let finder = linkify::LinkFinder::new();
-        let extract_urls = move |text: &mut String| -> HashSet<String> {
-            let urls: HashSet<_> = finder
-                .links(text)
-                .map(|link| link.as_str().to_owned())
-                .collect();
-            for url in &urls {
-                *text = text.replace(url.as_str(), " ");
-            }
-            urls
+    async fn reply(
+        &self,
+        ctx: &Context,
+        entry_id: &Bson,
+        reply_to: &Message,
+        content: CreateMessage,
+        attachment: Option<CreateAttachment>,
+    ) -> Result<Message> {
+        let msg = if let Some(attachment) = attachment {
+            reply_to
+                .channel_id
+                .send_files(ctx, once(attachment), content.reference_message(reply_to))
+                .await?
+        } else {
+            reply_to
+                .channel_id
+                .send_message(ctx, content.reference_message(reply_to))
+                .await?
         };
 
-        let mut finder = linkify::LinkFinder::new();
-        finder.kinds(&[linkify::LinkKind::Url]);
+        self.log
+            .update_one(
+                doc! { "_id": &entry_id },
+                doc! { "$push": { "responses": { "id": msg.id.to_string(), "length": msg.content.len() as u32 } } },
+            )
+            .await?;
 
-        for msg in &mut self.messages {
-            match msg {
-                &mut OpenAiMessage::User { ref mut content } => {
-                    let mut urls: HashSet<String> = HashSet::new();
-                    for item in content.iter_mut() {
-                        match item {
-                            &mut OpenAiUserMessage::Text { ref mut text } => {
-                                urls.extend(extract_urls(text));
+        Ok(msg)
+    }
+
+    pub async fn handle_message(&self, ctx: &Context, msg: &Message) -> Result<()> {
+        let content = MESSAGE_CLEANUP_RE.replace_all(&msg.content, "");
+
+        let thread_id = if let Some(thread_id) = self.find_thread_id(msg).await? {
+            thread_id
+        } else {
+            self.client
+                .threads()
+                .create(CreateThreadRequestArgs::default().build()?)
+                .await?
+                .id
+        };
+
+        let log_entry = LogEntry {
+            time: bson::DateTime::now(),
+            user: LogEntryUser {
+                id: msg.author.id,
+                name: msg.author.name.clone(),
+                nick: msg.author_nick(ctx).await,
+            },
+            message: LogEntryMessage {
+                id: msg.id,
+                length: content.len(),
+            },
+            channel: LogEntryChannel { id: msg.channel_id },
+            guild: LogEntryGuild {
+                id: msg.guild_id.unwrap_or_default(),
+            },
+            responses: Vec::new(),
+            errors: Vec::new(),
+            thread: LogEntryThread { id: thread_id },
+            usage: None,
+        };
+        let entry_id = self.log.insert_one(&log_entry).await?.inserted_id;
+
+        let mut openai_content = vec![MessageContentInput::Text(MessageRequestContentTextObject {
+            text: content.to_string(),
+        })];
+        for attachment in &msg.attachments {
+            openai_content.push(MessageContentInput::ImageUrl(
+                MessageContentImageUrlObject {
+                    image_url: ImageUrlArgs::default()
+                        .url(&attachment.url)
+                        .detail(ImageDetail::Low)
+                        .build()?,
+                },
+            ));
+        }
+
+        self.client
+            .threads()
+            .messages(&log_entry.thread.id)
+            .create(
+                CreateMessageRequestArgs::default()
+                    .role(MessageRole::User)
+                    .content(CreateMessageRequestContent::ContentArray(openai_content))
+                    .metadata(convert_args!(hashmap!(
+                        "user_id" => log_entry.user.id.to_string(),
+                        "user_name" => log_entry.user.name.clone(),
+                        "user_nick" => log_entry.user.nick.unwrap_or_else(|| log_entry.user.name.clone()),
+                        "message_id" => log_entry.message.id.to_string(),
+                        "channel_id" => log_entry.channel.id.to_string(),
+                        "guild_id" => log_entry.guild.id.to_string(),
+                    )))
+                    .build()?,
+            )
+            .await?;
+
+        let mut stream = self
+            .client
+            .threads()
+            .runs(&log_entry.thread.id)
+            .create_stream(
+                CreateRunRequestArgs::default()
+                    .assistant_id(&self.assistant_id)
+                    .parallel_tool_calls(true)
+                    .tools(tools::get_specs())
+                    .stream(true)
+                    .response_format(AssistantsApiResponseFormatOption::Format(
+                        ResponseFormat::Text,
+                    ))
+                    .build()?,
+            )
+            .await?;
+
+        let mut reply_to = msg.clone();
+
+        while let Some(event) = stream.next().await {
+            let event = event?;
+            // log::trace!("{event:?}");
+            match event {
+                AssistantStreamEvent::ThreadRunRequiresAction(run) => {
+                    if let Some(action) = run.required_action {
+                        let mut tasks = JoinSet::new();
+                        for call in action.submit_tool_outputs.tool_calls {
+                            tasks.spawn(async move {
+                                ToolsOutputsArgs::default()
+                                    .tool_call_id(call.id)
+                                    .output(tools::run(call.function).await)
+                                    .build()
+                            });
+                        }
+
+                        let mut tool_outputs = Vec::new();
+                        while let Some(result) = tasks.join_next().await {
+                            tool_outputs.push(result??);
+                        }
+
+                        self.client
+                            .threads()
+                            .runs(&log_entry.thread.id)
+                            .submit_tool_outputs(
+                                &run.id,
+                                SubmitToolOutputsRunRequest {
+                                    tool_outputs,
+                                    stream: None,
+                                },
+                            )
+                            .await?;
+                    }
+                }
+
+                AssistantStreamEvent::ThreadRunCompleted(run)
+                | AssistantStreamEvent::ThreadRunIncomplete(run)
+                | AssistantStreamEvent::ThreadRunFailed(run)
+                | AssistantStreamEvent::ThreadRunCancelled(run) => {
+                    self.after_run(&entry_id, run).await?;
+                }
+
+                AssistantStreamEvent::ThreadMessageIncomplete(message)
+                | AssistantStreamEvent::ThreadMessageCompleted(message) => {
+                    for content in &message.content {
+                        match content {
+                            MessageContent::Text(content) => {
+                                for chunk in
+                                    WordChunks::from_str(&content.text.value, MESSAGE_CODE_LIMIT)
+                                {
+                                    reply_to = self
+                                        .reply(
+                                            ctx,
+                                            &entry_id,
+                                            &reply_to,
+                                            CreateMessage::new().content(chunk),
+                                            None,
+                                        )
+                                        .await?;
+                                }
                             }
-                            _ => {
-                                // noop
+                            MessageContent::ImageFile(content) => {
+                                let file = self
+                                    .client
+                                    .files()
+                                    .content(&content.image_file.file_id)
+                                    .await?;
+                                reply_to = self
+                                    .reply(
+                                        ctx,
+                                        &entry_id,
+                                        &reply_to,
+                                        CreateMessage::new(),
+                                        Some(CreateAttachment::bytes(file, "image.png")),
+                                    )
+                                    .await?;
+                            }
+                            MessageContent::ImageUrl(content) => {
+                                reply_to = self
+                                    .reply(
+                                        ctx,
+                                        &entry_id,
+                                        &reply_to,
+                                        CreateMessage::new().add_embed(
+                                            CreateEmbed::new().image(&content.image_url.url),
+                                        ),
+                                        None,
+                                    )
+                                    .await?;
+                            }
+                            MessageContent::Refusal(content) => {
+                                reply_to = self
+                                    .reply(
+                                        ctx,
+                                        &entry_id,
+                                        &reply_to,
+                                        CreateMessage::new().content(&content.refusal),
+                                        None,
+                                    )
+                                    .await?;
                             }
                         }
                     }
-
-                    for url in urls {
-                        content.push(OpenAiUserMessage::ImageUrl {
-                            image_url: OpenAiImageUrl {
-                                url,
-                                detail: OpenAiImageDetail::Low,
-                            },
-                        });
-                    }
                 }
+
+                AssistantStreamEvent::ErrorEvent(err) => {
+                    self.log
+                        .update_one(
+                            doc! { "_id": &entry_id },
+                            doc! { "$push": { "errors": &err.message } },
+                        )
+                        .await?;
+
+                    reply_to = reply_to
+                        .reply(
+                            ctx,
+                            MessageBuilder::new()
+                                .push_codeblock_safe(err.message, None)
+                                .build(),
+                        )
+                        .await?;
+                }
+
                 _ => {
-                    // noop
+                    // ignore other events
                 }
             }
         }
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize)]
-enum OpenAiModel {
-    #[serde(rename = "gpt-3.5-turbo")]
-    Gpt35Turbo,
-    #[serde(rename = "gpt-3.5-turbo-16k")]
-    Gpt35Turbo16k,
-    #[serde(rename = "gpt-4")]
-    Gpt4,
-    #[serde(rename = "gpt-4-32k")]
-    Gpt432k,
-    #[serde(rename = "gpt-4-1106-preview")]
-    Gpt4Turbo,
-    #[serde(rename = "gpt-4-vision-preview")]
-    Gpt4Vision,
-    #[serde(rename = "gpt-4o")]
-    Gpt4O,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct OpenAiResponse {
-    model: String,
-    choices: Vec<OpenAiResponseChoice>,
-    usage: OpenAiResponseUsage,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct OpenAiResponseChoice {
-    message: OpenAiMessage,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct OpenAiResponseUsage {
-    prompt_tokens: usize,
-    completion_tokens: usize,
-    total_tokens: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OpenAiImageUrl {
-    url: String,
-    detail: OpenAiImageDetail,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OpenAiImageDetail {
-    Low,
-    High,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum OpenAiUserMessage {
-    Text {
-        text: String,
-    },
-    #[cfg(feature = "openai-vision")]
-    ImageUrl {
-        image_url: OpenAiImageUrl,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "role", rename_all = "snake_case")]
-pub enum OpenAiMessage {
-    System {
-        content: String,
-    },
-    User {
-        content: Vec<OpenAiUserMessage>,
-    },
-    Assistant {
-        content: Option<String>,
-        #[cfg(feature = "openai-functions")]
-        #[serde(skip_serializing_if = "Option::is_none")]
-        function_call: Option<FunctionCall>,
-    },
-    Function {
-        content: String,
-        name: String,
-    },
-}
-
-impl OpenAiMessage {
-    #[inline]
-    pub fn content(&self) -> Option<&String> {
-        match self {
-            OpenAiMessage::System { content } => Some(content),
-            OpenAiMessage::User { content } => content
-                .iter()
-                .filter_map(|msg| match msg {
-                    OpenAiUserMessage::Text { text } => Some(text),
-                    #[cfg(feature = "openai-vision")]
-                    OpenAiUserMessage::ImageUrl { .. } => None,
-                })
-                .next(),
-            OpenAiMessage::Assistant { content, .. } => content.as_ref(),
-            OpenAiMessage::Function { content, .. } => Some(content),
-        }
-    }
-
-    #[inline]
-    pub fn content_mut(&mut self) -> Option<&mut String> {
-        match self {
-            OpenAiMessage::System { content } => Some(content),
-            OpenAiMessage::User { content } => content
-                .iter_mut()
-                .filter_map(|msg| match msg {
-                    OpenAiUserMessage::Text { text } => Some(text),
-                    #[cfg(feature = "openai-vision")]
-                    OpenAiUserMessage::ImageUrl { .. } => None,
-                })
-                .next(),
-            OpenAiMessage::Assistant { content, .. } => content.as_mut(),
-            OpenAiMessage::Function { content, .. } => Some(content),
-        }
-    }
-}
-
-pub struct OpenAi {
-    client: reqwest::Client,
-    api_key: String,
-    temperature: Option<f32>,
-    prompt: String,
-    examples: Vec<(String, String)>,
-    bot_replacements: Vec<(Regex, String)>,
-    user_replacements: Vec<(Regex, String)>,
-}
-
-fn parse_replacements(
-    config: impl Iterator<Item = (impl AsRef<str>, impl Into<String>)>,
-) -> Vec<(Regex, String)> {
-    config
-        .filter_map(|(key, value)| match Regex::new(key.as_ref()) {
-            Ok(re) => Some((re, value.into())),
-            Err(err) => {
-                log::error!("Invalid OpenAI replacement regex: {}", err);
-                None
-            }
-        })
-        .collect()
-}
-
-impl OpenAi {
-    #[inline]
-    pub fn new(config: &OpenAiConfig) -> Self {
-        Self {
-            client: reqwest::ClientBuilder::new()
-                .timeout(Duration::from_secs(55))
-                .build()
-                .expect("invalid static reqwest client config"),
-            api_key: config.api_key.to_string(),
-            temperature: config.temperature,
-            prompt: config.prompt.to_string().trim().to_owned(),
-            examples: config
-                .examples
-                .iter()
-                .map(|(user, bot)| (user.to_string(), bot.to_string()))
-                .collect(),
-            bot_replacements: parse_replacements(config.bot_replacements.iter()),
-            user_replacements: parse_replacements(config.user_replacements.iter()),
-        }
-    }
-
-    async fn request(&self, request: &OpenAiRequest) -> Result<OpenAiResponse> {
-        log::debug!("OpenAI request: {}", serde_json::to_string_pretty(request)?);
-
-        let response = self
-            .client
-            .post("https://api.openai.com/v1/chat/completions")
-            .bearer_auth(&self.api_key)
-            .json(request)
-            .send()
-            .await?;
-
-        match response.error_for_status_ref() {
-            Ok(_) => {
-                let text = response.text().await?;
-                log::debug!("OpenAI response: {}", text);
-                Ok(serde_json::from_str(&text)?)
-            }
-            Err(err) => {
-                if let Ok(text) = response.text().await {
-                    log::debug!("OpenAI error response: {}", text);
-                }
-                Err(err.into())
-            }
-        }
-    }
-
-    pub async fn chat(
-        &self,
-        ctx: &Context,
-        msg: &Message,
-        mut request: OpenAiRequest,
-        botname: impl AsRef<str>,
-    ) -> Result<String> {
-        for message in &mut request.messages {
-            let replacements = match message {
-                OpenAiMessage::User { .. } => &self.user_replacements,
-                OpenAiMessage::Assistant { .. } => &self.bot_replacements,
-                OpenAiMessage::System { .. } | OpenAiMessage::Function { .. } => continue,
-            };
-
-            for (from, to) in replacements {
-                if let Some(content) = message.content_mut() {
-                    *content = from.replace_all(content, to).to_string();
-                }
-            }
-        }
-
-        request.temperature = request.temperature.or(self.temperature);
-
-        for (user, bot) in self.examples.iter().rev() {
-            request.unshift_message(OpenAiMessage::Assistant {
-                content: Some(bot.clone()),
-                #[cfg(feature = "openai-functions")]
-                function_call: None,
-            });
-            request.unshift_message(OpenAiMessage::User {
-                content: vec![OpenAiUserMessage::Text { text: user.clone() }],
-            });
-        }
-
-        let now = Utc::now();
-        request.unshift_message(OpenAiMessage::System {
-            content: self
-                .prompt
-                .replace("{botname}", botname.as_ref())
-                .replace("{date}", &now.format("%A, %B %d, %Y").to_string())
-                .replace("{time}", &now.format("%I:%M %p").to_string())
-                .replace(
-                    "{weekday}",
-                    match now.weekday() {
-                        Weekday::Mon => "Monday",
-                        Weekday::Tue => "Tuesday",
-                        Weekday::Wed => "Wednesday",
-                        Weekday::Thu => "Thursday",
-                        Weekday::Fri => "Friday",
-                        Weekday::Sat => "Saturday",
-                        Weekday::Sun => "Sunday",
-                    },
-                ),
-        });
-
-        request.model = MODEL;
-
-        #[cfg(feature = "openai-vision")]
-        request.expand_vision();
-
-        let response = self.request(&request).await?;
-        Self::update_stats(
-            ctx,
-            msg,
-            &response,
-            #[cfg(feature = "openai-functions")]
-            None,
-        )
-        .await?;
-
-        #[cfg(feature = "openai-functions")]
-        let response = if let Some(call) = response.choices.get(0).and_then(|choice| match &choice
-            .message
-        {
-            OpenAiMessage::Assistant { function_call, .. } => function_call.as_ref(),
-            _ => None,
-        }) {
-            request.push_message(response.choices.get(0).unwrap().message.clone());
-            request.push_message(OpenAiMessage::Function {
-                name: (&call.name).into(),
-                content: functions::call(ctx, msg, &call)
-                    .await
-                    .unwrap_or_else(|err| err.to_string()),
-            });
-
-            request.function_call = FunctionCallType::None;
-            request.model = MODEL;
-
-            let response = self.request(&request).await?;
-            Self::update_stats(ctx, msg, &response, Some(call.clone())).await?;
-            response
-        } else {
-            response
-        };
-
-        if let Some(content) = response
-            .choices
-            .get(0)
-            .and_then(|choice| choice.message.content())
-        {
-            Ok(CLEANUP_REGEX.replace_all(content, "").to_string())
-        } else {
-            bail!("No content in OpenAI response")
-        }
-    }
-
-    async fn update_stats(
-        ctx: &Context,
-        message: &Message,
-        response: &OpenAiResponse,
-        #[cfg(feature = "openai-functions")] function_call: Option<FunctionCall>,
-    ) -> Result<()> {
-        let collection = get_data::<DbKey>(ctx)
-            .await?
-            .collection::<UserLog>(USER_LOG_COLLECTION_NAME);
-
-        collection
-            .insert_one(UserLog {
-                time: Utc::now(),
-                user_id: message.author.id.to_string(),
-                model: response.model.clone(),
-                prompt_tokens: i64::value_from(response.usage.prompt_tokens).unwrap_or_saturate(),
-                completion_tokens: i64::value_from(response.usage.completion_tokens)
-                    .unwrap_or_saturate(),
-                total_tokens: i64::value_from(response.usage.total_tokens).unwrap_or_saturate(),
-                #[cfg(feature = "openai-functions")]
-                function_call,
-            })
-            .await?;
 
         Ok(())
     }

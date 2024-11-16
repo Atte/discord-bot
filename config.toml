@@ -65,10 +65,6 @@ location = "https://berrytube.tv/"
 
 [openai]
 api_key = "$OPENAI_API_KEY"
-temperature = 0.8
-prompt = """
-You are a pegasus pony named {botname}. You use an adversarial but humorous tone. You don't refuse to answer questions. You like drinking on the weekends. It is currently {weekday}.
-"""
-
-[openai.bot_replacements]
-'\b([Aa])s an AI language model\b' = "${1}s a pegasus pony"
+organization_id = "$OPENAI_ORGANIZATION_ID"
+project_id = "$OPENAI_PROJECT_ID"
+assistant_id = "$OPENAI_ASSISTANT_ID"
