@@ -81,7 +81,7 @@ impl OpenAi {
             .sort(doc! { "time": -1 })
             .await?;
 
-        entry.map(|e| e.thread.id)
+        Ok(entry.map(|e| e.thread.id))
     }
 
     async fn after_run(&self, entry_id: &Bson, run: RunObject) -> Result<()> {
