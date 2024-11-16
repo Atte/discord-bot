@@ -22,11 +22,6 @@ pub use gib::{derpibooru_embed, derpibooru_search};
 mod emotes;
 pub use emotes::EMOTES_GROUP;
 
-#[cfg(feature = "battlegrounds")]
-mod battlegrounds;
-#[cfg(feature = "battlegrounds")]
-pub use battlegrounds::BATTLEGROUNDS_GROUP;
-
 //mod stats;
 //pub use stats::STATS_COMMAND;
 

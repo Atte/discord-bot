@@ -6,7 +6,7 @@ use super::super::{
     ConfigKey,
 };
 use crate::util::ellipsis_string;
-use color_eyre::eyre::{eyre, OptionExt, Result};
+use color_eyre::eyre::{eyre, Result};
 use derivative::Derivative;
 use itertools::{EitherOrBoth, Itertools};
 use serenity::{
@@ -138,39 +138,6 @@ impl Ranks {
             .map(|rank| (rank.role.name.clone(), rank.members.len()))
             .collect()
     }
-
-    #[cfg(feature = "colors")]
-    pub async fn colors(&mut self, ctx: &Context, guild_id: GuildId) -> Result<Vec<Rank>> {
-        let config = get_data::<ConfigKey>(ctx).await?;
-
-        let guild = guild_id
-            .to_guild_cached(ctx)
-            .ok_or_eyre("Guild not in cache")?;
-
-        let highest_position = guild
-            .roles
-            .values()
-            .filter(|role| config.discord.colors.start_roles.contains(&role.id))
-            .map(|role| role.position)
-            .max()
-            .ok_or_else(|| eyre!("Colors start marker not found!"))?;
-        let lowest_position = guild
-            .roles
-            .values()
-            .filter(|role| config.discord.colors.end_roles.contains(&role.id))
-            .map(|role| role.position)
-            .min()
-            .ok_or_else(|| eyre!("Colors end marker not found!"))?;
-
-        Ok(self
-            .0
-            .iter()
-            .filter(|rank| {
-                rank.role.position > lowest_position && rank.role.position < highest_position
-            })
-            .cloned()
-            .collect())
-    }
 }
 
 async fn handle_joinleave(
@@ -183,7 +150,7 @@ async fn handle_joinleave(
     let guild_id = msg
         .guild_id
         .ok_or_else(|| eyre!("No guild_id on Message!"))?;
-    let mut ranks = Ranks::from_guild(ctx, guild_id).await?;
+    let ranks = Ranks::from_guild(ctx, guild_id).await?;
     let mut user_role_ids: HashSet<RoleId> = msg
         .member
         .as_ref()
@@ -192,9 +159,6 @@ async fn handle_joinleave(
         .iter()
         .copied()
         .collect();
-
-    #[cfg(feature = "colors")]
-    let colors = ranks.colors(ctx, guild_id).await?;
 
     let config = get_data::<ConfigKey>(ctx).await?;
     let mut response = MessageBuilder::new();
@@ -215,15 +179,6 @@ async fn handle_joinleave(
                             .push("You are not allowed to join ")
                             .push_line_safe(&rank.role.name);
                         continue 'outer;
-                    }
-                }
-
-                #[cfg(feature = "colors")]
-                if colors.iter().any(|color| color.role.id == rank.role.id) {
-                    for color in colors.iter().filter(|color| color.role.id != rank.role.id) {
-                        if user_role_ids.contains(&color.role.id) {
-                            user_role_ids.remove(&color.role.id);
-                        }
                     }
                 }
 

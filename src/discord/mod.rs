@@ -20,14 +20,8 @@ mod hooks;
 pub mod limits;
 mod log_channel;
 mod rules_check;
-mod safe_reply;
 mod stats;
 mod sticky_roles;
-
-#[cfg(feature = "battlegrounds")]
-mod battlegrounds;
-#[cfg(feature = "colors")]
-mod colors;
 
 #[derive(Debug)]
 pub struct ActivityKey;
@@ -101,9 +95,6 @@ impl Discord {
             .group(&commands::EMOTES_GROUP)
             .group(&commands::MISC_GROUP);
 
-        #[cfg(feature = "battlegrounds")]
-        let framework = framework.group(&commands::BATTLEGROUNDS_GROUP);
-
         let mut cache_settings = CacheSettings::default();
         cache_settings.max_messages = 1024;
 
@@ -124,18 +115,6 @@ impl Discord {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        #[cfg(feature = "colors")]
-        if let Some(config) = self.client.data.read().await.get::<ConfigKey>() {
-            if let Some(db) = self.client.data.read().await.get::<DbKey>() {
-                colors::spawn(
-                    Arc::clone(&self.client.http),
-                    Arc::clone(&self.client.cache),
-                    config.discord.colors.clone(),
-                    db.clone(),
-                );
-            }
-        }
-
         self.client.start().await?;
         Ok(())
     }

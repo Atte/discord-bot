@@ -46,18 +46,6 @@ impl EventHandler for Handler {
                 }
             }
 
-            #[cfg(feature = "battlegrounds")]
-            if message.channel_id == config.battlegrounds.arena_channel {
-                tokio::spawn(async {
-                    let ctx = ctx;
-                    let message = message;
-                    if let Err(err) = super::battlegrounds::message(&ctx, &message).await {
-                        error!("Battlegrounds: {err:?}");
-                    }
-                });
-                return;
-            }
-
             #[cfg(feature = "openai")]
             if config
                 .discord

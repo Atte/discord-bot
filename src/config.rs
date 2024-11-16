@@ -21,8 +21,6 @@ pub struct Config {
     pub teamup: Vec<TeamupConfig>,
     #[cfg(feature = "openai")]
     pub openai: OpenAiConfig,
-    #[cfg(feature = "battlegrounds")]
-    pub battlegrounds: BattlegroundsConfig,
 }
 
 impl Config {
@@ -71,16 +69,12 @@ pub struct DiscordConfig {
     pub rank_start_roles: HashSet<RoleId>,
     #[serde(default)]
     pub rank_end_roles: HashSet<RoleId>,
-    #[cfg(feature = "colors")]
-    pub colors: ColorsConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct GibConfig {
     pub endpoint: SubstitutingString,
     pub user_agent: SubstitutingString,
-    #[serde(default)]
-    pub shy_artists: HashSet<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -104,7 +98,7 @@ pub struct TeamupConfig {
     pub recurring_subcalendars: HashSet<u64>,
     #[serde(default)]
     pub oneoff_subcalendars: HashSet<u64>,
-    pub location: SubstitutingString,
+    pub location: Option<SubstitutingString>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -118,32 +112,6 @@ pub struct OpenAiConfig {
     pub bot_replacements: HashMap<SubstitutingString, String>,
     #[serde(default)]
     pub user_replacements: HashMap<SubstitutingString, String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct BattlegroundsConfig {
-    pub api: Option<SubstitutingString>,
-    #[serde(default)]
-    pub debug: bool,
-    pub guild: GuildId,
-    pub player_role: RoleId,
-    pub playing_role: RoleId,
-    pub lobby_channel: ChannelId,
-    pub arena_channel: ChannelId,
-    pub max_idle_rounds: usize,
-    pub min_players: usize,
-}
-
-#[cfg(feature = "colors")]
-#[derive(Debug, Clone, Deserialize)]
-pub struct ColorsConfig {
-    pub guilds: HashSet<GuildId>,
-    pub channels: HashSet<ChannelId>,
-    pub start_roles: HashSet<RoleId>,
-    pub end_roles: HashSet<RoleId>,
-    #[serde(with = "humantime_serde")]
-    pub rate: std::time::Duration,
-    pub reset_message: Option<String>,
 }
 
 #[cfg(test)]

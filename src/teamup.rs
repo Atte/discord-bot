@@ -1,4 +1,4 @@
-use crate::config::TeamupConfig;
+use crate::{config::TeamupConfig, substituting_string::SubstitutingString};
 use chrono::{DateTime, Duration, Utc};
 use color_eyre::{
     eyre::{eyre, Result},
@@ -20,8 +20,8 @@ const RATE_LIMIT: StdDuration = StdDuration::from_secs(15);
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum TeamupId {
-    String(String),
-    Number(u64),
+    String(#[allow(unused)] String),
+    Number(#[allow(unused)] u64),
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -240,7 +240,11 @@ impl Teamup {
                     id: "serialization skipped".to_owned(),
                     creator_id: "serialization skipped".to_owned(),
                     entity_metadata: Some(DiscordEventEntityMetadata {
-                        location: Some("https://berrytube.tv".to_owned()),
+                        location: self
+                            .config
+                            .location
+                            .as_ref()
+                            .map(SubstitutingString::to_string),
                     }),
                     name: calendar_event.title,
                     privacy_level: Some(DiscordEventPrivacyLevel::GuildOnly),
