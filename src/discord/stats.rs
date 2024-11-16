@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use color_eyre::eyre::{eyre, Result};
 use conv::{UnwrapOrSaturate, ValueFrom};
 use lazy_static::lazy_static;
-use mongodb::{bson::doc, options::UpdateOptions};
+use mongodb::bson::doc;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serenity::{
@@ -134,8 +134,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                     "emoji_count": i64::value_from(emojis.len()).unwrap_or_saturate(),
                 },
             },
-            UpdateOptions::builder().upsert(true).build(),
-        )
+        ).upsert(true)
         .await?;
 
     collection
@@ -166,8 +165,7 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                     "emoji_count": i64::value_from(emojis.len()).unwrap_or_saturate(),
                 },
             },
-            UpdateOptions::builder().upsert(true).build(),
-        )
+        ).upsert(true)
         .await?;
 
     for (id, name) in emojis {
@@ -193,8 +191,8 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
                         "use_count": 1,
                     },
                 },
-                UpdateOptions::builder().upsert(true).build(),
             )
+            .upsert(true)
             .await?;
     }
 

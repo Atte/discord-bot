@@ -5,10 +5,7 @@ use crate::util::{ellipsis_string, separate_thousands_unsigned};
 use chrono::{DateTime, Utc};
 use futures::StreamExt;
 use itertools::Itertools;
-use mongodb::{
-    bson::{doc, to_bson, Document},
-    options::{FindOptions, UpdateOptions},
-};
+use mongodb::bson::{doc, to_bson, Document};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DefaultOnNull};
@@ -98,13 +95,9 @@ pub async fn derpibooru_search(
 
     let image_ids: Vec<i64> = images.iter().map(|image| image.id).collect();
     let seen_ids: Vec<i64> = collection
-        .find(
-            doc! { "image.id": { "$in": image_ids.as_slice() } },
-            FindOptions::builder()
-                .projection(doc! { "image.id": 1 })
-                .sort(doc! { "time": 1 })
-                .build(),
-        )
+        .find(doc! { "image.id": { "$in": image_ids.as_slice() } })
+        .projection(doc! { "image.id": 1 })
+        .sort(doc! { "time": 1 })
         .await?
         .filter_map(|doc| async move {
             doc.ok().and_then(|doc| {
@@ -134,8 +127,8 @@ pub async fn derpibooru_search(
             .update_one(
                 doc! { "image.id": image.id },
                 doc! { "$set": { "image": to_bson(&image)?, "time": Utc::now() } },
-                UpdateOptions::builder().upsert(true).build(),
             )
+            .upsert(true)
             .await?;
         Ok(Some((image, response.total)))
     } else {

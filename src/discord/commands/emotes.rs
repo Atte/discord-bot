@@ -22,7 +22,7 @@ use std::{
     time::Duration,
 };
 use tokio::time::sleep;
-use zip::{write::FileOptions, ZipWriter};
+use zip::{write::SimpleFileOptions, ZipWriter};
 
 lazy_static! {
     static ref EMOTE_PATTERN: Regex =
@@ -140,19 +140,16 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .await?
         .collection::<Document>("emote-submissions");
     collection
-        .insert_one(
-            doc! {
-                "time": Utc::now(),
-                "guild_id": guild.id.to_string(),
-                "emote_id": emoji.id.to_string(),
-                "emote_name": &emoji.name,
-                "user_id": replied.author.id.to_string(),
-                "user_name": replied.author.name,
-                "approver_id": msg.author.id.to_string(),
-                "approver_name": &msg.author.name
-            },
-            None,
-        )
+        .insert_one(doc! {
+            "time": Utc::now(),
+            "guild_id": guild.id.to_string(),
+            "emote_id": emoji.id.to_string(),
+            "emote_name": &emoji.name,
+            "user_id": replied.author.id.to_string(),
+            "user_name": replied.author.name,
+            "approver_id": msg.author.id.to_string(),
+            "approver_name": &msg.author.name
+        })
         .await?;
 
     msg.reply(
@@ -197,7 +194,11 @@ async fn download_emotes(ctx: &Context, msg: &Message) -> CommandResult {
                 .split('/')
                 .last()
                 .ok_or_else(|| eyre!("Invalid content-type header"))?;
-            zip.start_file(format!("{}.{filetype}", emoji.name), FileOptions::default())?;
+
+            zip.start_file(
+                format!("{}.{filetype}", emoji.name),
+                SimpleFileOptions::default(),
+            )?;
             zip.write_all(&response.bytes().await?)?;
 
             if emoji.animated {

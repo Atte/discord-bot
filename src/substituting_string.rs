@@ -9,7 +9,7 @@ use std::{env, fmt};
 
 #[derive(Derivative, Debug, Clone, Default, Display, AsRef, Deref)]
 #[derivative(PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[display(fmt = "{resolved}")]
+#[display("{resolved}")]
 pub struct SubstitutingString {
     #[derivative(
         PartialEq = "ignore",

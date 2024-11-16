@@ -4,12 +4,12 @@ use std::{
 };
 
 use color_eyre::eyre::{eyre, OptionExt, Result};
-use mongodb::{bson::doc, options::FindOneOptions, Database};
+use mongodb::{bson::doc, Database};
 use serde::{Deserialize, Serialize};
-use serenity::all::{Cache, CreateMessage, GuildId, Http, RoleId, UserId};
+use serenity::all::{Cache, GuildId, Http, RoleId, UserId};
 use std::collections::HashMap;
 
-use crate::config::{ColorsConfig, DiscordConfig};
+use crate::config::ColorsConfig;
 
 const COLLECTION_NAME: &str = "colors";
 
@@ -98,12 +98,10 @@ async fn remove_ranks(http: &Http, guild_id: GuildId, stats: &Stats) -> Result<(
 async fn latest_from_database(db: &Database, guild_id: GuildId) -> Result<Option<SystemTime>> {
     let collection = db.collection::<Stats>(COLLECTION_NAME);
     if let Some(latest) = collection
-        .find_one(
-            doc! {
-                "guild_id": guild_id.to_string(),
-            },
-            FindOneOptions::builder().sort(doc! {"time": -1}).build(),
-        )
+        .find_one(doc! {
+            "guild_id": guild_id.to_string(),
+        })
+        .sort(doc! {"time": -1})
         .await?
     {
         Ok(Some(latest.time))
@@ -114,12 +112,12 @@ async fn latest_from_database(db: &Database, guild_id: GuildId) -> Result<Option
 
 async fn save_to_database(db: &Database, stats: &Stats) -> Result<()> {
     let collection = db.collection::<Stats>(COLLECTION_NAME);
-    collection.insert_one(stats, None).await?;
+    collection.insert_one(stats).await?;
     Ok(())
 }
 
 pub fn spawn(
-    http: Arc<Http>,
+    _http: Arc<Http>,
     cache: Arc<Cache>,
     config: ColorsConfig,
     db: Database,

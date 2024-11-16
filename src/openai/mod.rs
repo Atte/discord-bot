@@ -2,7 +2,7 @@ use crate::{
     config::OpenAiConfig,
     discord::{get_data, DbKey},
 };
-use chrono::{DateTime, Datelike, Timelike, Utc, Weekday};
+use chrono::{DateTime, Datelike, Utc, Weekday};
 use color_eyre::eyre::{bail, Result};
 use conv::{UnwrapOrSaturate, ValueFrom};
 use lazy_static::lazy_static;
@@ -493,21 +493,17 @@ impl OpenAi {
             .collection::<UserLog>(USER_LOG_COLLECTION_NAME);
 
         collection
-            .insert_one(
-                UserLog {
-                    time: Utc::now(),
-                    user_id: message.author.id.to_string(),
-                    model: response.model.clone(),
-                    prompt_tokens: i64::value_from(response.usage.prompt_tokens)
-                        .unwrap_or_saturate(),
-                    completion_tokens: i64::value_from(response.usage.completion_tokens)
-                        .unwrap_or_saturate(),
-                    total_tokens: i64::value_from(response.usage.total_tokens).unwrap_or_saturate(),
-                    #[cfg(feature = "openai-functions")]
-                    function_call,
-                },
-                None,
-            )
+            .insert_one(UserLog {
+                time: Utc::now(),
+                user_id: message.author.id.to_string(),
+                model: response.model.clone(),
+                prompt_tokens: i64::value_from(response.usage.prompt_tokens).unwrap_or_saturate(),
+                completion_tokens: i64::value_from(response.usage.completion_tokens)
+                    .unwrap_or_saturate(),
+                total_tokens: i64::value_from(response.usage.total_tokens).unwrap_or_saturate(),
+                #[cfg(feature = "openai-functions")]
+                function_call,
+            })
             .await?;
 
         Ok(())

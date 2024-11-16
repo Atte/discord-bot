@@ -16,7 +16,6 @@
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
     };
   };
 
@@ -54,7 +53,7 @@
         nativeBuildInputs = with pkgs; [
           (rust-bin.stable.latest.default.override {
             extensions = [ "rust-analyzer" "rust-src" ];
-            targets = [ "aarch64-unknown-linux-gnu" ];
+            # targets = [ "aarch64-unknown-linux-gnu" ];
           })
           cargo-outdated
           nixpkgs-fmt

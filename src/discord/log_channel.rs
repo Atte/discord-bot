@@ -145,7 +145,7 @@ pub async fn member_updated(
                         .push_bold_line(
                             MessageBuilder::new()
                                 .mention(new_member)
-                                .push("'s nickname was changed (by them or by an admin)")
+                                .push("'s nickname changed")
                                 .build(),
                         )
                         .push_safe(&old_name)

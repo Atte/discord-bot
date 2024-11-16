@@ -2,10 +2,7 @@ use super::{get_data, DbKey};
 use color_eyre::eyre::{eyre, Result};
 use itertools::Itertools;
 use log::info;
-use mongodb::{
-    bson::{doc, Document},
-    options::{FindOneOptions, UpdateOptions},
-};
+use mongodb::bson::{doc, Document};
 use serenity::{
     all::EditMember,
     client::Context,
@@ -30,8 +27,8 @@ pub async fn save_stickies(ctx: &Context, member: &Member) -> Result<()> {
                     "role_ids": member.roles.iter().map(ToString::to_string).collect::<Vec<_>>(),
                 },
             },
-            UpdateOptions::builder().upsert(true).build(),
         )
+        .upsert(true)
         .await?;
     Ok(())
 }
@@ -41,15 +38,11 @@ pub async fn apply_stickies(ctx: &Context, member: &mut Member) -> Result<bool> 
         .await?
         .collection::<Document>(COLLECTION_NAME);
     if let Some(entry) = collection
-        .find_one(
-            doc! {
-                "user_id": member.user.id.to_string(),
-                "guild_id": member.guild_id.to_string(),
-            },
-            FindOneOptions::builder()
-                .projection(doc! { "role_ids": 1 })
-                .build(),
-        )
+        .find_one(doc! {
+            "user_id": member.user.id.to_string(),
+            "guild_id": member.guild_id.to_string(),
+        })
+        .projection(doc! { "role_ids": 1 })
         .await?
     {
         let current_user_id = ctx.cache.current_user().id.clone();

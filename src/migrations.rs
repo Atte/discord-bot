@@ -22,7 +22,6 @@ async fn mongo_number_to_string(
                     field: { "$toString": format!("${field}") }
                 }
             }],
-            None,
         )
         .await
 }
@@ -43,7 +42,6 @@ async fn mongo_number_array_to_string_array(
                     } }
                 }
             }],
-            None,
         )
         .await
 }
@@ -54,10 +52,10 @@ async fn mongo_ensure_indexes(
     indexes: Vec<(Document, bool)>,
 ) -> Result<()> {
     // ignore error: the collection might already exist
-    let _ = db.create_collection(collection, None).await;
+    let _ = db.create_collection(collection).await;
     let collection = db.collection::<Document>(collection);
 
-    let existing: Vec<_> = collection.list_indexes(None).await?.try_collect().await?;
+    let existing: Vec<_> = collection.list_indexes().await?.try_collect().await?;
 
     for (spec, unique) in &indexes {
         if existing.iter().any(|i| &i.keys == spec) {
@@ -70,7 +68,6 @@ async fn mongo_ensure_indexes(
                     .keys(spec.clone())
                     .options(IndexOptions::builder().unique(*unique).build())
                     .build(),
-                None,
             )
             .await?;
     }
@@ -82,7 +79,7 @@ async fn mongo_ensure_indexes(
         if let Some(name) = index.options.and_then(|options| options.name) {
             if name != "_id_" {
                 log::warn!("Dropping index {} {}", name, index.keys.to_string());
-                collection.drop_index(name, None).await?;
+                collection.drop_index(name).await?;
             }
         }
     }
