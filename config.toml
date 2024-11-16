@@ -65,6 +65,4 @@ location = "https://berrytube.tv/"
 
 [openai]
 api_key = "$OPENAI_API_KEY"
-organization_id = "$OPENAI_ORGANIZATION_ID"
-project_id = "$OPENAI_PROJECT_ID"
-assistant_id = "$OPENAI_ASSISTANT_ID"
+assistant_id = "asst_Q0NgloTow0fiQdArNr63FWvX"

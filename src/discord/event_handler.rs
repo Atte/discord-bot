@@ -53,19 +53,22 @@ impl EventHandler for Handler {
                 .contains(&message.channel_id)
                 && matches!(message.mentions_me(&ctx).await, Ok(true))
             {
-                if let Ok(openai) = get_data::<OpenAiKey>(&ctx).await {
-                    if let Err(err) = openai.handle_message(&ctx, &message).await {
-                        error!("OpenAI error: {err:?}");
-                        let _ = message
-                            .reply(
-                                ctx,
-                                MessageBuilder::new()
-                                    .push_codeblock_safe(err.to_string(), None)
-                                    .build(),
-                            )
-                            .await;
+                let _ = tokio::task::spawn(async move {
+                    if let Ok(openai) = get_data::<OpenAiKey>(&ctx).await {
+                        if let Err(err) = openai.handle_message(&ctx, &message).await {
+                            error!("OpenAI error: {err:?}");
+                            let _ = message
+                                .reply(
+                                    ctx,
+                                    MessageBuilder::new()
+                                        .push_codeblock_safe(err.to_string(), None)
+                                        .build(),
+                                )
+                                .await;
+                        }
                     }
-                }
+                })
+                .await;
             }
         }
     }

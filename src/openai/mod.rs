@@ -25,11 +25,11 @@ use serenity::{
     },
     prelude::TypeMapKey,
 };
+use tokio::task::JoinSet;
 
 mod models;
 mod tools;
 use models::*;
-use tokio::task::JoinSet;
 
 lazy_static! {
     static ref MESSAGE_CLEANUP_RE: Regex =
@@ -53,18 +53,7 @@ impl OpenAi {
     pub fn new(config: &crate::config::OpenAiConfig, db: Database) -> Self {
         Self {
             client: Client::with_config(
-                OpenAIConfig::new()
-                    .with_api_key(config.api_key.to_string())
-                    .with_org_id(config.organization_id.to_string())
-                    .with_project_id(config.project_id.to_string()),
-            )
-            .with_http_client(
-                reqwest::ClientBuilder::new()
-                    .proxy(reqwest::Proxy::all("http://127.0.0.1:8080").unwrap())
-                    .danger_accept_invalid_certs(true)
-                    .danger_accept_invalid_hostnames(true)
-                    .build()
-                    .unwrap(),
+                OpenAIConfig::new().with_api_key(config.api_key.to_string()),
             ),
             assistant_id: config.assistant_id.to_string(),
             log: db.collection("openai-log"),
@@ -87,9 +76,7 @@ impl OpenAi {
                     { "responses": { "id": ids } }
                 ]
             })
-            .sort(doc! {
-                "time": -1
-            })
+            .sort(doc! { "time": -1 })
             .await?;
         Ok(entry.map(|e| e.thread.id))
     }
@@ -145,6 +132,8 @@ impl OpenAi {
     }
 
     pub async fn handle_message(&self, ctx: &Context, msg: &Message) -> Result<()> {
+        let _typing = msg.channel_id.start_typing(&ctx.http);
+
         let content = MESSAGE_CLEANUP_RE.replace_all(&msg.content, "");
 
         let thread_id = if let Some(thread_id) = self.find_thread_id(msg).await? {
@@ -230,7 +219,6 @@ impl OpenAi {
             .await?;
 
         let mut reply_to = msg.clone();
-
         while let Some(event) = stream.next().await {
             let event = event?;
             // log::trace!("{event:?}");
@@ -252,10 +240,11 @@ impl OpenAi {
                             tool_outputs.push(result??);
                         }
 
-                        self.client
+                        stream = self
+                            .client
                             .threads()
                             .runs(&log_entry.thread.id)
-                            .submit_tool_outputs(
+                            .submit_tool_outputs_stream(
                                 &run.id,
                                 SubmitToolOutputsRunRequest {
                                     tool_outputs,
@@ -337,19 +326,19 @@ impl OpenAi {
                 }
 
                 AssistantStreamEvent::ErrorEvent(err) => {
-                    self.log
-                        .update_one(
-                            doc! { "_id": &entry_id },
-                            doc! { "$push": { "errors": &err.message } },
-                        )
-                        .await?;
-
                     reply_to = reply_to
                         .reply(
                             ctx,
                             MessageBuilder::new()
-                                .push_codeblock_safe(err.message, None)
+                                .push_codeblock_safe(&err.message, None)
                                 .build(),
+                        )
+                        .await?;
+
+                    self.log
+                        .update_one(
+                            doc! { "_id": &entry_id },
+                            doc! { "$push": { "errors": err.message } },
                         )
                         .await?;
                 }

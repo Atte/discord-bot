@@ -104,8 +104,6 @@ pub struct TeamupConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct OpenAiConfig {
     pub api_key: SubstitutingString,
-    pub organization_id: SubstitutingString,
-    pub project_id: SubstitutingString,
     pub assistant_id: SubstitutingString,
 }
 
