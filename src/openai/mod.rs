@@ -68,17 +68,20 @@ impl OpenAi {
             ids.extend(msgref.message_id.map(|r| r.to_string()));
         }
 
+        log::trace!("finding thread for {ids:?}");
+
         let entry = self
             .log
             .find_one(doc! {
                 "$or": [
-                    { "message.id": &ids },
-                    { "responses": { "id": ids } }
+                    { "message.id": { "$in": &ids } },
+                    { "responses": { "$elemMatch": { "id": { "$in": ids } } } }
                 ]
             })
             .sort(doc! { "time": -1 })
             .await?;
-        Ok(entry.map(|e| e.thread.id))
+
+        entry.map(|e| e.thread.id)
     }
 
     async fn after_run(&self, entry_id: &Bson, run: RunObject) -> Result<()> {
