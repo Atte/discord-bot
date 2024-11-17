@@ -1,4 +1,4 @@
-use std::{iter::once, sync::Arc};
+use std::sync::Arc;
 
 use crate::Result;
 use async_openai::{

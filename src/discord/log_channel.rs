@@ -158,23 +158,3 @@ pub async fn member_updated(
     }
     Ok(())
 }
-
-pub async fn rules_accepted(ctx: &Context, guild_id: GuildId, user: &User) -> Result<()> {
-    send_log(ctx, guild_id, || {
-        CreateEmbed::new()
-            .color(Colour::DARK_GREEN)
-            .author(CreateEmbedAuthor::new(user.tag()).icon_url(user.face()))
-            .description(
-                MessageBuilder::new()
-                    .push_bold(
-                        MessageBuilder::new()
-                            .mention(user)
-                            .push(" accepted the rules")
-                            .build(),
-                    )
-                    .build(),
-            )
-    })
-    .await?;
-    Ok(())
-}

@@ -1,5 +1,5 @@
 use super::{
-    get_data, limits::ACTIVITY_LENGTH, log_channel, rules_check, sticky_roles, ActivityKey,
+    get_data, limits::ACTIVITY_LENGTH, log_channel, stats::update_stats, sticky_roles, ActivityKey,
     ConfigKey,
 };
 use crate::util::ellipsis_string;
@@ -9,7 +9,7 @@ use serenity::{
     async_trait,
     client::{Context, EventHandler},
     model::{
-        channel::{Message, Reaction},
+        channel::Message,
         gateway::Ready,
         guild::Member,
         id::{ChannelId, GuildId, MessageId},
@@ -34,19 +34,16 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, message: Message) {
+        if let Err(err) = update_stats(&ctx, &message).await {
+            error!("Error in update_stats for normal_message: {err:?}");
+        }
+
         if message.author.bot {
             return;
         }
 
+        #[cfg(feature = "openai")]
         if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
-            if config.discord.clean_channels.contains(&message.channel_id) && !message.is_own(&ctx)
-            {
-                if let Err(err) = message.delete(&ctx).await {
-                    error!("Unable to delete clean channel spam: {err:?}");
-                }
-            }
-
-            #[cfg(feature = "openai")]
             if config
                 .discord
                 .command_channels
@@ -123,16 +120,8 @@ impl EventHandler for Handler {
         if let Err(err) = log_channel::member_added(&ctx, member.guild_id, &member.user).await {
             error!("Unable to log member addition: {err:?}");
         }
-        match sticky_roles::apply_stickies(&ctx, &mut member).await {
-            Ok(true) => { /* user has been here before */ }
-            Ok(false) => {
-                if let Err(err) = rules_check::post_welcome(ctx, member).await {
-                    error!("Unable to send welcome message: {err:?}");
-                }
-            }
-            Err(err) => {
-                error!("Unable to apply stickies: {err:?}");
-            }
+        if let Err(err) = sticky_roles::apply_stickies(&ctx, &mut member).await {
+            error!("Unable to apply stickies: {err:?}");
         }
     }
 
@@ -165,12 +154,6 @@ impl EventHandler for Handler {
         }
         if let Err(err) = sticky_roles::save_stickies(&ctx, &new_member).await {
             error!("Unable to save stickies: {err:?}");
-        }
-    }
-
-    async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
-        if let Err(err) = rules_check::handle_reaction(ctx, reaction).await {
-            error!("Error handling rule reaction: {err:?}");
         }
     }
 }

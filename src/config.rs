@@ -55,19 +55,6 @@ pub struct DiscordConfig {
     #[serde(default)]
     pub log_channels: HashSet<ChannelId>,
     #[serde(default)]
-    pub clean_channels: HashSet<ChannelId>,
-    #[serde(default)]
-    pub rules_channels: HashSet<ChannelId>,
-    #[serde(default)]
-    pub rules_roles: HashSet<RoleId>,
-    pub rules_url: Option<SubstitutingString>,
-    #[serde(default)]
-    pub emote_reward_roles: HashSet<RoleId>,
-    pub emote_reward_message: Option<SubstitutingString>,
-    #[serde(default)]
-    // TODO: deserialize key directly into RoleId
-    pub restricted_ranks: HashMap<String, HashSet<RoleId>>,
-    #[serde(default)]
     pub rank_start_roles: HashSet<RoleId>,
     #[serde(default)]
     pub rank_end_roles: HashSet<RoleId>,

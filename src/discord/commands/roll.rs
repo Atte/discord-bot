@@ -1,25 +1,25 @@
 use super::super::limits::REPLY_LENGTH;
-use crate::util::separate_thousands_floating;
+use crate::{discord::Context, util::separate_thousands_floating, Result};
 use itertools::Itertools;
 use lazy_regex::{regex_is_match, regex_replace_all};
+use poise::command;
 use rand::{distributions::Uniform, thread_rng, Rng};
-use serenity::{
-    client::Context,
-    framework::standard::{macros::command, Args, CommandResult},
-    model::channel::Message,
-    utils::MessageBuilder,
-};
+use serenity::utils::MessageBuilder;
 
-#[command]
-#[aliases(calc, calculate, calculator)]
-#[description("Cast die and/or do math")]
-#[usage("1d6 + 2d20")]
-#[min_args(1)]
-async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let original_input = args.message().trim();
+/// Cast die and/or do math
+///
+/// Example: 1d6 + 2d20 - 3
+#[command(
+    prefix_command,
+    category = "Misc",
+    aliases("calc", "calculate", "calculator")
+)]
+pub async fn roll(ctx: Context<'_>, #[rest] expression: String) -> Result<()> {
+    let expression = expression.trim();
+
     let input = regex_replace_all!(
         r"(?P<rolls>[1-9][0-9]*)?d(?P<sides>[1-9][0-9]*)",
-        original_input,
+        expression,
         |_, rolls: &str, sides: &str| {
             let distribution =
                 Uniform::new(1_usize, sides.parse::<usize>().unwrap_or(6_usize) + 1_usize);
@@ -35,22 +35,22 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             let result = separate_thousands_floating(*result.to_vec().first().unwrap());
             let mut response = if regex_is_match!(r"^\(?\d+\)?$", &input) {
                 MessageBuilder::new()
-                    .push_safe(original_input)
+                    .push_safe(expression)
                     .push(" \u{2192} ")
                     .push_bold_safe(&result)
                     .build()
             } else {
                 MessageBuilder::new()
-                    .push_safe(original_input)
+                    .push_safe(expression)
                     .push(" \u{2192} ")
                     .push_safe(input.clone())
                     .push(" = ")
                     .push_bold_safe(&result)
                     .build()
             };
-            if response.len() > REPLY_LENGTH || input == original_input {
+            if response.len() > REPLY_LENGTH || input == expression {
                 response = MessageBuilder::new()
-                    .push_safe(original_input)
+                    .push_safe(expression)
                     .push(" = ")
                     .push_bold_safe(&result)
                     .build();
@@ -62,9 +62,9 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                     .push_bold_safe(&result)
                     .build();
             }
-            msg.reply(ctx, response).await?
+            ctx.reply(response).await?
         }
-        Err(err) => msg.reply(ctx, format!("{err:?}")).await?,
+        Err(err) => ctx.reply(format!("{err:?}")).await?,
     };
     Ok(())
 }

@@ -17,14 +17,6 @@ command_channels = [
 log_channels = [
     439066300518760448, # test
 ]
-clean_channels = []
-rules_channels = [
-    893945120880222278, # test
-]
-rules_roles = [
-    967412631411503104, # test
-]
-rules_url = "https://berrytube.tv/rules/"
 rank_start_roles = [
     1121483889253294211, # test
     # 1245066501082316851, # test (colors)
@@ -32,13 +24,6 @@ rank_start_roles = [
 rank_end_roles = [
     1114229249646272572, # test
     # 1245069255872090344, # test (colors)
-]
-
-[discord.restricted_ranks]
-# test
-1109849696668766228 = [
-    1109849752843063387,
-    1109849811257151559,
 ]
 
 [gib]

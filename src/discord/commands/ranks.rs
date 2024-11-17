@@ -5,16 +5,14 @@ use super::super::{
     limits::{EMBED_DESC_LENGTH, REPLY_LENGTH},
     ConfigKey,
 };
-use crate::util::ellipsis_string;
-use color_eyre::eyre::{eyre, Result};
+use crate::{discord::Context, util::ellipsis_string};
+use color_eyre::eyre::{bail, eyre, OptionExt, Result};
 use derivative::Derivative;
 use itertools::{EitherOrBoth, Itertools};
-use serenity::{
-    all::{
-        Context, CreateEmbed, CreateEmbedFooter, CreateMessage, EditMember, GuildId, Member,
-        Message, MessageBuilder, Role, RoleId, UserId,
-    },
-    framework::standard::{macros::command, Args, CommandResult},
+use poise::command;
+use serenity::all::{
+    CreateEmbed, CreateEmbedFooter, CreateMessage, EditMember, GuildId, Member, MessageBuilder,
+    Role, RoleId, UserId,
 };
 use std::{cmp::Ordering, collections::HashSet, io::Write};
 use tabwriter::TabWriter;
@@ -43,7 +41,10 @@ impl Ranks {
         Self(ranks)
     }
 
-    async fn from_guild(ctx: &Context, guild_id: impl Into<GuildId>) -> Result<Self> {
+    async fn from_guild(
+        ctx: &serenity::all::Context,
+        guild_id: impl Into<GuildId>,
+    ) -> Result<Self> {
         let config = get_data::<ConfigKey>(ctx).await?;
         let guild = guild_id
             .into()
@@ -89,15 +90,6 @@ impl Ranks {
                 })
                 .collect(),
         ))
-    }
-
-    async fn from_message(ctx: &Context, msg: &Message) -> Result<Self> {
-        Self::from_guild(
-            ctx,
-            msg.guild_id
-                .ok_or_else(|| eyre!("No guild_id on Message!"))?,
-        )
-        .await
     }
 
     #[inline]
@@ -146,18 +138,18 @@ impl Ranks {
 }
 
 async fn handle_joinleave(
-    ctx: &Context,
-    msg: &Message,
-    mut args: Args,
+    ctx: &Context<'_>,
+    args: Vec<String>,
     mut on_join: impl FnMut(&Rank, &mut MessageBuilder) -> bool,
     mut on_leave: impl FnMut(&Rank, &mut MessageBuilder) -> bool,
-) -> CommandResult {
-    let guild_id = msg
-        .guild_id
+) -> Result<()> {
+    let guild_id = ctx
+        .guild_id()
         .ok_or_else(|| eyre!("No guild_id on Message!"))?;
-    let ranks = Ranks::from_guild(ctx, guild_id).await?;
-    let mut user_role_ids: HashSet<RoleId> = msg
-        .member
+    let ranks = Ranks::from_guild(ctx.serenity_context(), guild_id).await?;
+    let mut user_role_ids: HashSet<RoleId> = ctx
+        .author_member()
+        .await
         .as_ref()
         .ok_or_else(|| eyre!("No Member on Message!"))?
         .roles
@@ -165,9 +157,8 @@ async fn handle_joinleave(
         .copied()
         .collect();
 
-    let config = get_data::<ConfigKey>(ctx).await?;
     let mut response = MessageBuilder::new();
-    'outer: for arg in args.iter::<String>().map(Result::unwrap) {
+    for arg in args {
         let name = arg.trim();
         if let Some(rank) = ranks.by_name(name) {
             if user_role_ids.contains(&rank.role.id) {
@@ -175,20 +166,7 @@ async fn handle_joinleave(
                     user_role_ids.remove(&rank.role.id);
                 }
             } else {
-                for (key, restricted) in &config.discord.restricted_ranks {
-                    let key = RoleId::new(key.parse()?);
-                    if rank.role.id == key
-                        || (restricted.contains(&rank.role.id) && !user_role_ids.contains(&key))
-                    {
-                        response
-                            .push("You are not allowed to join ")
-                            .push_line_safe(&rank.role.name);
-                        continue 'outer;
-                    }
-                }
-
                 if on_join(&rank, &mut response) {
-                    // TODO: leave other restricted ranks
                     user_role_ids.insert(rank.role.id);
                 }
             }
@@ -197,21 +175,22 @@ async fn handle_joinleave(
         }
     }
     guild_id
-        .edit_member(&ctx, &msg.author, EditMember::new().roles(user_role_ids))
+        .edit_member(
+            &ctx,
+            ctx.author().id,
+            EditMember::new().roles(user_role_ids),
+        )
         .await?;
-    msg.reply(ctx, response.build()).await?;
+    ctx.reply(response.build()).await?;
     Ok(())
 }
 
-#[command]
-#[aliases(gain)]
-#[description("Join a rank")]
-#[min_args(1)]
-async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+/// Join a rank
+#[command(prefix_command, category = "Ranks", aliases("gain"))]
+pub async fn join(ctx: Context<'_>, ranks: Vec<String>) -> Result<()> {
     handle_joinleave(
-        ctx,
-        msg,
-        args,
+        &ctx,
+        ranks,
         |rank, response| {
             response.push("Joined ").push_line_safe(&rank.role.name);
             true
@@ -224,14 +203,12 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     .await
 }
 
-#[command]
-#[description("Leave a rank")]
-#[min_args(1)]
-async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+/// Leave a rank
+#[command(prefix_command, category = "Ranks")]
+pub async fn leave(ctx: Context<'_>, ranks: Vec<String>) -> Result<()> {
     handle_joinleave(
-        ctx,
-        msg,
-        args,
+        &ctx,
+        ranks,
         |rank, response| {
             response
                 .push("Already not in ")
@@ -246,16 +223,12 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     .await
 }
 
-#[command]
-#[aliases(role)]
-#[description("Join/leave a rank")]
-#[help_available(false)]
-#[min_args(1)]
-async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+/// Join/leave a rank
+#[command(prefix_command, category = "Ranks")]
+pub async fn rank(ctx: Context<'_>, ranks: Vec<String>) -> Result<()> {
     handle_joinleave(
-        ctx,
-        msg,
-        args,
+        &ctx,
+        ranks,
         |rank, response| {
             response.push("Joined ").push_line_safe(&rank.role.name);
             true
@@ -268,12 +241,14 @@ async fn rank(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     .await
 }
 
-#[command]
-#[aliases(roles)]
-#[description("List all available ranks, and which ones you currently have")]
-#[num_args(0)]
-async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
-    let ranks = Ranks::from_message(ctx, msg).await?;
+/// List all available ranks, and which ones you currently have
+#[command(prefix_command, category = "Ranks")]
+pub async fn ranks(ctx: Context<'_>) -> Result<()> {
+    let ranks = Ranks::from_guild(
+        ctx.serenity_context(),
+        ctx.guild_id().ok_or_eyre("no guild ID")?,
+    )
+    .await?;
 
     let rank_list = {
         let mut tw = TabWriter::new(Vec::new());
@@ -302,8 +277,11 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
         String::from_utf8(tw.into_inner()?)?
     };
 
-    let prefix = get_data::<ConfigKey>(ctx).await?.discord.command_prefix;
-    msg.channel_id
+    let prefix = get_data::<ConfigKey>(ctx.serenity_context())
+        .await?
+        .discord
+        .command_prefix;
+    ctx.channel_id()
         .send_message(
             ctx,
             CreateMessage::new().embed(
@@ -322,18 +300,15 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
         )
         .await?;
 
-    let user_ranks = ranks.of_user(&msg.author);
-    msg.reply(
-        ctx,
-        if user_ranks.is_empty() {
-            format!("You currently have no ranks. Use the {prefix}join command to join some.")
-        } else {
-            ellipsis_string(
-                format!("Your ranks are: {}", user_ranks.names().join(", ")),
-                REPLY_LENGTH,
-            )
-        },
-    )
+    let user_ranks = ranks.of_user(ctx.author().id);
+    ctx.reply(if user_ranks.is_empty() {
+        format!("You currently have no ranks. Use the {prefix}join command to join some.")
+    } else {
+        ellipsis_string(
+            format!("Your ranks are: {}", user_ranks.names().join(", ")),
+            REPLY_LENGTH,
+        )
+    })
     .await?;
 
     #[cfg(feature = "dropdowns")]
@@ -366,11 +341,16 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
             })
             .collect();
 
-        msg.channel_id
+        ctx.channel_id()
             .send_message(
                 ctx,
                 CreateMessage::new()
-                    .reference_message(msg)
+                    .reference_message(match ctx {
+                        poise::Context::Application(_) => {
+                            bail!("command not a message");
+                        }
+                        poise::Context::Prefix(prefix_context) => prefix_context.msg,
+                    })
                     .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                     .components(components),
             )

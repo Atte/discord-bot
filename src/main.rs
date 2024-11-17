@@ -7,10 +7,8 @@
     unused
 )]
 #![allow(clippy::module_name_repetitions)]
-// TODO: switch to new Serenity framework
-#![allow(deprecated)]
 
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{Error, Result};
 use log::{error, info, warn};
 use std::time::Duration;
 use tokio::time::sleep;

@@ -1,19 +1,22 @@
 use super::super::{
     get_data, get_data_or_insert_with, limits::EMBED_FIELD_VALUE_LENGTH, ConfigKey, DbKey,
 };
-use crate::util::{ellipsis_string, separate_thousands_unsigned};
+use crate::{
+    discord::Context,
+    util::{ellipsis_string, separate_thousands_unsigned},
+    Result,
+};
 use chrono::{DateTime, Utc};
+use color_eyre::eyre::eyre;
 use futures::StreamExt;
 use itertools::Itertools;
 use mongodb::bson::{doc, to_bson, Document};
+use poise::command;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DefaultOnNull};
 use serenity::{
     all::{CreateEmbed, CreateEmbedFooter, CreateMessage},
-    client::Context,
-    framework::standard::{macros::command, Args, CommandResult},
-    model::channel::Message,
     prelude::TypeMapKey,
 };
 use std::time::Duration;
@@ -49,23 +52,21 @@ impl TypeMapKey for ClientKey {
 
 const COLLECTION_NAME: &str = "gib-seen";
 
-pub async fn derpibooru_search(
-    ctx: &Context,
-    query: &str,
-) -> CommandResult<Option<(Image, usize)>> {
-    let config = get_data::<ConfigKey>(ctx).await?;
-    let collection = get_data::<DbKey>(ctx)
+pub async fn derpibooru_search(ctx: &Context<'_>, query: &str) -> Result<Option<(Image, usize)>> {
+    let config = get_data::<ConfigKey>(ctx.serenity_context()).await?;
+    let collection = get_data::<DbKey>(ctx.serenity_context())
         .await?
         .collection::<Document>(COLLECTION_NAME);
-    let client = get_data_or_insert_with::<ClientKey, _>(ctx, || {
+    let client = get_data_or_insert_with::<ClientKey, _>(ctx.serenity_context(), || {
         Client::builder()
             .user_agent(config.gib.user_agent.to_string())
             .connect_timeout(Duration::from_secs(10))
             .build()
-            // simplify error to a `String` to make it `impl Clone`
+            // simplify error to a `String` to make it `Clone`
             .map_err(|err| format!("Unable to create reqwest::Client: {err:?}"))
     })
-    .await?;
+    .await
+    .map_err(|err| eyre!(err))?;
 
     let response: SearchResponse = client
         .get(Url::parse_with_params(
@@ -119,18 +120,13 @@ pub async fn derpibooru_search(
     }
 }
 
-pub async fn derpibooru_embed(
-    ctx: &Context,
-    msg: &Message,
-    image: &Image,
-    total: usize,
-) -> CommandResult {
+pub async fn derpibooru_embed(ctx: &Context<'_>, image: &Image, total: usize) -> Result<()> {
     let artists = image
         .tags
         .iter()
         .filter_map(|tag| tag.strip_prefix("artist:"))
         .join(", ");
-    msg.channel_id
+    ctx.channel_id()
         .send_message(
             &ctx,
             CreateMessage::new().embed({
@@ -165,22 +161,22 @@ pub async fn derpibooru_embed(
     Ok(())
 }
 
-#[command]
-#[aliases(give, derpi, derpibooru)]
-#[description("Gib pics from Derpibooru")]
-#[usage("[tags\u{2026}]")]
-async fn gib(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    log::debug!("in gib {msg:?} {args:?}");
-
-    let mut query = args.message().trim();
+/// Gib pics matching the given tags from Derpibooru
+#[command(
+    prefix_command,
+    category = "Horse",
+    aliases("give", "derpi", "derpibooru")
+)]
+pub async fn gib(ctx: Context<'_>, #[rest] query: String) -> Result<()> {
+    let mut query = query.trim();
     if query.is_empty() {
         query = "*";
     }
 
-    if let Some((image, total)) = derpibooru_search(ctx, query).await? {
-        derpibooru_embed(ctx, msg, &image, total).await?;
+    if let Some((image, total)) = derpibooru_search(&ctx, query).await? {
+        derpibooru_embed(&ctx, &image, total).await?;
     } else {
-        msg.reply(&ctx, "No results").await?;
+        ctx.reply("No results").await?;
     }
 
     Ok(())

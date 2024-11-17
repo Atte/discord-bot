@@ -1,11 +1,8 @@
 use crate::config::Config;
 use color_eyre::eyre::{eyre, Result};
+use poise::{CreateReply, Framework, FrameworkError, FrameworkOptions, PrefixFrameworkOptions};
 use serenity::{
-    all::standard::Configuration,
-    cache::Settings as CacheSettings,
-    client::{Client, Context},
-    framework::StandardFramework,
-    model::gateway::GatewayIntents,
+    cache::Settings as CacheSettings, client::Client, model::gateway::GatewayIntents,
     prelude::TypeMapKey,
 };
 
@@ -14,10 +11,8 @@ use crate::openai::{OpenAi, OpenAiKey};
 
 pub mod commands;
 mod event_handler;
-mod hooks;
 pub mod limits;
 mod log_channel;
-mod rules_check;
 mod stats;
 mod sticky_roles;
 
@@ -42,7 +37,7 @@ impl TypeMapKey for DbKey {
     type Value = mongodb::Database;
 }
 
-pub async fn get_data<T>(ctx: &Context) -> Result<T::Value>
+pub async fn get_data<T>(ctx: &serenity::all::Context) -> Result<T::Value>
 where
     T: TypeMapKey,
     T::Value: Clone,
@@ -53,7 +48,7 @@ where
         .ok_or_else(|| eyre!("get_data called with missing TypeMapKey"))
 }
 
-pub async fn get_data_or_insert_with<T, F>(ctx: &Context, f: F) -> T::Value
+pub async fn get_data_or_insert_with<T, F>(ctx: &serenity::all::Context, f: F) -> T::Value
 where
     T: TypeMapKey,
     T::Value: Clone,
@@ -62,6 +57,13 @@ where
     let mut data = ctx.data.write().await;
     data.entry::<T>().or_insert_with(f).clone()
 }
+
+#[derive(Debug)]
+struct PoiseData {
+    config: Config,
+}
+
+type Context<'a> = poise::Context<'a, PoiseData, crate::Error>;
 
 pub struct Discord {
     pub client: Client,
@@ -73,25 +75,50 @@ impl Discord {
         db: mongodb::Database,
         #[cfg(feature = "openai")] openai: OpenAi,
     ) -> Result<Self> {
-        let framework = StandardFramework::new();
-        framework.configure(
-            Configuration::new()
-                .prefix(config.discord.command_prefix.to_string())
-                .owners(config.discord.owners.clone())
-                .blocked_users(config.discord.blocked_users.clone())
-                .allowed_channels(config.discord.command_channels.clone())
-                .case_insensitivity(true),
-        );
-        let framework = framework
-            .normal_message(hooks::normal_message)
-            .unrecognised_command(hooks::unrecognised_command)
-            .on_dispatch_error(hooks::dispatch_error)
-            .after(hooks::after)
-            .help(&commands::HELP_COMMAND)
-            .group(&commands::HORSE_GROUP)
-            .group(&commands::RANKS_GROUP)
-            .group(&commands::EMOTES_GROUP)
-            .group(&commands::MISC_GROUP);
+        let setup_config = config.clone();
+        let framework = Framework::<PoiseData, crate::Error>::builder()
+            .setup(|_ctx, _ready, _framework| {
+                Box::pin(async move {
+                    Ok(PoiseData {
+                        config: setup_config,
+                    })
+                })
+            })
+            .options(FrameworkOptions {
+                prefix_options: PrefixFrameworkOptions {
+                    prefix: Some(config.discord.command_prefix.to_string()),
+                    mention_as_prefix: false,
+                    ..Default::default()
+                },
+                owners: config.discord.owners.clone(),
+                command_check: Some(|ctx| {
+                    Box::pin(async move {
+                        Ok(ctx
+                            .data()
+                            .config
+                            .discord
+                            .command_channels
+                            .contains(&ctx.channel_id())
+                            && !ctx
+                                .data()
+                                .config
+                                .discord
+                                .blocked_users
+                                .contains(&ctx.author().id))
+                    })
+                }),
+                commands: commands::get_all(),
+                on_error: |err| {
+                    Box::pin(async move {
+                        log::warn!("{err}");
+                        if let Some(ctx) = err.ctx() {
+                            let _ = ctx.reply(err.to_string()).await;
+                        }
+                    })
+                },
+                ..Default::default()
+            })
+            .build();
 
         let mut cache_settings = CacheSettings::default();
         cache_settings.max_messages = 1024;
