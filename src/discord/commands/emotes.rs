@@ -3,8 +3,6 @@ use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use chrono::{SubsecRound, Utc};
 use color_eyre::eyre::eyre;
 use lazy_regex::regex_captures;
-use lazy_static::lazy_static;
-use maplit::hashset;
 use mongodb::bson::{doc, Document};
 use serenity::{
     all::{CreateAttachment, CreateMessage},
@@ -17,20 +15,11 @@ use serenity::{
     utils::MessageBuilder,
 };
 use std::{
-    collections::HashSet,
     io::{Cursor, Write},
     time::Duration,
 };
 use tokio::time::sleep;
 use zip::{write::SimpleFileOptions, ZipWriter};
-
-lazy_static! {
-    static ref IMAGE_TYPES: HashSet<&'static str> = hashset! {
-        "image/png",
-        "image/jpeg",
-        "image/gif",
-    };
-}
 
 const DELAY: Duration = Duration::from_millis(100);
 
@@ -78,7 +67,7 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let Some(image) = replied.attachments.iter().find(|a| {
         if let Some(ref ct) = a.content_type {
-            IMAGE_TYPES.contains(ct.as_str())
+            ["image/png", "image/jpeg", "image/gif"].contains(&ct.as_str())
         } else {
             false
         }
