@@ -29,17 +29,8 @@ in
       default = "discord-bot";
     };
 
-    port = lib.mkOption {
-      type = lib.types.int;
-      default = 56456;
-    };
-
     config = lib.mkOption {
       type = lib.types.path;
-    };
-
-    secret-key = lib.mkOption {
-      type = lib.types.str;
     };
   };
 
@@ -63,9 +54,6 @@ in
       };
       environment = {
         CONFIG_PATH = cfg.config;
-
-        ROCKET_SECRET_KEY = cfg.secret-key;
-        ROCKET_PORT = toString cfg.port;
 
         RUST_LOG = "warn,discord_bot=trace";
         RUST_BACKTRACE = "1";
