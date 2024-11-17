@@ -2,9 +2,8 @@ use super::{get_data, DbKey};
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::{eyre, Result};
 use conv::{UnwrapOrSaturate, ValueFrom};
-use lazy_static::lazy_static;
+use lazy_regex::regex;
 use mongodb::bson::doc;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serenity::{
     client::Context,
@@ -60,17 +59,6 @@ pub enum Stats {
 
 #[allow(clippy::too_many_lines)]
 pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
-    lazy_static! {
-        static ref USER_MENTION_RE: Regex =
-            Regex::new(r"<@!?(?P<id>[0-9]+)>").expect("Invalid regex for USER_MENTION_RE");
-        static ref CHANNEL_MENTION_RE: Regex =
-            Regex::new(r"<#(?P<id>[0-9]+)>").expect("Invalid regex for CHANNEL_MENTION_RE");
-        static ref ROLE_MENTION_RE: Regex =
-            Regex::new(r"<@&(?P<id>[0-9]+)>").expect("Invalid regex for ROLE_MENTION_RE");
-        static ref EMOJI_RE: Regex =
-            Regex::new(r"<a?:(?P<name>[^:]+):(?P<id>[0-9]+)>").expect("Invalid regex for EMOJI_RE");
-    }
-
     let channel = msg
         .channel(&ctx)
         .await?
@@ -82,19 +70,19 @@ pub async fn update_stats(ctx: &Context, msg: &Message) -> Result<()> {
         .await
         .unwrap_or_else(|| msg.author.name.clone());
 
-    let user_mentions: Vec<UserId> = USER_MENTION_RE
+    let user_mentions: Vec<UserId> = regex!(r"<@!?(?P<id>[0-9]+)>")
         .captures_iter(&msg.content)
         .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
         .collect();
-    let channel_mentions: Vec<ChannelId> = CHANNEL_MENTION_RE
+    let channel_mentions: Vec<ChannelId> = regex!(r"<#(?P<id>[0-9]+)>")
         .captures_iter(&msg.content)
         .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
         .collect();
-    let role_mentions: Vec<RoleId> = ROLE_MENTION_RE
+    let role_mentions: Vec<RoleId> = regex!(r"<@&(?P<id>[0-9]+)>")
         .captures_iter(&msg.content)
         .filter_map(|cap| cap.name("id").and_then(|c| c.as_str().parse().ok()))
         .collect();
-    let emojis: Vec<(EmojiId, &str)> = EMOJI_RE
+    let emojis: Vec<(EmojiId, &str)> = regex!(r"<a?:(?P<name>[^:]+):(?P<id>[0-9]+)>")
         .captures_iter(&msg.content)
         .filter_map(|cap| {
             cap.name("id")

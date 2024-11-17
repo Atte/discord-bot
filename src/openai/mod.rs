@@ -15,11 +15,10 @@ use async_openai::{
 };
 use bson::{doc, Bson};
 use futures::StreamExt;
-use lazy_static::lazy_static;
+use lazy_regex::{lazy_regex, Lazy, Regex};
 use log_entry::LogEntry;
 use maplit::{convert_args, hashmap};
 use mongodb::{Collection, Database};
-use regex::Regex;
 use serenity::{
     all::{
         Context, CreateAttachment, CreateEmbed, CreateMessage, Message, MessageBuilder,
@@ -34,10 +33,7 @@ mod log_entry;
 mod tools;
 mod word_chunks;
 
-lazy_static! {
-    static ref MESSAGE_CLEANUP_RE: Regex =
-        Regex::new(r"^<@[0-9]+>\s*").expect("invalid message cleanup regex");
-}
+static MESSAGE_CLEANUP_RE: Lazy<Regex> = lazy_regex!(r"^<@[0-9]+>\s*");
 
 #[derive(Debug)]
 pub struct OpenAiKey;
@@ -197,12 +193,14 @@ impl OpenAi {
     ) -> Result<AssistantEventStream> {
         let mut tasks = JoinSet::new();
         for call in action.submit_tool_outputs.tool_calls {
-            tasks.spawn(async move {
-                ToolsOutputsArgs::default()
-                    .tool_call_id(call.id)
-                    .output(tools::run(call.function).await)
-                    .build()
-            });
+            if call.r#type == "function" {
+                tasks.spawn(async move {
+                    ToolsOutputsArgs::default()
+                        .tool_call_id(call.id)
+                        .output(tools::run(call.function).await)
+                        .build()
+                });
+            }
         }
 
         let mut tool_outputs = Vec::new();

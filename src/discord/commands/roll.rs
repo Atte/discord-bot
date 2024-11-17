@@ -1,9 +1,8 @@
 use super::super::limits::REPLY_LENGTH;
 use crate::util::separate_thousands_floating;
 use itertools::Itertools;
-use lazy_static::lazy_static;
+use lazy_regex::{regex_is_match, regex_replace_all};
 use rand::{distributions::Uniform, thread_rng, Rng};
-use regex::{Captures, Regex};
 use serenity::{
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
@@ -17,35 +16,24 @@ use serenity::{
 #[usage("1d6 + 2d20")]
 #[min_args(1)]
 async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    lazy_static! {
-        static ref DICE_RE: Regex =
-            Regex::new(r"(?P<rolls>[1-9][0-9]*)?d(?P<sides>[1-9][0-9]*)").unwrap();
-        static ref SIMPLE_RE: Regex = Regex::new(r"^\(?\d+\)?$").unwrap();
-    }
-
     let original_input = args.message().trim();
-    let input = DICE_RE.replace_all(original_input, |caps: &Captures<'_>| {
-        let distribution = Uniform::new(
-            1_usize,
-            caps.name("sides")
-                .and_then(|m| m.as_str().parse::<usize>().ok())
-                .unwrap_or(6_usize)
-                + 1_usize,
-        );
-        let mut rolls = (0..std::cmp::min(
-            100_usize,
-            caps.name("rolls")
-                .and_then(|m| m.as_str().parse::<usize>().ok())
-                .unwrap_or(1_usize),
-        ))
-            .map(|_| thread_rng().sample(distribution).to_string());
-        format!("({})", rolls.join(" + "))
-    });
+    let input = regex_replace_all!(
+        r"(?P<rolls>[1-9][0-9]*)?d(?P<sides>[1-9][0-9]*)",
+        original_input,
+        |_, rolls: &str, sides: &str| {
+            let distribution =
+                Uniform::new(1_usize, sides.parse::<usize>().unwrap_or(6_usize) + 1_usize);
+            let mut rolls =
+                (0..std::cmp::min(100_usize, rolls.parse::<usize>().unwrap_or(1_usize)))
+                    .map(|_| thread_rng().sample(distribution).to_string());
+            format!("({})", rolls.join(" + "))
+        },
+    );
 
     match mexprp::eval::<f64>(&input) {
         Ok(result) => {
             let result = separate_thousands_floating(*result.to_vec().first().unwrap());
-            let mut response = if SIMPLE_RE.is_match(&input) {
+            let mut response = if regex_is_match!(r"^\(?\d+\)?$", &input) {
                 MessageBuilder::new()
                     .push_safe(original_input)
                     .push(" \u{2192} ")

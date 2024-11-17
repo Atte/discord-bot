@@ -2,10 +2,10 @@ use crate::discord::{get_data, ConfigKey, DbKey};
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use chrono::{SubsecRound, Utc};
 use color_eyre::eyre::eyre;
+use lazy_regex::regex_captures;
 use lazy_static::lazy_static;
 use maplit::hashset;
 use mongodb::bson::{doc, Document};
-use regex::Regex;
 use serenity::{
     all::{CreateAttachment, CreateMessage},
     client::Context,
@@ -25,8 +25,6 @@ use tokio::time::sleep;
 use zip::{write::SimpleFileOptions, ZipWriter};
 
 lazy_static! {
-    static ref EMOTE_PATTERN: Regex =
-        Regex::new(r"^(?:<a?:)?([A-Za-z0-9_]{2,})(?::\d+>)?$").unwrap();
     static ref IMAGE_TYPES: HashSet<&'static str> = hashset! {
         "image/png",
         "image/jpeg",
@@ -42,10 +40,10 @@ const DELAY: Duration = Duration::from_millis(100);
 #[usage("emotename")]
 #[num_args(1)]
 async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let Some(emotename) = EMOTE_PATTERN
-        .captures(args.message().trim())
-        .and_then(|caps| caps.get(1))
-    else {
+    let Some((_, emotename)) = regex_captures!(
+        r"^(?:<a?:)?([A-Za-z0-9_]{2,})(?::\d+>)?$",
+        args.message().trim()
+    ) else {
         msg.reply(ctx, "Invalid emote name!").await?;
         return Ok(());
     };
@@ -100,13 +98,13 @@ async fn emote(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let old_emojis: Vec<_> = guild
         .emojis
         .values()
-        .filter(|e| e.name == emotename.as_str())
+        .filter(|e| e.name == emotename)
         .collect();
 
     let emoji = guild
         .create_emoji(
             ctx,
-            emotename.as_str(),
+            emotename,
             &format!(
                 "data:{};base64,{data}",
                 image

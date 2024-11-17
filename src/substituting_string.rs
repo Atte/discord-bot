@@ -2,8 +2,7 @@
 
 use derivative::Derivative;
 use derive_more::{AsRef, Deref, Display};
-use lazy_static::lazy_static;
-use regex::{Captures, Regex};
+use lazy_regex::{regex, Captures};
 use serde::{de, ser};
 use std::{env, fmt};
 
@@ -28,15 +27,12 @@ impl SubstitutingString {
     ///
     /// Returns `Err` if `raw` contains a reference to an environment variable that doesn't exist.
     pub fn try_new(raw: String) -> Result<Self, ::std::env::VarError> {
-        lazy_static! {
-            static ref VARIABLE_RE: Regex =
-                Regex::new(r"\$\{?([A-Z0-9_]+)\}?").expect("Invalid regex for VARIABLE_RE");
-        }
+        let pattern = regex!(r"\$\{?([A-Z0-9_]+)\}?");
 
-        for caps in VARIABLE_RE.captures_iter(&raw) {
+        for caps in pattern.captures_iter(&raw) {
             env::var(&caps[1])?;
         }
-        let resolved = VARIABLE_RE
+        let resolved = pattern
             .replace_all(&raw, |caps: &Captures<'_>| env::var(&caps[1]).unwrap())
             .into_owned();
         Ok(Self { raw, resolved })
