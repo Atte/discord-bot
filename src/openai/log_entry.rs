@@ -1,9 +1,7 @@
 use async_openai::types::RunCompletionUsage;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, DisplayFromStr, TryFromInto};
 use serenity::all::{ChannelId, Context, GuildId, MessageId, UserId};
-
-use super::MESSAGE_CLEANUP_RE;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LogEntry {
@@ -27,10 +25,7 @@ impl LogEntry {
                 name: msg.author.name.clone(),
                 nick: msg.author_nick(ctx).await,
             },
-            message: Message {
-                id: msg.id,
-                length: MESSAGE_CLEANUP_RE.replace_all(&msg.content, "").len(),
-            },
+            message: msg.into(),
             channel: Channel { id: msg.channel_id },
             guild: Guild {
                 id: msg.guild_id.unwrap_or_default(),
@@ -71,7 +66,18 @@ pub struct Guild {
 pub struct Message {
     #[serde_as(as = "DisplayFromStr")]
     pub id: MessageId,
+    #[serde_as(as = "TryFromInto<i64>")]
     pub length: usize,
+}
+
+impl From<&serenity::all::Message> for Message {
+    #[inline]
+    fn from(msg: &serenity::all::Message) -> Self {
+        Self {
+            id: msg.id,
+            length: msg.content.len(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

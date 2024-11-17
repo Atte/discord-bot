@@ -7,22 +7,22 @@ use async_openai::{
         AssistantEventStream, AssistantStreamEvent, AssistantsApiResponseFormatOption,
         CreateMessageRequestArgs, CreateMessageRequestContent, CreateRunRequestArgs,
         CreateThreadRequestArgs, ImageDetail, ImageUrlArgs, MessageContent,
-        MessageContentImageUrlObject, MessageContentInput, MessageContentTextObject,
-        MessageRequestContentTextObject, MessageRole, RequiredAction, ResponseFormat, RunObject,
-        SubmitToolOutputsRunRequest, TextData, ToolsOutputsArgs,
+        MessageContentImageUrlObject, MessageContentInput, MessageContentRefusalObject,
+        MessageContentTextObject, MessageRequestContentTextObject, MessageRole, RequiredAction,
+        ResponseFormat, RunObject, SubmitToolOutputsRunRequest, TextData, ToolsOutputsArgs,
     },
     Client,
 };
 use bson::{doc, Bson};
 use futures::StreamExt;
-use lazy_regex::{lazy_regex, Lazy, Regex};
+use lazy_regex::regex_replace;
 use log_entry::LogEntry;
 use maplit::{convert_args, hashmap};
 use mongodb::{Collection, Database};
 use serenity::{
     all::{
-        Context, CreateAttachment, CreateEmbed, CreateMessage, Message, MessageBuilder,
-        MESSAGE_CODE_LIMIT,
+        Context, CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateMessage, Message,
+        MessageBuilder, MESSAGE_CODE_LIMIT,
     },
     prelude::TypeMapKey,
 };
@@ -32,8 +32,6 @@ use word_chunks::WordChunks;
 mod log_entry;
 mod tools;
 mod word_chunks;
-
-static MESSAGE_CLEANUP_RE: Lazy<Regex> = lazy_regex!(r"^<@[0-9]+>\s*");
 
 #[derive(Debug)]
 pub struct OpenAiKey;
@@ -82,12 +80,14 @@ impl OpenAi {
     }
 
     async fn after_run(&self, entry_id: &Bson, run: RunObject) -> Result<()> {
-        self.log
-            .update_one(
-                doc! { "_id": &entry_id },
-                doc! { "$set": { "usage": bson::to_bson(&run.usage)? } },
-            )
-            .await?;
+        if let Some(usage) = run.usage {
+            self.log
+                .update_one(
+                    doc! { "_id": &entry_id },
+                    doc! { "$set": { "usage": bson::to_bson(&usage)? } },
+                )
+                .await?;
+        }
 
         if let Some(err) = run.last_error {
             self.log
@@ -125,11 +125,8 @@ impl OpenAi {
             MessageContent::Refusal(inner) => {
                 WordChunks::from_str(&inner.refusal, MESSAGE_CODE_LIMIT)
                     .map(|chunk| {
-                        MessageContent::Text(MessageContentTextObject {
-                            text: TextData {
-                                value: chunk.to_owned(),
-                                annotations: Vec::new(),
-                            },
+                        MessageContent::Refusal(MessageContentRefusalObject {
+                            refusal: chunk.to_owned(),
                         })
                     })
                     .collect()
@@ -138,28 +135,14 @@ impl OpenAi {
         });
 
         for content in contents {
-            let msg = CreateMessage::new().reference_message(&reply_to);
-            reply_to = match content {
-                MessageContent::Text(content) => {
-                    reply_to
-                        .channel_id
-                        .send_message(ctx, msg.content(content.text.value))
-                        .await?
-                }
-                MessageContent::Refusal(content) => {
-                    reply_to
-                        .channel_id
-                        .send_message(ctx, msg.content(content.refusal))
-                        .await?
-                }
+            let builder = CreateMessage::new()
+                .reference_message(&reply_to)
+                .allowed_mentions(CreateAllowedMentions::new().replied_user(false));
+            let builder = match content {
+                MessageContent::Text(content) => builder.content(content.text.value),
+                MessageContent::Refusal(content) => builder.content(content.refusal),
                 MessageContent::ImageUrl(content) => {
-                    reply_to
-                        .channel_id
-                        .send_message(
-                            ctx,
-                            msg.add_embed(CreateEmbed::new().image(&content.image_url.url)),
-                        )
-                        .await?
+                    builder.add_embed(CreateEmbed::new().image(&content.image_url.url))
                 }
                 MessageContent::ImageFile(content) => {
                     let file = self
@@ -167,17 +150,15 @@ impl OpenAi {
                         .files()
                         .content(&content.image_file.file_id)
                         .await?;
-                    reply_to
-                        .channel_id
-                        .send_files(ctx, once(CreateAttachment::bytes(file, "image.png")), msg)
-                        .await?
+                    builder.add_file(CreateAttachment::bytes(file, "image.png"))
                 }
             };
+            reply_to = reply_to.channel_id.send_message(ctx, builder).await?;
 
             self.log
                 .update_one(
                     doc! { "_id": &entry_id },
-                    doc! { "$push": { "responses": { "id": reply_to.id.to_string(), "length": i64::try_from(reply_to.content.len()).unwrap_or_default() } } },
+                    doc! { "$push": { "responses": bson::to_bson(&log_entry::Message::from(&reply_to))? } },
                 )
                 .await?;
         }
@@ -225,6 +206,8 @@ impl OpenAi {
     pub async fn handle_message(&self, ctx: &Context, mut msg: Message) -> Result<()> {
         let _typing = msg.channel_id.start_typing(&ctx.http);
 
+        msg.content = regex_replace!(r"^<@[0-9]+>\s*", &msg.content, "").to_string();
+
         let thread_id = if let Some(thread_id) = self.find_thread_id(&msg).await? {
             thread_id
         } else {
@@ -239,7 +222,7 @@ impl OpenAi {
         let entry_id = self.log.insert_one(&log_entry).await?.inserted_id;
 
         let mut openai_content = vec![MessageContentInput::Text(MessageRequestContentTextObject {
-            text: MESSAGE_CLEANUP_RE.replace_all(&msg.content, "").to_string(),
+            text: msg.content.clone(),
         })];
         for attachment in &msg.attachments {
             openai_content.push(MessageContentInput::ImageUrl(

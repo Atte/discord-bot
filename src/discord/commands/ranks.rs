@@ -10,15 +10,11 @@ use color_eyre::eyre::{eyre, Result};
 use derivative::Derivative;
 use itertools::{EitherOrBoth, Itertools};
 use serenity::{
-    all::{CreateEmbed, CreateEmbedFooter, CreateMessage, EditMember},
-    client::Context,
-    framework::standard::{macros::command, Args, CommandResult},
-    model::{
-        channel::Message,
-        guild::{Member, Role},
-        id::{GuildId, RoleId, UserId},
+    all::{
+        Context, CreateEmbed, CreateEmbedFooter, CreateMessage, EditMember, GuildId, Member,
+        Message, MessageBuilder, Role, RoleId, UserId,
     },
-    utils::MessageBuilder,
+    framework::standard::{macros::command, Args, CommandResult},
 };
 use std::{cmp::Ordering, collections::HashSet, io::Write};
 use tabwriter::TabWriter;
@@ -109,6 +105,16 @@ impl Ranks {
         self.0.is_empty()
     }
 
+    #[inline]
+    fn iter(&self) -> impl Iterator<Item = &Rank> + '_ {
+        self.0.iter()
+    }
+
+    #[inline]
+    fn contains(&self, rank: &Rank) -> bool {
+        self.0.contains(rank)
+    }
+
     fn of_user(&self, user: impl Into<UserId>) -> Self {
         let user_id = user.into();
         Self::new(
@@ -128,15 +134,14 @@ impl Ranks {
             .cloned()
     }
 
-    fn names(&self) -> Vec<String> {
-        self.0.iter().map(|rank| rank.role.name.clone()).collect()
+    fn names(&self) -> impl Iterator<Item = String> + '_ {
+        self.0.iter().map(|rank| rank.role.name.clone())
     }
 
-    fn member_counts(&self) -> Vec<(String, usize)> {
+    fn member_counts(&self) -> impl Iterator<Item = (String, usize)> + '_ {
         self.0
             .iter()
             .map(|rank| (rank.role.name.clone(), rank.members.len()))
-            .collect()
     }
 }
 
@@ -272,7 +277,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
 
     let rank_list = {
         let mut tw = TabWriter::new(Vec::new());
-        let counts = ranks.member_counts();
+        let counts: Vec<_> = ranks.member_counts().collect();
         for row in counts
             .iter()
             .take((counts.len() + 1) / 2)
@@ -300,7 +305,7 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
     let prefix = get_data::<ConfigKey>(ctx).await?.discord.command_prefix;
     msg.channel_id
         .send_message(
-            &ctx,
+            ctx,
             CreateMessage::new().embed(
                 CreateEmbed::new()
                     .title("Ranks")
@@ -330,5 +335,47 @@ async fn ranks(ctx: &Context, msg: &Message) -> CommandResult {
         },
     )
     .await?;
+
+    #[cfg(feature = "dropdowns")]
+    {
+        use serenity::all::{
+            CreateActionRow, CreateAllowedMentions, CreateSelectMenu, CreateSelectMenuKind,
+            CreateSelectMenuOption,
+        };
+
+        let components = ranks
+            .iter()
+            .map(|rank| {
+                CreateSelectMenuOption::new(rank.role.name.clone(), rank.role.id.to_string())
+                    .default_selection(user_ranks.contains(&rank))
+            })
+            .chunks(25)
+            .into_iter()
+            .enumerate()
+            .map(|(i, chunk)| {
+                let options: Vec<_> = chunk.collect();
+                let options_len = u8::try_from(options.len()).unwrap_or(25);
+                CreateActionRow::SelectMenu(
+                    CreateSelectMenu::new(
+                        format!("ranks-{i}"),
+                        CreateSelectMenuKind::String { options },
+                    )
+                    .min_values(1)
+                    .max_values(options_len),
+                )
+            })
+            .collect();
+
+        msg.channel_id
+            .send_message(
+                ctx,
+                CreateMessage::new()
+                    .reference_message(msg)
+                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                    .components(components),
+            )
+            .await?;
+    }
+
     Ok(())
 }

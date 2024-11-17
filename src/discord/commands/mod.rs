@@ -18,6 +18,9 @@ pub use roll::ROLL_COMMAND;
 mod gib;
 pub use gib::GIB_COMMAND;
 
+mod test;
+pub use test::TEST_COMMAND;
+
 mod emotes;
 pub use emotes::EMOTES_GROUP;
 
@@ -35,7 +38,7 @@ pub struct Horse;
 pub struct Ranks;
 
 #[group]
-#[commands(roll, ping)]
+#[commands(roll, ping, test)]
 pub struct Misc;
 
 #[command]
