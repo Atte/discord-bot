@@ -1,20 +1,22 @@
 use std::{iter::once, sync::Arc};
 
-use crate::{word_chunks::WordChunks, Result};
+use crate::Result;
 use async_openai::{
     config::OpenAIConfig,
     types::{
-        AssistantStreamEvent, AssistantsApiResponseFormatOption, CreateMessageRequestArgs,
-        CreateMessageRequestContent, CreateRunRequestArgs, CreateThreadRequestArgs, ImageDetail,
-        ImageUrlArgs, MessageContent, MessageContentImageUrlObject, MessageContentInput,
-        MessageRequestContentTextObject, MessageRole, ResponseFormat, RunObject,
-        SubmitToolOutputsRunRequest, ToolsOutputsArgs,
+        AssistantEventStream, AssistantStreamEvent, AssistantsApiResponseFormatOption,
+        CreateMessageRequestArgs, CreateMessageRequestContent, CreateRunRequestArgs,
+        CreateThreadRequestArgs, ImageDetail, ImageUrlArgs, MessageContent,
+        MessageContentImageUrlObject, MessageContentInput, MessageContentTextObject,
+        MessageRequestContentTextObject, MessageRole, RequiredAction, ResponseFormat, RunObject,
+        SubmitToolOutputsRunRequest, TextData, ToolsOutputsArgs,
     },
     Client,
 };
 use bson::{doc, Bson};
 use futures::StreamExt;
 use lazy_static::lazy_static;
+use log_entry::LogEntry;
 use maplit::{convert_args, hashmap};
 use mongodb::{Collection, Database};
 use regex::Regex;
@@ -26,10 +28,11 @@ use serenity::{
     prelude::TypeMapKey,
 };
 use tokio::task::JoinSet;
+use word_chunks::WordChunks;
 
-mod models;
+mod log_entry;
 mod tools;
-use models::*;
+mod word_chunks;
 
 lazy_static! {
     static ref MESSAGE_CLEANUP_RE: Regex =
@@ -50,7 +53,7 @@ pub struct OpenAi {
 }
 
 impl OpenAi {
-    pub fn new(config: &crate::config::OpenAiConfig, db: Database) -> Self {
+    pub fn new(config: &crate::config::OpenAiConfig, db: &Database) -> Self {
         Self {
             client: Client::with_config(
                 OpenAIConfig::new().with_api_key(config.api_key.to_string()),
@@ -67,8 +70,6 @@ impl OpenAi {
         if let Some(ref msgref) = msg.message_reference {
             ids.extend(msgref.message_id.map(|r| r.to_string()));
         }
-
-        log::trace!("finding thread for {ids:?}");
 
         let entry = self
             .log
@@ -108,38 +109,125 @@ impl OpenAi {
         &self,
         ctx: &Context,
         entry_id: &Bson,
-        reply_to: &Message,
-        content: CreateMessage,
-        attachment: Option<CreateAttachment>,
+        mut reply_to: Message,
+        contents: impl IntoIterator<Item = MessageContent>,
     ) -> Result<Message> {
-        let msg = if let Some(attachment) = attachment {
-            reply_to
-                .channel_id
-                .send_files(ctx, once(attachment), content.reference_message(reply_to))
-                .await?
-        } else {
-            reply_to
-                .channel_id
-                .send_message(ctx, content.reference_message(reply_to))
-                .await?
-        };
+        // split long messages
+        let contents = contents.into_iter().flat_map(|content| match content {
+            MessageContent::Text(inner) => {
+                WordChunks::from_str(&inner.text.value, MESSAGE_CODE_LIMIT)
+                    .map(|chunk| {
+                        MessageContent::Text(MessageContentTextObject {
+                            text: TextData {
+                                value: chunk.to_owned(),
+                                annotations: Vec::new(),
+                            },
+                        })
+                    })
+                    .collect()
+            }
+            MessageContent::Refusal(inner) => {
+                WordChunks::from_str(&inner.refusal, MESSAGE_CODE_LIMIT)
+                    .map(|chunk| {
+                        MessageContent::Text(MessageContentTextObject {
+                            text: TextData {
+                                value: chunk.to_owned(),
+                                annotations: Vec::new(),
+                            },
+                        })
+                    })
+                    .collect()
+            }
+            _ => vec![content],
+        });
 
-        self.log
-            .update_one(
-                doc! { "_id": &entry_id },
-                doc! { "$push": { "responses": { "id": msg.id.to_string(), "length": msg.content.len() as u32 } } },
-            )
-            .await?;
+        for content in contents {
+            let msg = CreateMessage::new().reference_message(&reply_to);
+            reply_to = match content {
+                MessageContent::Text(content) => {
+                    reply_to
+                        .channel_id
+                        .send_message(ctx, msg.content(content.text.value))
+                        .await?
+                }
+                MessageContent::Refusal(content) => {
+                    reply_to
+                        .channel_id
+                        .send_message(ctx, msg.content(content.refusal))
+                        .await?
+                }
+                MessageContent::ImageUrl(content) => {
+                    reply_to
+                        .channel_id
+                        .send_message(
+                            ctx,
+                            msg.add_embed(CreateEmbed::new().image(&content.image_url.url)),
+                        )
+                        .await?
+                }
+                MessageContent::ImageFile(content) => {
+                    let file = self
+                        .client
+                        .files()
+                        .content(&content.image_file.file_id)
+                        .await?;
+                    reply_to
+                        .channel_id
+                        .send_files(ctx, once(CreateAttachment::bytes(file, "image.png")), msg)
+                        .await?
+                }
+            };
 
-        Ok(msg)
+            self.log
+                .update_one(
+                    doc! { "_id": &entry_id },
+                    doc! { "$push": { "responses": { "id": reply_to.id.to_string(), "length": i64::try_from(reply_to.content.len()).unwrap_or_default() } } },
+                )
+                .await?;
+        }
+
+        Ok(reply_to)
     }
 
-    pub async fn handle_message(&self, ctx: &Context, msg: &Message) -> Result<()> {
+    async fn run_tools(
+        &self,
+        run_id: &str,
+        action: RequiredAction,
+        thread_id: &str,
+    ) -> Result<AssistantEventStream> {
+        let mut tasks = JoinSet::new();
+        for call in action.submit_tool_outputs.tool_calls {
+            tasks.spawn(async move {
+                ToolsOutputsArgs::default()
+                    .tool_call_id(call.id)
+                    .output(tools::run(call.function).await)
+                    .build()
+            });
+        }
+
+        let mut tool_outputs = Vec::new();
+        while let Some(result) = tasks.join_next().await {
+            tool_outputs.push(result??);
+        }
+
+        Ok(self
+            .client
+            .threads()
+            .runs(thread_id)
+            .submit_tool_outputs_stream(
+                run_id,
+                SubmitToolOutputsRunRequest {
+                    tool_outputs,
+                    stream: None,
+                },
+            )
+            .await?)
+    }
+
+    pub async fn handle_message(&self, ctx: &Context, mut msg: Message) -> Result<()> {
         let _typing = msg.channel_id.start_typing(&ctx.http);
 
-        let content = MESSAGE_CLEANUP_RE.replace_all(&msg.content, "");
-
-        let thread_id = if let Some(thread_id) = self.find_thread_id(msg).await? {
+        let thread_id = if let Some(thread_id) = self.find_thread_id(&msg).await? {
             thread_id
         } else {
             self.client
@@ -149,30 +237,11 @@ impl OpenAi {
                 .id
         };
 
-        let log_entry = LogEntry {
-            time: bson::DateTime::now(),
-            user: LogEntryUser {
-                id: msg.author.id,
-                name: msg.author.name.clone(),
-                nick: msg.author_nick(ctx).await,
-            },
-            message: LogEntryMessage {
-                id: msg.id,
-                length: content.len(),
-            },
-            channel: LogEntryChannel { id: msg.channel_id },
-            guild: LogEntryGuild {
-                id: msg.guild_id.unwrap_or_default(),
-            },
-            responses: Vec::new(),
-            errors: Vec::new(),
-            thread: LogEntryThread { id: thread_id },
-            usage: None,
-        };
+        let log_entry = LogEntry::new(ctx, &msg, thread_id.clone()).await;
         let entry_id = self.log.insert_one(&log_entry).await?.inserted_id;
 
         let mut openai_content = vec![MessageContentInput::Text(MessageRequestContentTextObject {
-            text: content.to_string(),
+            text: MESSAGE_CLEANUP_RE.replace_all(&msg.content, "").to_string(),
         })];
         for attachment in &msg.attachments {
             openai_content.push(MessageContentInput::ImageUrl(
@@ -221,40 +290,11 @@ impl OpenAi {
             )
             .await?;
 
-        let mut reply_to = msg.clone();
         while let Some(event) = stream.next().await {
-            let event = event?;
-            // log::trace!("{event:?}");
-            match event {
+            match event? {
                 AssistantStreamEvent::ThreadRunRequiresAction(run) => {
                     if let Some(action) = run.required_action {
-                        let mut tasks = JoinSet::new();
-                        for call in action.submit_tool_outputs.tool_calls {
-                            tasks.spawn(async move {
-                                ToolsOutputsArgs::default()
-                                    .tool_call_id(call.id)
-                                    .output(tools::run(call.function).await)
-                                    .build()
-                            });
-                        }
-
-                        let mut tool_outputs = Vec::new();
-                        while let Some(result) = tasks.join_next().await {
-                            tool_outputs.push(result??);
-                        }
-
-                        stream = self
-                            .client
-                            .threads()
-                            .runs(&log_entry.thread.id)
-                            .submit_tool_outputs_stream(
-                                &run.id,
-                                SubmitToolOutputsRunRequest {
-                                    tool_outputs,
-                                    stream: None,
-                                },
-                            )
-                            .await?;
+                        stream = self.run_tools(&run.id, action, &thread_id).await?;
                     }
                 }
 
@@ -267,69 +307,11 @@ impl OpenAi {
 
                 AssistantStreamEvent::ThreadMessageIncomplete(message)
                 | AssistantStreamEvent::ThreadMessageCompleted(message) => {
-                    for content in &message.content {
-                        match content {
-                            MessageContent::Text(content) => {
-                                for chunk in
-                                    WordChunks::from_str(&content.text.value, MESSAGE_CODE_LIMIT)
-                                {
-                                    reply_to = self
-                                        .reply(
-                                            ctx,
-                                            &entry_id,
-                                            &reply_to,
-                                            CreateMessage::new().content(chunk),
-                                            None,
-                                        )
-                                        .await?;
-                                }
-                            }
-                            MessageContent::ImageFile(content) => {
-                                let file = self
-                                    .client
-                                    .files()
-                                    .content(&content.image_file.file_id)
-                                    .await?;
-                                reply_to = self
-                                    .reply(
-                                        ctx,
-                                        &entry_id,
-                                        &reply_to,
-                                        CreateMessage::new(),
-                                        Some(CreateAttachment::bytes(file, "image.png")),
-                                    )
-                                    .await?;
-                            }
-                            MessageContent::ImageUrl(content) => {
-                                reply_to = self
-                                    .reply(
-                                        ctx,
-                                        &entry_id,
-                                        &reply_to,
-                                        CreateMessage::new().add_embed(
-                                            CreateEmbed::new().image(&content.image_url.url),
-                                        ),
-                                        None,
-                                    )
-                                    .await?;
-                            }
-                            MessageContent::Refusal(content) => {
-                                reply_to = self
-                                    .reply(
-                                        ctx,
-                                        &entry_id,
-                                        &reply_to,
-                                        CreateMessage::new().content(&content.refusal),
-                                        None,
-                                    )
-                                    .await?;
-                            }
-                        }
-                    }
+                    msg = self.reply(ctx, &entry_id, msg, message.content).await?;
                 }
 
                 AssistantStreamEvent::ErrorEvent(err) => {
-                    reply_to = reply_to
+                    msg = msg
                         .reply(
                             ctx,
                             MessageBuilder::new()

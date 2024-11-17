@@ -150,15 +150,8 @@ pub async fn derpibooru_embed(
                         true,
                     );
                 }
-                /*
-                if let Some(ref source_url) = image.source_url {
-                    if source_url.len() <= EMBED_FIELD_VALUE_LENGTH {
-                        embed.field("Source", source_url, false);
-                    }
-                }
-                */
                 if let Some(ref timestamp) = image.first_seen_at {
-                    embed = embed.timestamp(DateTime::parse_from_rfc3339(timestamp)?)
+                    embed = embed.timestamp(DateTime::parse_from_rfc3339(timestamp)?);
                 }
                 embed
                     .image(&image.representations.tall)

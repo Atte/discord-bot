@@ -1,4 +1,4 @@
-#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)] // derivative
+#![allow(clippy::non_canonical_partial_ord_impl)] // derivative
 
 use derivative::Derivative;
 use derive_more::{AsRef, Deref, Display};
@@ -118,7 +118,7 @@ mod tests {
     static INIT: Once = Once::new();
 
     fn init(raw: impl Into<String>) -> Result<SubstitutingString, VarError> {
-        INIT.call_once(|| {
+        INIT.call_once(|| unsafe {
             set_var("FOO", "bar");
         });
         SubstitutingString::try_new(raw.into())

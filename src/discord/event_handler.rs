@@ -2,10 +2,10 @@ use super::{
     get_data, limits::ACTIVITY_LENGTH, log_channel, rules_check, sticky_roles, ActivityKey,
     ConfigKey,
 };
-use crate::{openai::OpenAiKey, util::ellipsis_string};
+use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
-    all::{ActivityData, GuildMemberUpdateEvent, MessageBuilder},
+    all::{ActivityData, GuildMemberUpdateEvent},
     async_trait,
     client::{Context, EventHandler},
     model::{
@@ -54,13 +54,13 @@ impl EventHandler for Handler {
                 && matches!(message.mentions_me(&ctx).await, Ok(true))
             {
                 let _ = tokio::task::spawn(async move {
-                    if let Ok(openai) = get_data::<OpenAiKey>(&ctx).await {
-                        if let Err(err) = openai.handle_message(&ctx, &message).await {
+                    if let Ok(openai) = get_data::<crate::openai::OpenAiKey>(&ctx).await {
+                        if let Err(err) = openai.handle_message(&ctx, message.clone()).await {
                             error!("OpenAI error: {err:?}");
                             let _ = message
                                 .reply(
                                     ctx,
-                                    MessageBuilder::new()
+                                    serenity::all::MessageBuilder::new()
                                         .push_codeblock_safe(err.to_string(), None)
                                         .build(),
                                 )

@@ -45,7 +45,7 @@ pub async fn apply_stickies(ctx: &Context, member: &mut Member) -> Result<bool> 
         .projection(doc! { "role_ids": 1 })
         .await?
     {
-        let current_user_id = ctx.cache.current_user().id.clone();
+        let current_user_id = ctx.cache.current_user().id;
 
         let guild = member
             .guild_id

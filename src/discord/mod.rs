@@ -12,8 +12,6 @@ use serenity::{
 #[cfg(feature = "openai")]
 use crate::openai::{OpenAi, OpenAiKey};
 
-use std::sync::Arc;
-
 pub mod commands;
 mod event_handler;
 mod hooks;
@@ -107,7 +105,7 @@ impl Discord {
             .type_map_insert::<DbKey>(db);
 
         #[cfg(feature = "openai")]
-        let builder = builder.type_map_insert::<OpenAiKey>(Arc::new(openai));
+        let builder = builder.type_map_insert::<OpenAiKey>(std::sync::Arc::new(openai));
 
         Ok(Self {
             client: builder.await?,

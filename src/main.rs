@@ -3,6 +3,7 @@
     future_incompatible,
     nonstandard_style,
     rust_2018_idioms,
+    rust_2024_compatibility,
     unused
 )]
 #![allow(clippy::module_name_repetitions)]
@@ -11,8 +12,11 @@
 
 use color_eyre::eyre::Result;
 use log::{error, info, warn};
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 use tokio::time::sleep;
+
+#[allow(unused)] // features
+use std::sync::Arc;
 
 mod substituting_string;
 mod util;
@@ -29,7 +33,6 @@ mod migrations;
 mod openai;
 #[cfg(feature = "teamup")]
 mod teamup;
-mod word_chunks;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -46,12 +49,12 @@ async fn main() -> Result<()> {
     migrations::mongo(&db).await?;
 
     #[cfg(feature = "openai")]
-    let openai = openai::OpenAi::new(&config.openai, db.clone());
+    let openai = openai::OpenAi::new(&config.openai, &db);
 
     info!("Spawning Discord...");
     let mut discord = discord::Discord::try_new(
         config.clone(),
-        db.clone(),
+        db,
         #[cfg(feature = "openai")]
         openai,
     )

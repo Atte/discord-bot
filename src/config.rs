@@ -1,3 +1,5 @@
+#![allow(unused)] // features
+
 use crate::SubstitutingString;
 use color_eyre::eyre::Result;
 use serde::Deserialize;
@@ -109,7 +111,6 @@ pub struct OpenAiConfig {
 
 #[cfg(test)]
 mod tests {
-    #[ignore]
     #[tokio::test]
     async fn test_config() {
         super::Config::from_file("config.toml").await.unwrap();

@@ -1,15 +1,16 @@
+use std::num::NonZeroUsize;
+
 pub struct WordChunks<'a> {
     content: &'a str,
-    chunk_length: usize,
+    chunk_length: NonZeroUsize,
 }
 
 impl<'a> WordChunks<'a> {
     #[inline]
     pub fn from_str(content: &'a str, chunk_length: usize) -> Self {
-        assert!(chunk_length > 0);
         Self {
             content: content.trim(),
-            chunk_length,
+            chunk_length: NonZeroUsize::new(chunk_length).expect("chunk_length must be non-zero"),
         }
     }
 }
@@ -22,13 +23,13 @@ impl<'a> Iterator for WordChunks<'a> {
             return None;
         }
 
-        if self.content.len() <= self.chunk_length {
+        if self.content.len() <= self.chunk_length.get() {
             let chunk = self.content.trim();
             self.content = "";
             return Some(chunk);
         }
 
-        let mut boundary = self.chunk_length;
+        let mut boundary = self.chunk_length.get();
         while !self.content.is_char_boundary(boundary) {
             boundary -= 1;
         }

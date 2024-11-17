@@ -1,4 +1,4 @@
-#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)] // derivative
+#![allow(clippy::non_canonical_partial_ord_impl)] // derivative
 
 use super::super::{
     get_data,

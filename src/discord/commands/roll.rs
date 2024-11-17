@@ -42,9 +42,9 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         format!("({})", rolls.join(" + "))
     });
 
-    match meval::eval_str(&input) {
+    match mexprp::eval::<f64>(&input) {
         Ok(result) => {
-            let result = separate_thousands_floating(result);
+            let result = separate_thousands_floating(*result.to_vec().first().unwrap());
             let mut response = if SIMPLE_RE.is_match(&input) {
                 MessageBuilder::new()
                     .push_safe(original_input)
