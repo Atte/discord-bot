@@ -6,13 +6,13 @@ use super::super::{
     ConfigKey,
 };
 use crate::{discord::Context, util::ellipsis_string};
-use color_eyre::eyre::{bail, eyre, OptionExt, Result};
+use color_eyre::eyre::{eyre, OptionExt, Result};
 use derivative::Derivative;
 use itertools::{EitherOrBoth, Itertools};
-use poise::command;
+use poise::{command, CreateReply};
 use serenity::all::{
-    CreateEmbed, CreateEmbedFooter, CreateMessage, EditMember, GuildId, Member, MessageBuilder,
-    Role, RoleId, UserId,
+    CreateEmbed, CreateEmbedFooter, EditMember, GuildId, Member, MessageBuilder, Role, RoleId,
+    UserId,
 };
 use std::{cmp::Ordering, collections::HashSet, io::Write};
 use tabwriter::TabWriter;
@@ -110,8 +110,7 @@ impl Ranks {
     fn of_user(&self, user: impl Into<UserId>) -> Self {
         let user_id = user.into();
         Self::new(
-            self.0
-                .iter()
+            self.iter()
                 .filter(|rank| rank.members.iter().any(|member| member.user.id == user_id))
                 .cloned()
                 .collect(),
@@ -120,19 +119,17 @@ impl Ranks {
 
     fn by_name(&self, name: impl AsRef<str>) -> Option<Rank> {
         let search = name.as_ref().to_lowercase();
-        self.0
-            .iter()
+        self.iter()
             .find(|rank| rank.role.name.to_lowercase() == search)
             .cloned()
     }
 
     fn names(&self) -> impl Iterator<Item = String> + '_ {
-        self.0.iter().map(|rank| rank.role.name.clone())
+        self.iter().map(|rank| rank.role.name.clone())
     }
 
     fn member_counts(&self) -> impl Iterator<Item = (String, usize)> + '_ {
-        self.0
-            .iter()
+        self.iter()
             .map(|rank| (rank.role.name.clone(), rank.members.len()))
     }
 }
@@ -281,24 +278,22 @@ pub async fn ranks(ctx: Context<'_>) -> Result<()> {
         .await?
         .discord
         .command_prefix;
-    ctx.channel_id()
-        .send_message(
-            ctx,
-            CreateMessage::new().embed(
-                CreateEmbed::new()
-                    .title("Ranks")
-                    .footer(CreateEmbedFooter::new(format!(
-                        "Use {prefix}join and {prefix}leave to change your ranks"
-                    )))
-                    .description(ellipsis_string(
-                        MessageBuilder::new()
-                            .push_codeblock_safe(rank_list, None)
-                            .build(),
-                        EMBED_DESC_LENGTH,
-                    )),
-            ),
-        )
-        .await?;
+    ctx.send(
+        CreateReply::default().embed(
+            CreateEmbed::new()
+                .title("Ranks")
+                .footer(CreateEmbedFooter::new(format!(
+                    "Use {prefix}join and {prefix}leave to change your ranks"
+                )))
+                .description(ellipsis_string(
+                    MessageBuilder::new()
+                        .push_codeblock_safe(rank_list, None)
+                        .build(),
+                    EMBED_DESC_LENGTH,
+                )),
+        ),
+    )
+    .await?;
 
     let user_ranks = ranks.of_user(ctx.author().id);
     ctx.reply(if user_ranks.is_empty() {
@@ -314,8 +309,7 @@ pub async fn ranks(ctx: Context<'_>) -> Result<()> {
     #[cfg(feature = "dropdowns")]
     {
         use serenity::all::{
-            CreateActionRow, CreateAllowedMentions, CreateSelectMenu, CreateSelectMenuKind,
-            CreateSelectMenuOption,
+            CreateActionRow, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
         };
 
         let components = ranks
@@ -341,19 +335,7 @@ pub async fn ranks(ctx: Context<'_>) -> Result<()> {
             })
             .collect();
 
-        ctx.channel_id()
-            .send_message(
-                ctx,
-                CreateMessage::new()
-                    .reference_message(match ctx {
-                        poise::Context::Application(_) => {
-                            bail!("command not a message");
-                        }
-                        poise::Context::Prefix(prefix_context) => prefix_context.msg,
-                    })
-                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                    .components(components),
-            )
+        ctx.send(CreateReply::default().components(components))
             .await?;
     }
 

@@ -1,7 +1,4 @@
-use super::{
-    get_data, limits::ACTIVITY_LENGTH, log_channel, stats::update_stats, sticky_roles, ActivityKey,
-    ConfigKey,
-};
+use super::{limits::ACTIVITY_LENGTH, log_channel, stats::update_stats, sticky_roles, ActivityKey};
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
@@ -43,7 +40,7 @@ impl EventHandler for Handler {
         }
 
         #[cfg(feature = "openai")]
-        if let Ok(config) = get_data::<ConfigKey>(&ctx).await {
+        if let Ok(config) = super::get_data::<super::ConfigKey>(&ctx).await {
             if config
                 .discord
                 .command_channels
@@ -51,7 +48,7 @@ impl EventHandler for Handler {
                 && matches!(message.mentions_me(&ctx).await, Ok(true))
             {
                 let _ = tokio::task::spawn(async move {
-                    if let Ok(openai) = get_data::<crate::openai::OpenAiKey>(&ctx).await {
+                    if let Ok(openai) = super::get_data::<crate::openai::OpenAiKey>(&ctx).await {
                         if let Err(err) = openai.handle_message(&ctx, message.clone()).await {
                             error!("OpenAI error: {err:?}");
                             let _ = message

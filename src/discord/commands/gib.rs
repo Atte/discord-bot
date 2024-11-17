@@ -11,12 +11,12 @@ use color_eyre::eyre::eyre;
 use futures::StreamExt;
 use itertools::Itertools;
 use mongodb::bson::{doc, to_bson, Document};
-use poise::command;
+use poise::{command, CreateReply};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DefaultOnNull};
 use serenity::{
-    all::{CreateEmbed, CreateEmbedFooter, CreateMessage},
+    all::{CreateEmbed, CreateEmbedFooter},
     prelude::TypeMapKey,
 };
 use std::time::Duration;
@@ -126,38 +126,31 @@ pub async fn derpibooru_embed(ctx: &Context<'_>, image: &Image, total: usize) ->
         .iter()
         .filter_map(|tag| tag.strip_prefix("artist:"))
         .join(", ");
-    ctx.channel_id()
-        .send_message(
-            &ctx,
-            CreateMessage::new().embed({
-                let mut embed = CreateEmbed::new().field(
-                    "Post",
-                    format!("https://derpibooru.org/{}", image.id),
-                    true,
-                );
-                if !artists.is_empty() {
-                    embed = embed.field(
-                        if artists.contains(", ") {
-                            "Artists"
-                        } else {
-                            "Artist"
-                        },
-                        ellipsis_string(artists, EMBED_FIELD_VALUE_LENGTH),
-                        true,
-                    );
-                }
-                if let Some(ref timestamp) = image.first_seen_at {
-                    embed = embed.timestamp(DateTime::parse_from_rfc3339(timestamp)?);
-                }
-                embed
-                    .image(&image.representations.tall)
-                    .footer(CreateEmbedFooter::new(format!(
-                        "{} results",
-                        separate_thousands_unsigned(total)
-                    )))
-            }),
-        )
-        .await?;
+    ctx.send(CreateReply::default().embed({
+        let mut embed =
+            CreateEmbed::new().field("Post", format!("https://derpibooru.org/{}", image.id), true);
+        if !artists.is_empty() {
+            embed = embed.field(
+                if artists.contains(", ") {
+                    "Artists"
+                } else {
+                    "Artist"
+                },
+                ellipsis_string(artists, EMBED_FIELD_VALUE_LENGTH),
+                true,
+            );
+        }
+        if let Some(ref timestamp) = image.first_seen_at {
+            embed = embed.timestamp(DateTime::parse_from_rfc3339(timestamp)?);
+        }
+        embed
+            .image(&image.representations.tall)
+            .footer(CreateEmbedFooter::new(format!(
+                "{} results",
+                separate_thousands_unsigned(total)
+            )))
+    }))
+    .await?;
     Ok(())
 }
 
@@ -165,7 +158,9 @@ pub async fn derpibooru_embed(ctx: &Context<'_>, image: &Image, total: usize) ->
 #[command(
     prefix_command,
     category = "Horse",
-    aliases("give", "derpi", "derpibooru")
+    aliases("give", "derpi", "derpibooru"),
+    invoke_on_edit,
+    track_deletion
 )]
 pub async fn gib(ctx: Context<'_>, #[rest] query: String) -> Result<()> {
     let mut query = query.trim();

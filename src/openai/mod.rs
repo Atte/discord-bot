@@ -206,7 +206,7 @@ impl OpenAi {
     pub async fn handle_message(&self, ctx: &Context, mut msg: Message) -> Result<()> {
         let _typing = msg.channel_id.start_typing(&ctx.http);
 
-        msg.content = regex_replace!(r"^<@[0-9]+>\s*", &msg.content, "").to_string();
+        msg.content = regex_replace!(r"^<@!?[0-9]+>\s*", &msg.content, "").to_string();
 
         let thread_id = if let Some(thread_id) = self.find_thread_id(&msg).await? {
             thread_id

@@ -12,7 +12,9 @@ use serenity::utils::MessageBuilder;
 #[command(
     prefix_command,
     category = "Misc",
-    aliases("calc", "calculate", "calculator")
+    aliases("calc", "calculate", "calculator"),
+    invoke_on_edit,
+    track_deletion
 )]
 pub async fn roll(ctx: Context<'_>, #[rest] expression: String) -> Result<()> {
     let expression = expression.trim();

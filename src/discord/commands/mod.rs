@@ -8,14 +8,14 @@ mod roll;
 use super::{Context, PoiseData};
 
 /// pong
-#[command(prefix_command, category = "Misc")]
+#[command(prefix_command, category = "Misc", track_deletion)]
 async fn ping(ctx: Context<'_>) -> Result<()> {
     ctx.reply("Pong!").await?;
     Ok(())
 }
 
 /// List commands, or show help for a specific command
-#[command(prefix_command, category = "Misc")]
+#[command(prefix_command, category = "Misc", invoke_on_edit, track_deletion)]
 async fn help(
     ctx: Context<'_>,
     #[description = "Specific command to show help about"] command: Option<String>,

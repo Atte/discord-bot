@@ -1,6 +1,8 @@
+use std::{sync::Arc, time::Duration};
+
 use crate::config::Config;
 use color_eyre::eyre::{eyre, Result};
-use poise::{CreateReply, Framework, FrameworkError, FrameworkOptions, PrefixFrameworkOptions};
+use poise::{EditTracker, Framework, FrameworkOptions, PrefixFrameworkOptions};
 use serenity::{
     cache::Settings as CacheSettings, client::Client, model::gateway::GatewayIntents,
     prelude::TypeMapKey,
@@ -88,6 +90,9 @@ impl Discord {
                 prefix_options: PrefixFrameworkOptions {
                     prefix: Some(config.discord.command_prefix.to_string()),
                     mention_as_prefix: false,
+                    edit_tracker: Some(Arc::new(EditTracker::for_timespan(Duration::from_secs(
+                        3600,
+                    )))),
                     ..Default::default()
                 },
                 owners: config.discord.owners.clone(),
