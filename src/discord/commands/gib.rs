@@ -162,11 +162,8 @@ pub async fn derpibooru_embed(ctx: &Context<'_>, image: &Image, total: usize) ->
     invoke_on_edit,
     track_deletion
 )]
-pub async fn gib(ctx: Context<'_>, #[rest] query: String) -> Result<()> {
-    let mut query = query.trim();
-    if query.is_empty() {
-        query = "*";
-    }
+pub async fn gib(ctx: Context<'_>, #[rest] query: Option<String>) -> Result<()> {
+    let query = query.as_ref().map_or("*", |s| s.trim());
 
     if let Some((image, total)) = derpibooru_search(&ctx, query).await? {
         derpibooru_embed(&ctx, &image, total).await?;
