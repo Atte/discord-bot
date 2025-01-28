@@ -89,16 +89,22 @@ pub async fn enforce(ctx: &Context, message: &Message) -> Result<()> {
             continue;
         }
 
+        let title = rule.name;
         for action in rule.actions {
             match action {
                 Action::BlockMessage { custom_message } => {
-                    if let Some(custom_message) = custom_message {
-                        if let Err(err) = message
-                            .reply_ping(ctx, MessageBuilder::new().push(custom_message).build())
-                            .await
-                        {
-                            log::warn!("Failed to yell at modmin for automod match: {err:?}");
-                        }
+                    if let Err(err) = message
+                        .reply_ping(
+                            ctx,
+                            MessageBuilder::new()
+                                .push(
+                                    custom_message.unwrap_or_else(|| "AutoMod blocked".to_string()),
+                                )
+                                .build(),
+                        )
+                        .await
+                    {
+                        log::warn!("Failed to yell at modmin for automod match: {err:?}");
                     }
                     if let Err(err) = message.delete(ctx).await {
                         log::error!("Failed to delete automod matched message: {err:?}");
@@ -107,7 +113,7 @@ pub async fn enforce(ctx: &Context, message: &Message) -> Result<()> {
                 Action::Alert(channel_id) => {
                     if config.discord.log_channels.contains(&channel_id) {
                         if let Err(err) =
-                            log_channel::automod_enforced(ctx, guild_id, &message).await
+                            log_channel::automod_enforced(ctx, guild_id, &message, &title).await
                         {
                             log::error!("Failed to log automod enforcement: {err:?}");
                         }

@@ -2,7 +2,7 @@ use super::{get_data, limits::EMBED_DESC_LENGTH, ConfigKey};
 use crate::util::ellipsis_string;
 use color_eyre::eyre::{Error, Result};
 use serenity::{
-    all::{Colour, CreateEmbedAuthor, CreateEmbedFooter, CreateMessage},
+    all::{Colour, CreateEmbedAuthor, CreateEmbedFooter, CreateMessage, Rule},
     builder::CreateEmbed,
     client::Context,
     model::{
@@ -34,7 +34,12 @@ async fn send_log(
     result
 }
 
-pub async fn automod_enforced(ctx: &Context, guild_id: GuildId, message: &Message) -> Result<()> {
+pub async fn automod_enforced(
+    ctx: &Context,
+    guild_id: GuildId,
+    message: &Message,
+    title: impl AsRef<str>,
+) -> Result<()> {
     send_log(ctx, guild_id, || {
         CreateEmbed::new()
             .color(Colour::ORANGE)
@@ -49,7 +54,9 @@ pub async fn automod_enforced(ctx: &Context, guild_id: GuildId, message: &Messag
                             .mention(&message.author)
                             .push(" on ")
                             .mention(&message.channel_id)
-                            .push(" matched an AutoMod rule")
+                            .push(" matched AutoMod rule \"")
+                            .push(title.as_ref())
+                            .push("\"")
                             .build(),
                     )
                     .push(&message.content)
