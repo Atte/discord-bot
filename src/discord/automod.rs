@@ -22,8 +22,8 @@ fn wildcards_to_regex(s: impl AsRef<str>) -> String {
     match (s.starts_with('*'), s.ends_with('*')) {
         (true, true) => format!("{}", regex::escape(&s)),
         (true, false) => format!("{}\\b", regex::escape(&s)),
-        (false, true) => todo!("\\b{}", regex::escape(&s)),
-        (false, false) => todo!("\\b{}\\b", regex::escape(&s)),
+        (false, true) => format!("\\b{}", regex::escape(&s)),
+        (false, false) => format!("\\b{}\\b", regex::escape(&s)),
     }
 }
 
