@@ -26,7 +26,7 @@ rank_end_roles = [
     # 1245069255872090344, # test (colors)
 ]
 enforce_automods = [
-    1333818451105546242, # test (block twitter)
+    324598323489013770, # test
 ]
 
 [gib]

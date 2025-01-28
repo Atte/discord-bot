@@ -62,7 +62,7 @@ pub struct DiscordConfig {
     #[serde(default)]
     pub rank_end_roles: HashSet<RoleId>,
     #[serde(default)]
-    pub enforce_automods: HashSet<RuleId>,
+    pub enforce_automods: HashSet<GuildId>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

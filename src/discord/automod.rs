@@ -43,12 +43,14 @@ pub async fn enforce(ctx: &Context, message: &Message) -> Result<()> {
     let Some(guild_id) = message.guild_id else {
         return Ok(());
     };
+    if !config.discord.enforce_automods.contains(&guild_id) {
+        return Ok(());
+    }
     let member = message.member(ctx).await?;
 
     let rules = get_rules(ctx, guild_id).await.map_err(|err| eyre!(err))?;
     for rule in rules {
-        if !config.discord.enforce_automods.contains(&rule.id)
-            || rule.event_type != AutomodEventType::MessageSend
+        if rule.event_type != AutomodEventType::MessageSend
             || rule.exempt_channels.contains(&message.channel_id)
             || member
                 .roles
