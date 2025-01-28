@@ -25,6 +25,9 @@ rank_end_roles = [
     1114229249646272572, # test
     # 1245069255872090344, # test (colors)
 ]
+enforce_automods = [
+    1333818451105546242, # test (block twitter)
+]
 
 [gib]
 endpoint = "https://derpibooru.org/api/v1/json/search/images?sf=random&filter_id=152796"

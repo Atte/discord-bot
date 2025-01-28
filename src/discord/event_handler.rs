@@ -1,4 +1,6 @@
-use super::{limits::ACTIVITY_LENGTH, log_channel, stats::update_stats, sticky_roles, ActivityKey};
+use super::{
+    automod, limits::ACTIVITY_LENGTH, log_channel, stats::update_stats, sticky_roles, ActivityKey,
+};
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
@@ -37,6 +39,10 @@ impl EventHandler for Handler {
 
         if message.author.bot {
             return;
+        }
+
+        if let Err(err) = automod::enforce(&ctx, &message).await {
+            error!("Error enforcing automod: {err:?}");
         }
 
         #[cfg(feature = "openai")]

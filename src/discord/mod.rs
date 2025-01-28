@@ -11,6 +11,7 @@ use serenity::{
 #[cfg(feature = "openai")]
 use crate::openai::{OpenAi, OpenAiKey};
 
+pub mod automod;
 pub mod commands;
 mod event_handler;
 pub mod limits;

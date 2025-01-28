@@ -34,6 +34,35 @@ async fn send_log(
     result
 }
 
+pub async fn automod_enforced(ctx: &Context, guild_id: GuildId, message: &Message) -> Result<()> {
+    send_log(ctx, guild_id, || {
+        CreateEmbed::new()
+            .color(Colour::ORANGE)
+            .author({
+                CreateEmbedAuthor::new(message.author.tag()).icon_url(message.author.face())
+            })
+            .description(ellipsis_string(
+                MessageBuilder::new()
+                    .push_bold_line(
+                        MessageBuilder::new()
+                            .push("Message sent by ")
+                            .mention(&message.author)
+                            .push(" on ")
+                            .mention(&message.channel_id)
+                            .push(" matched an AutoMod rule")
+                            .build(),
+                    )
+                    .push(&message.content)
+                    .build(),
+                EMBED_DESC_LENGTH,
+            ))
+            .footer(CreateEmbedFooter::new("Originally posted"))
+            .timestamp(message.timestamp)
+    })
+    .await?;
+    Ok(())
+}
+
 pub async fn message_deleted(
     ctx: &Context,
     channel_id: ChannelId,

@@ -18,6 +18,7 @@ async-trait = "0.1.83"
 base64 = "0.22"
 bson = { version = "2.13", features = ["chrono-0_4"] }
 bytes = "1.0"
+cached = { version = "0.54.0", features = ["async"] }
 chrono = { version = "0.4", features = ["serde"] }
 color-eyre = "0.6"
 conv = "0.3"

@@ -3,7 +3,10 @@
 use crate::SubstitutingString;
 use color_eyre::eyre::Result;
 use serde::Deserialize;
-use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
+use serenity::{
+    all::RuleId,
+    model::id::{ChannelId, GuildId, RoleId, UserId},
+};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -58,6 +61,8 @@ pub struct DiscordConfig {
     pub rank_start_roles: HashSet<RoleId>,
     #[serde(default)]
     pub rank_end_roles: HashSet<RoleId>,
+    #[serde(default)]
+    pub enforce_automods: HashSet<RuleId>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
