@@ -3,7 +3,7 @@ use crate::{discord::Context, util::separate_thousands_floating, Result};
 use itertools::Itertools;
 use lazy_regex::{regex_is_match, regex_replace_all};
 use poise::command;
-use rand::{distributions::Uniform, thread_rng, Rng};
+use rand::{distr::Uniform, thread_rng, Rng};
 use serenity::utils::MessageBuilder;
 
 /// Cast die and/or do math
@@ -23,12 +23,16 @@ pub async fn roll(ctx: Context<'_>, #[rest] expression: String) -> Result<()> {
         r"(?P<rolls>[1-9][0-9]*)?d(?P<sides>[1-9][0-9]*)",
         expression,
         |_, rolls: &str, sides: &str| {
-            let distribution =
-                Uniform::new(1_usize, sides.parse::<usize>().unwrap_or(6_usize) + 1_usize);
-            let mut rolls =
-                (0..std::cmp::min(100_usize, rolls.parse::<usize>().unwrap_or(1_usize)))
-                    .map(|_| thread_rng().sample(distribution).to_string());
-            format!("({})", rolls.join(" + "))
+            if let Ok(distribution) =
+                Uniform::new(1_usize, sides.parse::<usize>().unwrap_or(6_usize) + 1_usize)
+            {
+                let mut rolls =
+                    (0..std::cmp::min(100_usize, rolls.parse::<usize>().unwrap_or(1_usize)))
+                        .map(|_| thread_rng().sample(distribution).to_string());
+                format!("({})", rolls.join(" + "))
+            } else {
+                "(invalid)".to_string()
+            }
         },
     );
 
