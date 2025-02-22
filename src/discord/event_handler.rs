@@ -1,5 +1,5 @@
 use super::{
-    automod, limits::ACTIVITY_LENGTH, log_channel, stats::update_stats, sticky_roles, ActivityKey,
+    ActivityKey, automod, limits::ACTIVITY_LENGTH, log_channel, stats::update_stats, sticky_roles,
 };
 use crate::util::ellipsis_string;
 use log::error;

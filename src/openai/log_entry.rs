@@ -1,6 +1,6 @@
 use async_openai::types::RunCompletionUsage;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr, TryFromInto};
+use serde_with::{DisplayFromStr, TryFromInto, serde_as};
 use serenity::all::{ChannelId, Context, GuildId, MessageId, UserId};
 
 #[derive(Debug, Serialize, Deserialize)]

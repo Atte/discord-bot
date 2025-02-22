@@ -1,20 +1,20 @@
 use super::super::{
-    get_data, get_data_or_insert_with, limits::EMBED_FIELD_VALUE_LENGTH, ConfigKey, DbKey,
+    ConfigKey, DbKey, get_data, get_data_or_insert_with, limits::EMBED_FIELD_VALUE_LENGTH,
 };
 use crate::{
+    Result,
     discord::Context,
     util::{ellipsis_string, separate_thousands_unsigned},
-    Result,
 };
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::eyre;
 use futures::StreamExt;
 use itertools::Itertools;
-use mongodb::bson::{doc, to_bson, Document};
-use poise::{command, CreateReply};
+use mongodb::bson::{Document, doc, to_bson};
+use poise::{CreateReply, command};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DefaultOnNull};
+use serde_with::{DefaultOnNull, serde_as};
 use serenity::{
     all::{CreateEmbed, CreateEmbedFooter},
     prelude::TypeMapKey,

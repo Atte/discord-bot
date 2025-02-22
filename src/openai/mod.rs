@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::Result;
 use async_openai::{
+    Client,
     config::OpenAIConfig,
     types::{
         AssistantEventStream, AssistantStreamEvent, AssistantsApiResponseFormatOption,
@@ -11,9 +12,8 @@ use async_openai::{
         MessageContentTextObject, MessageRequestContentTextObject, MessageRole, RequiredAction,
         ResponseFormat, RunObject, SubmitToolOutputsRunRequest, TextData, ToolsOutputsArgs,
     },
-    Client,
 };
-use bson::{doc, Bson};
+use bson::{Bson, doc};
 use futures::StreamExt;
 use lazy_regex::regex_replace;
 use log_entry::LogEntry;
@@ -21,8 +21,8 @@ use maplit::{convert_args, hashmap};
 use mongodb::{Collection, Database};
 use serenity::{
     all::{
-        Context, CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateMessage, Message,
-        MessageBuilder, MESSAGE_CODE_LIMIT,
+        Context, CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateMessage,
+        MESSAGE_CODE_LIMIT, Message, MessageBuilder,
     },
     prelude::TypeMapKey,
 };

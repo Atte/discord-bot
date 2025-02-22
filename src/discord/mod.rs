@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use crate::config::Config;
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::{Result, eyre};
 use poise::{EditTracker, Framework, FrameworkOptions, PrefixFrameworkOptions};
 use serenity::{
     cache::Settings as CacheSettings, client::Client, model::gateway::GatewayIntents,

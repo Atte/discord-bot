@@ -1,8 +1,8 @@
-use super::{get_data, limits::EMBED_DESC_LENGTH, ConfigKey};
+use super::{ConfigKey, get_data, limits::EMBED_DESC_LENGTH};
 use crate::util::ellipsis_string;
 use color_eyre::eyre::{Error, Result};
 use serenity::{
-    all::{Colour, CreateEmbedAuthor, CreateEmbedFooter, CreateMessage, Rule},
+    all::{Colour, CreateEmbedAuthor, CreateEmbedFooter, CreateMessage},
     builder::CreateEmbed,
     client::Context,
     model::{

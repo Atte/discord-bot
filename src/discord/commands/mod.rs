@@ -1,5 +1,5 @@
 use crate::Result;
-use poise::{command, samples::HelpConfiguration, Command};
+use poise::{Command, command, samples::HelpConfiguration};
 
 mod gib;
 mod ranks;

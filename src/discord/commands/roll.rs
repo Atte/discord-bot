@@ -1,9 +1,9 @@
 use super::super::limits::REPLY_LENGTH;
-use crate::{discord::Context, util::separate_thousands_floating, Result};
+use crate::{Result, discord::Context, util::separate_thousands_floating};
 use itertools::Itertools;
 use lazy_regex::{regex_is_match, regex_replace_all};
 use poise::command;
-use rand::{distr::Uniform, thread_rng, Rng};
+use rand::{Rng, distr::Uniform, rng};
 use serenity::utils::MessageBuilder;
 
 /// Cast die and/or do math
@@ -28,7 +28,7 @@ pub async fn roll(ctx: Context<'_>, #[rest] expression: String) -> Result<()> {
             {
                 let mut rolls =
                     (0..std::cmp::min(100_usize, rolls.parse::<usize>().unwrap_or(1_usize)))
-                        .map(|_| thread_rng().sample(distribution).to_string());
+                        .map(|_| rng().sample(distribution).to_string());
                 format!("({})", rolls.join(" + "))
             } else {
                 "(invalid)".to_string()

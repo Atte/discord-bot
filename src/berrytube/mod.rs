@@ -1,11 +1,11 @@
 use crate::{
-    config::BerrytubeConfig,
-    discord::limits::ACTIVITY_LENGTH,
-    discord::ActivityKey,
-    util::{ellipsis_string, format_duration_short},
     Result,
+    config::BerrytubeConfig,
+    discord::ActivityKey,
+    discord::limits::ACTIVITY_LENGTH,
+    util::{ellipsis_string, format_duration_short},
 };
-use futures::{pin_mut, StreamExt};
+use futures::{StreamExt, pin_mut};
 use log::warn;
 use reqwest::Url;
 use serde::Deserialize;
@@ -16,7 +16,7 @@ use serenity::{
 use std::{convert::TryInto, sync::Arc, time::Duration};
 
 mod sse;
-use sse::{stream_sse_events, SseEvent};
+use sse::{SseEvent, stream_sse_events};
 
 #[derive(Debug, Clone, Deserialize)]
 struct VideoChangeEvent {
@@ -125,7 +125,7 @@ impl Berrytube {
             let mut data = self.data.write().await;
             if data
                 .get::<ActivityKey>()
-                .map_or(false, |current| current == title)
+                .is_some_and(|current| current == title)
             {
                 return;
             }

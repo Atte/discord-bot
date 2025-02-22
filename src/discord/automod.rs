@@ -1,13 +1,13 @@
 use cached::proc_macro::cached;
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::{Result, eyre};
 use itertools::Itertools;
 use lazy_regex::regex::{self, Regex};
 use serenity::all::{
-    automod::Action, AutomodEventType, CacheHttp, Context, GuildId, Message, MessageBuilder, Rule,
-    Trigger,
+    AutomodEventType, CacheHttp, Context, GuildId, Message, MessageBuilder, Rule, Trigger,
+    automod::Action,
 };
 
-use super::{get_data, log_channel, ConfigKey};
+use super::{ConfigKey, get_data, log_channel};
 
 #[cached(time = 60, sync_writes = true, key = "GuildId", convert = "{ guild }")]
 async fn get_rules(ctx: &Context, guild: GuildId) -> Result<Vec<Rule>, String> {
@@ -20,10 +20,10 @@ async fn get_rules(ctx: &Context, guild: GuildId) -> Result<Vec<Rule>, String> {
 fn wildcards_to_regex(s: impl AsRef<str>) -> String {
     let s = s.as_ref();
     match (s.starts_with('*'), s.ends_with('*')) {
-        (true, true) => format!("{}", regex::escape(&s)),
-        (true, false) => format!("{}\\b", regex::escape(&s)),
-        (false, true) => format!("\\b{}", regex::escape(&s)),
-        (false, false) => format!("\\b{}\\b", regex::escape(&s)),
+        (true, true) => regex::escape(s).to_string(),
+        (true, false) => format!("{}\\b", regex::escape(s)),
+        (false, true) => format!("\\b{}", regex::escape(s)),
+        (false, false) => format!("\\b{}\\b", regex::escape(s)),
     }
 }
 
@@ -113,7 +113,7 @@ pub async fn enforce(ctx: &Context, message: &Message) -> Result<()> {
                 Action::Alert(channel_id) => {
                     if config.discord.log_channels.contains(&channel_id) {
                         if let Err(err) =
-                            log_channel::automod_enforced(ctx, guild_id, &message, &title).await
+                            log_channel::automod_enforced(ctx, guild_id, message, &title).await
                         {
                             log::error!("Failed to log automod enforcement: {err:?}");
                         }

@@ -1,15 +1,14 @@
 #![allow(clippy::non_canonical_partial_ord_impl)] // derivative
 
 use super::super::{
-    get_data,
+    ConfigKey, get_data,
     limits::{EMBED_DESC_LENGTH, REPLY_LENGTH},
-    ConfigKey,
 };
 use crate::{discord::Context, util::ellipsis_string};
-use color_eyre::eyre::{eyre, OptionExt, Result};
+use color_eyre::eyre::{OptionExt, Result, eyre};
 use derivative::Derivative;
 use itertools::{EitherOrBoth, Itertools};
-use poise::{command, CreateReply};
+use poise::{CreateReply, command};
 use serenity::all::{
     CreateEmbed, CreateEmbedFooter, EditMember, GuildId, Member, MessageBuilder, Role, RoleId,
     UserId,
@@ -162,10 +161,8 @@ async fn handle_joinleave(
                 if on_leave(&rank, &mut response) {
                     user_role_ids.remove(&rank.role.id);
                 }
-            } else {
-                if on_join(&rank, &mut response) {
-                    user_role_ids.insert(rank.role.id);
-                }
+            } else if on_join(&rank, &mut response) {
+                user_role_ids.insert(rank.role.id);
             }
         } else {
             response.push("No such rank: ").push_line_safe(name);
@@ -316,7 +313,7 @@ pub async fn ranks(ctx: Context<'_>) -> Result<()> {
             .iter()
             .map(|rank| {
                 CreateSelectMenuOption::new(rank.role.name.clone(), rank.role.id.to_string())
-                    .default_selection(user_ranks.contains(&rank))
+                    .default_selection(user_ranks.contains(rank))
             })
             .chunks(25)
             .into_iter()

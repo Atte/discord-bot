@@ -1,6 +1,6 @@
-use super::{get_data, DbKey};
+use super::{DbKey, get_data};
 use chrono::{DateTime, Utc};
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::{Result, eyre};
 use conv::{UnwrapOrSaturate, ValueFrom};
 use lazy_regex::regex;
 use mongodb::bson::doc;

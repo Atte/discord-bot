@@ -1,8 +1,8 @@
-use super::{get_data, DbKey};
-use color_eyre::eyre::{eyre, Result};
+use super::{DbKey, get_data};
+use color_eyre::eyre::{Result, eyre};
 use itertools::Itertools;
 use log::info;
-use mongodb::bson::{doc, Document};
+use mongodb::bson::{Document, doc};
 use serenity::{
     all::EditMember,
     client::Context,

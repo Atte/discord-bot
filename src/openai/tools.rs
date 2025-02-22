@@ -1,7 +1,7 @@
 use crate::Result;
 use async_openai::types::{AssistantTools, AssistantToolsFunction, FunctionCall, FunctionObject};
 use chrono::{Datelike, Utc, Weekday};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use serenity::async_trait;
 
 pub fn get_specs() -> Vec<AssistantTools> {

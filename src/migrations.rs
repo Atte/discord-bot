@@ -2,11 +2,11 @@ use color_eyre::eyre::Result;
 use futures::TryStreamExt;
 use log::info;
 use mongodb::{
-    bson::{doc, Document},
+    Database, IndexModel,
+    bson::{Document, doc},
     error::Result as MongoResult,
     options::IndexOptions,
     results::UpdateResult,
-    Database, IndexModel,
 };
 
 async fn mongo_number_to_string(

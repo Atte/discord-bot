@@ -1,14 +1,14 @@
 use crate::{config::TeamupConfig, substituting_string::SubstitutingString};
 use chrono::{DateTime, Duration, Utc};
 use color_eyre::{
-    eyre::{eyre, Result},
     Section, SectionExt,
+    eyre::{Result, eyre},
 };
 use log::info;
-use reqwest::{header::HeaderValue, Method};
+use reqwest::{Method, header::HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use serde_with::{serde_as, DefaultOnError, NoneAsEmptyString};
+use serde_with::{DefaultOnError, NoneAsEmptyString, serde_as};
 use serenity::all::{Cache, Http};
 use std::time::Duration as StdDuration;
 use std::{collections::HashMap, sync::Arc};
@@ -98,11 +98,11 @@ impl Teamup {
         }
     }
 
-    async fn fetch_calendar_events(
+    async fn fetch_calendar_events<T: Iterator<Item = u64>>(
         &self,
         range: Duration,
-        subcalendars: impl Iterator<Item = u64>,
-    ) -> Result<impl Iterator<Item = TeamupEvent>> {
+        subcalendars: T,
+    ) -> Result<impl Iterator<Item = TeamupEvent> + use<T>> {
         let now = Utc::now();
         let response = self
             .client
@@ -172,7 +172,7 @@ impl Teamup {
         }
     }
 
-    async fn fetch_discord_events(&self) -> Result<impl Iterator<Item = DiscordEvent>> {
+    async fn fetch_discord_events(&self) -> Result<impl Iterator<Item = DiscordEvent> + use<>> {
         let response = self.discord_request(Method::GET, None, |r| r).await?;
 
         let response: Vec<DiscordEvent> = serde_json::from_str(&response)

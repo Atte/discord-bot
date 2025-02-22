@@ -2,7 +2,7 @@
 
 use derivative::Derivative;
 use derive_more::{AsRef, Deref, Display};
-use lazy_regex::{regex, Captures};
+use lazy_regex::{Captures, regex};
 use serde::{de, ser};
 use std::{env, fmt};
 
@@ -68,7 +68,7 @@ impl ser::Serialize for SubstitutingString {
 
 struct SubstitutingStringVisitor;
 
-impl<'de> de::Visitor<'de> for SubstitutingStringVisitor {
+impl de::Visitor<'_> for SubstitutingStringVisitor {
     type Value = SubstitutingString;
 
     #[inline]
@@ -107,7 +107,7 @@ impl<'de> de::Deserialize<'de> for SubstitutingString {
 mod tests {
     use super::SubstitutingString;
     use std::{
-        env::{set_var, VarError},
+        env::{VarError, set_var},
         sync::Once,
     };
 
