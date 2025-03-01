@@ -97,8 +97,10 @@ pub struct TeamupConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct OpenAiConfig {
+    #[serde(default)]
+    pub api_url: Option<SubstitutingString>,
     pub api_key: SubstitutingString,
-    pub assistant_id: SubstitutingString,
+    pub prompt: SubstitutingString,
 }
 
 #[cfg(test)]

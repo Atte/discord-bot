@@ -1,32 +1,38 @@
 use crate::Result;
-use async_openai::types::{AssistantTools, AssistantToolsFunction, FunctionCall, FunctionObject};
+use async_openai::types::{
+    ChatCompletionMessageToolCall, ChatCompletionTool, ChatCompletionToolArgs,
+    ChatCompletionToolType, FunctionObjectArgs,
+};
 use chrono::{Datelike, Utc, Weekday};
 use serde_json::{Value, json};
 use serenity::async_trait;
 
-pub fn get_specs() -> Vec<AssistantTools> {
+pub fn get_specs() -> Result<Vec<ChatCompletionTool>> {
     get_tools()
         .into_iter()
         .map(|tool| {
-            AssistantTools::Function(AssistantToolsFunction {
-                function: FunctionObject {
-                    name: tool.get_name().to_owned(),
-                    description: Some(tool.get_description().to_owned()),
-                    parameters: Some(tool.get_parameters()),
-                    strict: Some(true),
-                },
-            })
+            Ok(ChatCompletionToolArgs::default()
+                .r#type(ChatCompletionToolType::Function)
+                .function(
+                    FunctionObjectArgs::default()
+                        .name(tool.get_name().to_owned())
+                        .description(tool.get_description().to_owned())
+                        .parameters(tool.get_parameters())
+                        .strict(true)
+                        .build()?,
+                )
+                .build()?)
         })
         .collect()
 }
 
-pub async fn run(call: FunctionCall) -> String {
-    let Ok(args) = serde_json::from_str::<Value>(&call.arguments) else {
+pub async fn run(call: &ChatCompletionMessageToolCall) -> String {
+    let Ok(args) = serde_json::from_str::<Value>(&call.function.arguments) else {
         return "Invalid arguments!".to_owned();
     };
 
     for tool in get_tools() {
-        if tool.get_name() == call.name {
+        if tool.get_name() == call.function.name {
             return tool.run(args).await.unwrap_or_else(|err| err.to_string());
         }
     }
