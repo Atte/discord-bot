@@ -10,11 +10,14 @@ use async_openai::{
         ChatCompletionRequestMessageContentPartTextArgs, ChatCompletionRequestSystemMessageArgs,
         ChatCompletionRequestToolMessageArgs, ChatCompletionRequestToolMessageContent,
         ChatCompletionRequestUserMessageArgs, ChatCompletionResponseMessage,
-        CreateChatCompletionRequestArgs, ImageDetail, ImageUrlArgs, ResponseFormat,
+        ChatCompletionToolChoiceOption, CreateChatCompletionRequestArgs, ImageDetail, ImageUrlArgs,
+        ResponseFormat,
     },
 };
+use chrono::{Datelike, Utc, Weekday};
 use color_eyre::eyre::eyre;
 use lazy_regex::regex_replace;
+use maplit::hashmap;
 use serenity::{
     all::{Context, CreateAllowedMentions, CreateMessage, MESSAGE_CODE_LIMIT, Message},
     prelude::TypeMapKey,
@@ -24,6 +27,8 @@ use word_chunks::WordChunks;
 
 mod tools;
 mod word_chunks;
+
+const MAX_TRIES: usize = 3;
 
 #[derive(Debug)]
 pub struct OpenAiKey;
@@ -105,6 +110,7 @@ impl OpenAi {
         Ok(builder.content(parts).build()?.into())
     }
 
+    #[allow(clippy::too_many_lines)] // TODO
     pub async fn handle_message(&self, ctx: &Context, msg: Message) -> Result<()> {
         let _typing = msg.channel_id.start_typing(&ctx.http);
 
@@ -142,38 +148,64 @@ impl OpenAi {
         messages.insert(
             0,
             ChatCompletionRequestSystemMessageArgs::default()
-                .content(self.config.prompt.to_string())
+                .content(
+                    self.config
+                        .prompt
+                        .to_string()
+                        .replace(
+                            "{WEEKDAY}",
+                            match Utc::now().weekday() {
+                                Weekday::Mon => "Monday",
+                                Weekday::Tue => "Tuesday",
+                                Weekday::Wed => "Wednesday",
+                                Weekday::Thu => "Thursday",
+                                Weekday::Fri => "Friday",
+                                Weekday::Sat => "Saturday",
+                                Weekday::Sun => "Sunday",
+                            },
+                        )
+                        .trim(),
+                )
                 .build()?
                 .into(),
         );
 
-        // let mut metadata = hashmap! {
-        //     "user_id" => msg.author.id.to_string(),
-        //     "user_name" => msg.author.name.clone(),
-        //     "message_id" => msg.id.to_string(),
-        //     "channel_id" => msg.channel_id.to_string(),
-        // };
-        // if let Some(nick) = msg.author_nick(ctx).await {
-        //     metadata.insert("user_nick", nick);
-        // }
-        // if let Some(guild_id) = msg.guild_id {
-        //     metadata.insert("guild_id", guild_id.to_string());
-        // }
+        let mut metadata = hashmap! {
+            "user_id" => msg.author.id.to_string(),
+            "user_name" => msg.author.name.clone(),
+            "message_id" => msg.id.to_string(),
+            "channel_id" => msg.channel_id.to_string(),
+        };
+        if let Some(nick) = msg.author_nick(ctx).await {
+            metadata.insert("user_nick", nick);
+        }
+        if let Some(guild_id) = msg.guild_id {
+            metadata.insert("guild_id", guild_id.to_string());
+        }
 
-        loop {
-            let args = CreateChatCompletionRequestArgs::default()
-                .model(self.config.model.to_string())
+        for i in 1..=MAX_TRIES {
+            metadata.insert("try", i.to_string());
+            let mut args = CreateChatCompletionRequestArgs::default();
+            args.model(self.config.model.to_string())
                 // .metadata(json!(metadata))
                 // .store(true)
                 .parallel_tool_calls(true)
                 .response_format(ResponseFormat::Text)
                 .temperature(self.config.temperature)
                 .top_p(self.config.top_p)
-                .tools(tools::get_specs()?)
-                .messages(messages.clone())
-                .build()?;
+                .messages(messages.clone());
+            if self.config.tools {
+                args.tools(tools::get_specs()?)
+                    .tool_choice(if i == MAX_TRIES {
+                        ChatCompletionToolChoiceOption::None
+                    } else {
+                        ChatCompletionToolChoiceOption::Auto
+                    });
+            }
+            let args = args.build()?;
             // println!("{args:?}");
             let result = self.client.chat().create(args).await?;
+            // println!("{result:?}");
 
             let response = result
                 .choices
@@ -190,20 +222,22 @@ impl OpenAi {
             }
 
             if let Some(calls) = response.message.tool_calls.clone() {
-                let mut joinset = JoinSet::new();
-                for call in calls {
-                    joinset.spawn(async move {
-                        let text = tools::run(&call).await;
-                        ChatCompletionRequestToolMessageArgs::default()
-                            .tool_call_id(call.id)
-                            .content(ChatCompletionRequestToolMessageContent::Text(text))
-                            .build()
-                    });
+                if !calls.is_empty() {
+                    let mut joinset = JoinSet::new();
+                    for call in calls {
+                        joinset.spawn(async move {
+                            let text = tools::run(&call).await;
+                            ChatCompletionRequestToolMessageArgs::default()
+                                .tool_call_id(call.id)
+                                .content(ChatCompletionRequestToolMessageContent::Text(text))
+                                .build()
+                        });
+                    }
+                    while let Some(response) = joinset.join_next().await {
+                        messages.push(response??.into());
+                    }
+                    continue;
                 }
-                while let Some(response) = joinset.join_next().await {
-                    messages.push(response??.into());
-                }
-                continue;
             }
 
             self.reply(ctx, msg, &response.message).await?;
