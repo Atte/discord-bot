@@ -3,6 +3,7 @@
 use crate::SubstitutingString;
 use color_eyre::eyre::Result;
 use serde::Deserialize;
+use serde_inline_default::serde_inline_default;
 use serenity::{
     all::RuleId,
     model::id::{ChannelId, GuildId, RoleId, UserId},
@@ -95,11 +96,17 @@ pub struct TeamupConfig {
     pub location: Option<SubstitutingString>,
 }
 
+#[serde_inline_default]
 #[derive(Debug, Clone, Deserialize)]
 pub struct OpenAiConfig {
     #[serde(default)]
     pub api_url: Option<SubstitutingString>,
     pub api_key: SubstitutingString,
+    #[serde_inline_default(1.0)]
+    pub temperature: f32,
+    #[serde_inline_default(1.0)]
+    pub top_p: f32,
+    pub model: SubstitutingString,
     pub prompt: SubstitutingString,
 }
 

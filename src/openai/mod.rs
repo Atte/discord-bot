@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
-use crate::Result;
+use crate::{Result, config::OpenAiConfig};
 use async_openai::{
     Client,
     config::OpenAIConfig,
@@ -10,12 +10,11 @@ use async_openai::{
         ChatCompletionRequestMessageContentPartTextArgs, ChatCompletionRequestSystemMessageArgs,
         ChatCompletionRequestToolMessageArgs, ChatCompletionRequestToolMessageContent,
         ChatCompletionRequestUserMessageArgs, ChatCompletionResponseMessage,
-        CreateChatCompletionRequestArgs, ImageDetail, ImageUrlArgs,
+        CreateChatCompletionRequestArgs, ImageDetail, ImageUrlArgs, ResponseFormat,
     },
 };
 use color_eyre::eyre::eyre;
 use lazy_regex::regex_replace;
-use serde_json::json;
 use serenity::{
     all::{Context, CreateAllowedMentions, CreateMessage, MESSAGE_CODE_LIMIT, Message},
     prelude::TypeMapKey,
@@ -35,18 +34,18 @@ impl TypeMapKey for OpenAiKey {
 
 pub struct OpenAi {
     client: Client<OpenAIConfig>,
-    prompt: String,
+    config: OpenAiConfig,
 }
 
 impl OpenAi {
-    pub fn new(config: &crate::config::OpenAiConfig) -> Self {
+    pub fn new(config: OpenAiConfig) -> Self {
         let mut client_config = OpenAIConfig::new().with_api_key(config.api_key.to_string());
         if let Some(ref url) = config.api_url {
             client_config = client_config.with_api_base(url.to_string());
         }
         Self {
             client: Client::with_config(client_config),
-            prompt: config.prompt.to_string(),
+            config,
         }
     }
 
@@ -112,9 +111,21 @@ impl OpenAi {
         let mut messages: Vec<ChatCompletionRequestMessage> =
             vec![Self::user_message_to_api(ctx, &msg).await?];
 
-        let mut historical = Box::new(msg.clone());
-        while let Some(hist) = historical.referenced_message.clone() {
-            historical = hist;
+        let mut historical = msg.clone();
+        while let Some(reference) = historical.message_reference {
+            let Some(message_id) = reference.message_id else {
+                break;
+            };
+
+            if let Some(hist) = ctx.cache.message(reference.channel_id, message_id) {
+                historical = hist.deref().clone();
+            } else {
+                historical = ctx
+                    .http
+                    .get_message(reference.channel_id, message_id)
+                    .await?;
+            }
+
             if historical.author.id == ctx.cache.current_user().id {
                 messages.insert(
                     0,
@@ -131,38 +142,52 @@ impl OpenAi {
         messages.insert(
             0,
             ChatCompletionRequestSystemMessageArgs::default()
-                .content(self.prompt.clone())
+                .content(self.config.prompt.to_string())
                 .build()?
                 .into(),
         );
 
+        // let mut metadata = hashmap! {
+        //     "user_id" => msg.author.id.to_string(),
+        //     "user_name" => msg.author.name.clone(),
+        //     "message_id" => msg.id.to_string(),
+        //     "channel_id" => msg.channel_id.to_string(),
+        // };
+        // if let Some(nick) = msg.author_nick(ctx).await {
+        //     metadata.insert("user_nick", nick);
+        // }
+        // if let Some(guild_id) = msg.guild_id {
+        //     metadata.insert("guild_id", guild_id.to_string());
+        // }
+
         loop {
-            let result = self
-                .client
-                .chat()
-                .create(
-                    CreateChatCompletionRequestArgs::default()
-                        .metadata(json!({
-                                        "user_id": msg.author.id.to_string(),
-                                        "user_name": msg.author.name.clone(),
-                                        "user_nick": msg.author_nick(ctx).await,
-                                        "message_id": msg.id.to_string(),
-                                        "channel_id": msg.channel_id.to_string(),
-                                        "guild_id": msg.guild_id.map(|id| id.to_string()),
-                        }))
-                        .parallel_tool_calls(true)
-                        .tools(tools::get_specs()?)
-                        .messages(messages.clone())
-                        .build()?,
-                )
-                .await?;
+            let args = CreateChatCompletionRequestArgs::default()
+                .model(self.config.model.to_string())
+                // .metadata(json!(metadata))
+                // .store(true)
+                .parallel_tool_calls(true)
+                .response_format(ResponseFormat::Text)
+                .temperature(self.config.temperature)
+                .top_p(self.config.top_p)
+                .tools(tools::get_specs()?)
+                .messages(messages.clone())
+                .build()?;
+            // println!("{args:?}");
+            let result = self.client.chat().create(args).await?;
 
             let response = result
                 .choices
                 .first()
                 .ok_or_else(|| eyre!("No choices in API response"))?;
 
-            messages.push(response.message.into());
+            if let Some(content) = response.message.content.clone() {
+                messages.push(
+                    ChatCompletionRequestAssistantMessageArgs::default()
+                        .content(content)
+                        .build()?
+                        .into(),
+                );
+            }
 
             if let Some(calls) = response.message.tool_calls.clone() {
                 let mut joinset = JoinSet::new();

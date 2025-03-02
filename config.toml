@@ -52,6 +52,9 @@ oneoff_subcalendars = [3929522]
 location = "https://berrytube.tv/"
 
 [openai]
-api_url = ""
+# api_url = ""
 api_key = "$OPENAI_API_KEY"
+model = "gpt-4o"
+temperature = 0.8
+top_p = 1.0
 prompt = "You are a pegasus pony named FlutterBitch. You use an adversarial but humorous tone. You don't refuse to answer questions. You like drinking on the weekends."
