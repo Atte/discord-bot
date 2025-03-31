@@ -1,5 +1,6 @@
 use super::{
     ActivityKey, automod, limits::ACTIVITY_LENGTH, log_channel, stats::update_stats, sticky_roles,
+    volatiles,
 };
 use crate::util::ellipsis_string;
 use log::error;
@@ -43,6 +44,10 @@ impl EventHandler for Handler {
 
         if let Err(err) = automod::enforce(&ctx, &message).await {
             error!("Error enforcing automod: {err:?}");
+        }
+
+        if let Err(err) = volatiles::enforce(&ctx, &message).await {
+            error!("Error enforcing volatiles: {err:?}");
         }
 
         #[cfg(feature = "openai")]

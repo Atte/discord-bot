@@ -130,6 +130,16 @@ pub async fn mongo(db: &Database) -> Result<()> {
         ],
     )
     .await?;
+    mongo_ensure_indexes(
+        db,
+        "volatiles",
+        vec![
+            (doc! { "channel.id": 1 }, false),
+            (doc! { "channel.id": 1, "user.id": 1 }, true),
+            (doc! { "time": 1 }, false),
+        ],
+    )
+    .await?;
 
     Ok(())
 }

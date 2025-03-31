@@ -18,6 +18,7 @@ pub mod limits;
 mod log_channel;
 mod stats;
 mod sticky_roles;
+mod volatiles;
 
 #[derive(Debug)]
 pub struct ActivityKey;

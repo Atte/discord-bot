@@ -64,6 +64,14 @@ pub struct DiscordConfig {
     pub rank_end_roles: HashSet<RoleId>,
     #[serde(default)]
     pub enforce_automods: HashSet<GuildId>,
+    #[serde(default)]
+    pub volatiles: Vec<VolatileConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct VolatileConfig {
+    pub channel: ChannelId,
+    pub role: RoleId,
 }
 
 #[derive(Debug, Clone, Deserialize)]

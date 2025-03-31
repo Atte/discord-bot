@@ -6,6 +6,9 @@ use std::time::Duration;
 
 const ELLIPSIS: char = '\u{2026}';
 
+mod tuple_try;
+pub use tuple_try::*;
+
 pub fn ellipsis_string(s: impl AsRef<str>, len: usize) -> String {
     let s = s.as_ref();
     if len == 0 {

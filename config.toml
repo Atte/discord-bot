@@ -15,7 +15,7 @@ command_channels = [
     1109849190344949793, # test
 ]
 log_channels = [
-    439066300518760448, # test
+    1356311586620313600, # test
 ]
 rank_start_roles = [
     1121483889253294211, # test
@@ -28,6 +28,11 @@ rank_end_roles = [
 enforce_automods = [
     324598323489013770, # test
 ]
+
+# test
+[[discord.volatiles]]
+channel = 1356303452640379045
+role = 1356303139052982525
 
 [gib]
 endpoint = "https://derpibooru.org/api/v1/json/search/images?sf=random&filter_id=152796"
