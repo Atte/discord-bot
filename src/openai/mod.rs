@@ -61,7 +61,10 @@ impl OpenAi {
         response: &ChatCompletionResponseMessage,
     ) -> Result<Message> {
         if let Some(ref content) = response.content {
-            for chunk in WordChunks::from_str(content, MESSAGE_CODE_LIMIT) {
+            for chunk in WordChunks::from_str(
+                &regex_replace!(r"^.*</think>\s*"s, content, ""),
+                MESSAGE_CODE_LIMIT,
+            ) {
                 reply_to = reply_to
                     .channel_id
                     .send_message(
