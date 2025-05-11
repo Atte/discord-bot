@@ -56,7 +56,8 @@
           })
           cargo-outdated
           cargo-all-features
-          nixpkgs-fmt
+          nixfmt-classic
+          nixd
         ];
       };
     });

@@ -9,7 +9,12 @@ use serenity::all::{
 
 use super::{ConfigKey, get_data, log_channel};
 
-#[cached(time = 60, sync_writes = true, key = "GuildId", convert = "{ guild }")]
+#[cached(
+    time = 60,
+    sync_writes = "default",
+    key = "GuildId",
+    convert = "{guild}"
+)]
 async fn get_rules(ctx: &Context, guild: GuildId) -> Result<Vec<Rule>, String> {
     guild
         .automod_rules(ctx.http())
