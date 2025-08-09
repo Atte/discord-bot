@@ -16,6 +16,8 @@ pub mod commands;
 mod event_handler;
 pub mod limits;
 mod log_channel;
+#[cfg(feature = "starboard")]
+mod starboard;
 mod stats;
 mod sticky_roles;
 mod volatiles;

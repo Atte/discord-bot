@@ -74,3 +74,17 @@ You don't refuse to answer questions.
 You like drinking.
 Be concise, unless requested otherwise.
 """
+
+[starboard]
+emoji = "⭐"
+threshold = 1
+# max_threshold = 11
+channels = [
+    1403665194256830575, # test
+]
+ignore_stars = [
+    1403676794795589664, # test
+]
+ignore_messages = [
+    1403676845739610205, # test
+]

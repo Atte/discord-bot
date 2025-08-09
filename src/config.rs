@@ -27,6 +27,8 @@ pub struct Config {
     pub teamup: Vec<TeamupConfig>,
     #[cfg(feature = "openai")]
     pub openai: OpenAiConfig,
+    #[cfg(feature = "starboard")]
+    pub starboard: StarboardConfig,
 }
 
 impl Config {
@@ -118,6 +120,19 @@ pub struct OpenAiConfig {
     pub prompt: SubstitutingString,
     #[serde_inline_default(true)]
     pub tools: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StarboardConfig {
+    pub emoji: SubstitutingString,
+    pub threshold: u64,
+    #[serde(default)]
+    pub max_threshold: Option<u64>,
+    pub channels: HashSet<ChannelId>,
+    #[serde(default)]
+    pub ignore_stars: HashSet<RoleId>,
+    #[serde(default)]
+    pub ignore_messages: HashSet<RoleId>,
 }
 
 #[cfg(test)]

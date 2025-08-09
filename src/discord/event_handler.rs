@@ -5,7 +5,7 @@ use super::{
 use crate::util::ellipsis_string;
 use log::error;
 use serenity::{
-    all::{ActivityData, GuildMemberUpdateEvent},
+    all::{ActivityData, GuildMemberUpdateEvent, Reaction},
     async_trait,
     client::{Context, EventHandler},
     model::{
@@ -20,7 +20,6 @@ use serenity::{
 #[derive(Debug)]
 pub struct Handler;
 
-#[allow(clippy::ignored_unit_patterns)] // async_trait
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, _ready: Ready) {
@@ -162,6 +161,27 @@ impl EventHandler for Handler {
         }
         if let Err(err) = sticky_roles::save_stickies(&ctx, &new_member).await {
             error!("Unable to save stickies: {err:?}");
+        }
+    }
+
+    #[cfg(feature = "starboard")]
+    async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
+        if let Err(err) = super::starboard::on_reaction_change(&ctx, reaction).await {
+            error!("Error in starboard reaction_add: {err:?}");
+        }
+    }
+
+    #[cfg(feature = "starboard")]
+    async fn reaction_remove(&self, ctx: Context, reaction: Reaction) {
+        if let Err(err) = super::starboard::on_reaction_change(&ctx, reaction).await {
+            error!("Error in starboard reaction_remove: {err:?}");
+        }
+    }
+
+    #[cfg(feature = "starboard")]
+    async fn reaction_remove_emoji(&self, ctx: Context, reaction: Reaction) {
+        if let Err(err) = super::starboard::on_reaction_change(&ctx, reaction).await {
+            error!("Error in starboard reaction_remove_emoji: {err:?}");
         }
     }
 }

@@ -140,6 +140,7 @@ pub async fn mongo(db: &Database) -> Result<()> {
         ],
     )
     .await?;
+    mongo_ensure_indexes(db, "starboard", vec![(doc! { "message_id": 1 }, true)]).await?;
 
     Ok(())
 }
