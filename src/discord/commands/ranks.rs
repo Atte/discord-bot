@@ -102,6 +102,7 @@ impl Ranks {
     }
 
     #[inline]
+    #[allow(unused)] // only used by some feature flags
     fn contains(&self, rank: &Rank) -> bool {
         self.0.contains(rank)
     }
@@ -249,8 +250,8 @@ pub async fn ranks(ctx: Context<'_>) -> Result<()> {
         let counts: Vec<_> = ranks.member_counts().collect();
         for row in counts
             .iter()
-            .take((counts.len() + 1) / 2)
-            .zip_longest(counts.iter().skip((counts.len() + 1) / 2))
+            .take(counts.len().div_ceil(2))
+            .zip_longest(counts.iter().skip(counts.len().div_ceil(2)))
         {
             match row {
                 EitherOrBoth::Both((left_name, left_count), (right_name, right_count)) => {

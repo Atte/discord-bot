@@ -6,6 +6,7 @@ use serenity::all::{
     AutomodEventType, CacheHttp, Context, GuildId, Message, MessageBuilder, Rule, Trigger,
     automod::Action,
 };
+use std::time::Duration;
 
 use super::{ConfigKey, get_data, log_channel};
 

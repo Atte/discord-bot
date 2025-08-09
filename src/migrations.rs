@@ -61,7 +61,7 @@ async fn mongo_ensure_indexes(
         if existing.iter().any(|i| &i.keys == spec) {
             continue;
         }
-        log::info!("Creating index {}", spec.to_string());
+        log::info!("Creating index {spec}");
         collection
             .create_index(
                 IndexModel::builder()
@@ -78,7 +78,7 @@ async fn mongo_ensure_indexes(
         }
         if let Some(name) = index.options.and_then(|options| options.name) {
             if name != "_id_" {
-                log::warn!("Dropping index {} {}", name, index.keys.to_string());
+                log::warn!("Dropping index {name} {}", index.keys);
                 collection.drop_index(name).await?;
             }
         }
