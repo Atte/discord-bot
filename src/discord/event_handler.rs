@@ -57,7 +57,7 @@ impl EventHandler for Handler {
                 .contains(&message.channel_id)
                 && matches!(message.mentions_me(&ctx).await, Ok(true))
             {
-                let _ = tokio::task::spawn(async move {
+                let _ = tokio::spawn(async move {
                     if let Ok(openai) = super::get_data::<crate::openai::OpenAiKey>(&ctx).await {
                         if let Err(err) = openai.handle_message(&ctx, message.clone()).await {
                             error!("OpenAI error: {err:?}");

@@ -8,9 +8,10 @@ use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
 use serenity::all::{
     Color, Context, CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateEmbedAuthor,
-    CreateMessage, Guild, Message, MessageBuilder, MessageReference, MessageReferenceKind,
-    PermissionOverwriteType, Permissions, Reaction, ReactionType, Role, RoleId,
+    CreateMessage, Guild, Message, MessageBuilder, PermissionOverwriteType, Permissions, Reaction,
+    ReactionType, Role, RoleId,
 };
+use tokio::sync::Semaphore;
 
 use crate::{
     config::Config,
@@ -18,6 +19,7 @@ use crate::{
 };
 
 const COLLECTION_NAME: &str = "starboard";
+static SEMAPHORE: Semaphore = Semaphore::const_new(1);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StarredMessage {
@@ -42,7 +44,8 @@ fn is_star_emoji(config: &Config, emoji: &ReactionType) -> bool {
 
 #[allow(clippy::too_many_lines)]
 pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> {
-    log::trace!("{reaction:?}");
+    let _permit = SEMAPHORE.acquire().await?;
+    // log::trace!("{reaction:?}");
 
     let guild_id = reaction.guild_id.ok_or_eyre("no guild id")?;
     let guild = guild_id
