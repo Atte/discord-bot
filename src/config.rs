@@ -139,6 +139,7 @@ pub struct StarboardConfig {
 
 #[cfg(test)]
 mod tests {
+    #[ignore = "Depends on the environment"]
     #[tokio::test]
     async fn test_config() {
         super::Config::from_file("config.toml").await.unwrap();
