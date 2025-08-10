@@ -74,24 +74,42 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
             .get_message(reaction.channel_id, reaction.message_id)
             .await?
     };
-    let channel = message
-        .channel(&ctx)
-        .await?
-        .guild()
-        .ok_or_eyre("Message not in guild channel")?;
 
-    if config.starboard.channels.contains(&channel.id) {
+    let mut channels = vec![
+        message
+            .channel(&ctx)
+            .await?
+            .guild()
+            .ok_or_eyre("Message not in guild channel")?,
+    ];
+    while let Some(parent_id) = channels.last().unwrap().parent_id {
+        channels.push(
+            parent_id
+                .to_channel(&ctx)
+                .await?
+                .guild()
+                .ok_or_eyre("Parent channel not a guild channel")?,
+        );
+    }
+
+    if !config
+        .starboard
+        .channels
+        .is_disjoint(&channels.iter().map(|c| c.id).collect())
+    {
         log::trace!("starboard channel, ignoring");
         return Ok(());
     }
 
     for role in guild_roles(&guild, &config.starboard.ignore_channels) {
-        if channel.permission_overwrites.iter().any(|overwrite| {
-            overwrite.kind == PermissionOverwriteType::Role(role.id)
-                && overwrite.deny.contains(Permissions::VIEW_CHANNEL)
-        }) {
-            log::trace!("channel ignored by role");
-            return Ok(());
+        for channel in &channels {
+            if channel.permission_overwrites.iter().any(|overwrite| {
+                overwrite.kind == PermissionOverwriteType::Role(role.id)
+                    && overwrite.deny.contains(Permissions::VIEW_CHANNEL)
+            }) {
+                log::trace!("channel ignored by role");
+                return Ok(());
+            }
         }
     }
 
@@ -162,7 +180,7 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         .guild()
         .ok_or_eyre("Starboard not a guild channel")?;
 
-    if channel.nsfw && !board_channel.nsfw {
+    if channels.iter().any(|c| c.nsfw) && !board_channel.nsfw {
         log::trace!("message is NSFW, but starboard is not");
         return Ok(());
     }
