@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bson::doc;
 use color_eyre::eyre::{OptionExt, Result};
 use log::warn;
@@ -5,8 +7,9 @@ use rand::{Rng, SeedableRng, distr::Uniform};
 use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
 use serenity::all::{
-    Context, CreateAllowedMentions, CreateEmbed, CreateEmbedAuthor, CreateMessage, Guild, Message,
-    MessageBuilder, PermissionOverwriteType, Permissions, Reaction, ReactionType, Role, RoleId,
+    Color, Context, CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateEmbedAuthor,
+    CreateMessage, Guild, Message, MessageBuilder, MessageReference, MessageReferenceKind,
+    PermissionOverwriteType, Permissions, Reaction, ReactionType, Role, RoleId,
 };
 
 use crate::{
@@ -38,22 +41,22 @@ fn is_star_emoji(config: &Config, emoji: &ReactionType) -> bool {
 }
 
 #[allow(clippy::too_many_lines)]
-pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()> {
-    // log::trace!("{reaction:?}");
+pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> {
+    log::trace!("{reaction:?}");
 
     let guild_id = reaction.guild_id.ok_or_eyre("no guild id")?;
     let guild = guild_id
-        .to_guild_cached(ctx)
+        .to_guild_cached(&ctx)
         .ok_or_eyre("Guild not in cache")?
         .clone();
 
-    let config = super::get_data::<super::ConfigKey>(ctx).await?;
+    let config = super::get_data::<super::ConfigKey>(&ctx).await?;
     if !is_star_emoji(&config, &reaction.emoji) {
         log::trace!("not a star emoji");
         return Ok(());
     }
 
-    let collection = get_data::<DbKey>(ctx)
+    let collection = get_data::<DbKey>(&ctx)
         .await?
         .collection::<StarredMessage>(COLLECTION_NAME);
     if collection
@@ -67,13 +70,20 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         return Ok(());
     }
 
-    let message = if let Some(msg) = ctx.cache.message(reaction.channel_id, reaction.message_id) {
-        msg.to_owned()
-    } else {
-        ctx.http
-            .get_message(reaction.channel_id, reaction.message_id)
-            .await?
-    };
+    tokio::time::sleep(Duration::from_secs(3)).await;
+
+    // let message = if let Some(msg) = ctx.cache.message(reaction.channel_id, reaction.message_id) {
+    //     msg.to_owned()
+    // } else {
+    //     ctx.http
+    //         .get_message(reaction.channel_id, reaction.message_id)
+    //         .await?
+    // };
+
+    let message = ctx
+        .http
+        .get_message(reaction.channel_id, reaction.message_id)
+        .await?;
 
     let mut channels = vec![
         message
@@ -126,6 +136,7 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         .iter()
         .find(|r| is_star_emoji(&config, &r.reaction_type))
     else {
+        log::trace!("no star reaction found");
         return Ok(());
     };
     if message_reaction.count < threshold {
@@ -146,7 +157,12 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
     }
 
     let reaction_users = message
-        .reaction_users(ctx, message_reaction.reaction_type.clone(), Some(100), None)
+        .reaction_users(
+            &ctx,
+            message_reaction.reaction_type.clone(),
+            Some(100),
+            None,
+        )
         .await?;
     let mut reaction_count = 0;
     for role in guild_roles(&guild, &config.starboard.ignore_stars) {
@@ -175,7 +191,7 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         return Ok(());
     };
     let board_channel = board_channel_id
-        .to_channel(ctx)
+        .to_channel(&ctx)
         .await?
         .guild()
         .ok_or_eyre("Starboard not a guild channel")?;
@@ -185,14 +201,45 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         return Ok(());
     }
 
+    // board_channel
+    //     .send_message(
+    //         ctx,
+    //         CreateMessage::new().reference_message(
+    //             MessageReference::new(MessageReferenceKind::Forward, message.channel_id)
+    //                 .message_id(message.id),
+    //         ),
+    //     )
+    //     .await?;
+
+    let mut attachments = Vec::new();
+
     let mut pin = CreateMessage::new()
         .allowed_mentions(CreateAllowedMentions::new())
         .content(MessageBuilder::new().push(message.link()).build());
+
     if let Some(ref replied) = message.referenced_message {
-        pin = pin.add_embed(create_embed_from_message(ctx, &guild, replied).await?);
+        for attach in &replied.attachments {
+            attachments.push(CreateAttachment::url(&ctx, &attach.url).await?);
+        }
+        pin = pin.add_embed(create_embed_from_message(&ctx, &guild, replied).await?);
+        for embed in &replied.embeds {
+            pin = pin.add_embed(embed.clone().into());
+        }
     }
-    pin = pin.add_embed(create_embed_from_message(ctx, &guild, &message).await?);
-    board_channel_id.send_message(ctx, pin).await?;
+
+    for attach in &message.attachments {
+        attachments.push(CreateAttachment::url(&ctx, &attach.url).await?);
+    }
+    pin = pin.add_embed(
+        create_embed_from_message(&ctx, &guild, &message)
+            .await?
+            .color(Color::GOLD),
+    );
+    for embed in &message.embeds {
+        pin = pin.add_embed(embed.clone().into());
+    }
+
+    board_channel.send_files(&ctx, attachments, pin).await?;
 
     collection
         .insert_one(StarredMessage {
@@ -200,6 +247,7 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         })
         .await?;
 
+    log::info!("Added message to stardboard");
     Ok(())
 }
 
@@ -209,11 +257,18 @@ async fn create_embed_from_message(
     msg: &Message,
 ) -> Result<CreateEmbed> {
     let member = guild.member(ctx, msg.author.id).await?;
-    Ok(CreateEmbed::new()
+    let mut embed = CreateEmbed::new()
         .author(CreateEmbedAuthor::new(member.display_name()).icon_url(member.face()))
         .url(msg.link())
         .description(&msg.content)
-        .timestamp(msg.timestamp))
+        .timestamp(msg.timestamp);
+    if msg.attachments.len() == 1
+        && let Some(attach) = msg.attachments.first()
+        && attach.height.is_some()
+    {
+        embed = embed.attachment(&attach.filename);
+    }
+    Ok(embed)
 }
 
 fn guild_roles<'id>(

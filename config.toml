@@ -78,7 +78,7 @@ Be concise, unless requested otherwise.
 [starboard]
 emoji = "⭐"
 threshold = 1
-max_threshold = 2
+# max_threshold = 2
 channels = [
     1403665194256830575, # test
 ]
