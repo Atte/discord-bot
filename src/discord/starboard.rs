@@ -5,8 +5,8 @@ use rand::{Rng, SeedableRng, distr::Uniform};
 use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
 use serenity::all::{
-    Context, CreateAllowedMentions, CreateEmbed, CreateEmbedAuthor, CreateMessage, GuildId,
-    Message, MessageBuilder, Reaction, ReactionType,
+    Context, CreateAllowedMentions, CreateEmbed, CreateEmbedAuthor, CreateMessage, Guild, Message,
+    MessageBuilder, PermissionOverwriteType, Permissions, Reaction, ReactionType, Role, RoleId,
 };
 
 use crate::{
@@ -42,6 +42,10 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
     // log::trace!("{reaction:?}");
 
     let guild_id = reaction.guild_id.ok_or_eyre("no guild id")?;
+    let guild = guild_id
+        .to_guild_cached(ctx)
+        .ok_or_eyre("Guild not in cache")?
+        .clone();
 
     let config = super::get_data::<super::ConfigKey>(ctx).await?;
     if !is_star_emoji(&config, &reaction.emoji) {
@@ -70,6 +74,26 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
             .get_message(reaction.channel_id, reaction.message_id)
             .await?
     };
+    let channel = message
+        .channel(&ctx)
+        .await?
+        .guild()
+        .ok_or_eyre("Message not in guild channel")?;
+
+    if config.starboard.channels.contains(&channel.id) {
+        log::trace!("starboard channel, ignoring");
+        return Ok(());
+    }
+
+    for role in guild_roles(&guild, &config.starboard.ignore_channels) {
+        if channel.permission_overwrites.iter().any(|overwrite| {
+            overwrite.kind == PermissionOverwriteType::Role(role.id)
+                && overwrite.deny.contains(Permissions::VIEW_CHANNEL)
+        }) {
+            log::trace!("channel ignored by role");
+            return Ok(());
+        }
+    }
 
     let threshold = if let Some(max_threshold) = config.starboard.max_threshold {
         let distr = Uniform::new_inclusive(config.starboard.threshold, max_threshold)?;
@@ -91,10 +115,10 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         return Ok(());
     }
 
-    for role_id in &config.starboard.ignore_messages {
+    for role in guild_roles(&guild, &config.starboard.ignore_messages) {
         if message
             .author
-            .has_role(&ctx, guild_id, role_id)
+            .has_role(&ctx, guild_id, role.id)
             .await
             .unwrap_or(false)
         {
@@ -107,13 +131,10 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         .reaction_users(ctx, message_reaction.reaction_type.clone(), Some(100), None)
         .await?;
     let mut reaction_count = 0;
-    for role_id in &config.starboard.ignore_stars {
-        if guild_id.role(ctx, *role_id).await.is_err() {
-            continue;
-        }
+    for role in guild_roles(&guild, &config.starboard.ignore_stars) {
         for user in &reaction_users {
             if !user
-                .has_role(&ctx, guild_id, role_id)
+                .has_role(&ctx, guild_id, role.id)
                 .await
                 .unwrap_or(false)
             {
@@ -126,27 +147,33 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
         return Ok(());
     }
 
-    let Some(board_channel_id) = ({
-        let guild = guild_id
-            .to_guild_cached(ctx)
-            .ok_or_eyre("Guild not in cache")?;
-        config
-            .starboard
-            .channels
-            .iter()
-            .find(|id| guild.channels.contains_key(id))
-    }) else {
+    let Some(board_channel_id) = config
+        .starboard
+        .channels
+        .iter()
+        .find(|id| guild.channels.contains_key(id))
+    else {
         log::trace!("no starboard channel found");
         return Ok(());
     };
+    let board_channel = board_channel_id
+        .to_channel(ctx)
+        .await?
+        .guild()
+        .ok_or_eyre("Starboard not a guild channel")?;
+
+    if channel.nsfw && !board_channel.nsfw {
+        log::trace!("message is NSFW, but starboard is not");
+        return Ok(());
+    }
 
     let mut pin = CreateMessage::new()
         .allowed_mentions(CreateAllowedMentions::new())
         .content(MessageBuilder::new().push(message.link()).build());
-    if let Some(ref reply) = message.referenced_message {
-        pin = pin.add_embed(create_embed_from_message(ctx, guild_id, reply).await?);
+    if let Some(ref replied) = message.referenced_message {
+        pin = pin.add_embed(create_embed_from_message(ctx, &guild, replied).await?);
     }
-    pin = pin.add_embed(create_embed_from_message(ctx, guild_id, &message).await?);
+    pin = pin.add_embed(create_embed_from_message(ctx, &guild, &message).await?);
     board_channel_id.send_message(ctx, pin).await?;
 
     collection
@@ -160,13 +187,22 @@ pub async fn on_reaction_change(ctx: &Context, reaction: Reaction) -> Result<()>
 
 async fn create_embed_from_message(
     ctx: &Context,
-    guild_id: GuildId,
+    guild: &Guild,
     msg: &Message,
 ) -> Result<CreateEmbed> {
-    let member = guild_id.member(ctx, msg.author.id).await?;
+    let member = guild.member(ctx, msg.author.id).await?;
     Ok(CreateEmbed::new()
         .author(CreateEmbedAuthor::new(member.display_name()).icon_url(member.face()))
         .url(msg.link())
         .description(&msg.content)
         .timestamp(msg.timestamp))
+}
+
+fn guild_roles<'id>(
+    guild: &Guild,
+    role_ids: impl IntoIterator<Item = &'id RoleId>,
+) -> impl Iterator<Item = &Role> {
+    role_ids
+        .into_iter()
+        .filter_map(move |role_id| guild.roles.get(role_id))
 }

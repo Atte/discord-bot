@@ -78,7 +78,7 @@ Be concise, unless requested otherwise.
 [starboard]
 emoji = "⭐"
 threshold = 1
-# max_threshold = 11
+max_threshold = 2
 channels = [
     1403665194256830575, # test
 ]
@@ -87,4 +87,7 @@ ignore_stars = [
 ]
 ignore_messages = [
     1403676845739610205, # test
+]
+ignore_channels = [
+    1404091784069648384, # test
 ]

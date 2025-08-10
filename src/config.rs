@@ -133,6 +133,8 @@ pub struct StarboardConfig {
     pub ignore_stars: HashSet<RoleId>,
     #[serde(default)]
     pub ignore_messages: HashSet<RoleId>,
+    #[serde(default)]
+    pub ignore_channels: HashSet<RoleId>,
 }
 
 #[cfg(test)]
