@@ -19,6 +19,7 @@ use crate::{
 };
 
 const COLLECTION_NAME: &str = "starboard";
+const MAX_ATTACH_SIZE: u32 = 10 * 1000 * 1000; // 10 MiB
 static SEMAPHORE: Semaphore = Semaphore::const_new(1);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,7 +56,7 @@ pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> 
 
     let config = super::get_data::<super::ConfigKey>(&ctx).await?;
     if !is_star_emoji(&config, &reaction.emoji) {
-        log::trace!("not a star emoji");
+        // log::trace!("not a star emoji");
         return Ok(());
     }
 
@@ -143,7 +144,11 @@ pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> 
         return Ok(());
     };
     if message_reaction.count < threshold {
-        log::trace!("total {} < {threshold}", message_reaction.count);
+        log::trace!(
+            "total {} {} < {threshold}",
+            message_reaction.count,
+            message_reaction.reaction_type
+        );
         return Ok(());
     }
 
@@ -180,7 +185,10 @@ pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> 
         }
     }
     if reaction_count < threshold {
-        log::trace!("filtered {reaction_count} < {threshold}");
+        log::trace!(
+            "filtered {reaction_count} {} < {threshold}",
+            message_reaction.reaction_type
+        );
         return Ok(());
     }
 
@@ -214,15 +222,18 @@ pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> 
     //     )
     //     .await?;
 
-    let mut attachments = Vec::new();
-
     let mut pin = CreateMessage::new()
         .allowed_mentions(CreateAllowedMentions::new())
         .content(MessageBuilder::new().push(message.link()).build());
 
     if let Some(ref replied) = message.referenced_message {
         for attach in &replied.attachments {
-            attachments.push(CreateAttachment::url(&ctx, &attach.url).await?);
+            if attach.size < MAX_ATTACH_SIZE {
+                pin = pin.add_file(CreateAttachment::bytes(
+                    attach.download().await?,
+                    &attach.filename,
+                ));
+            }
         }
         pin = pin.add_embed(create_embed_from_message(&ctx, &guild, replied).await?);
         for embed in &replied.embeds {
@@ -231,7 +242,12 @@ pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> 
     }
 
     for attach in &message.attachments {
-        attachments.push(CreateAttachment::url(&ctx, &attach.url).await?);
+        if attach.size < MAX_ATTACH_SIZE {
+            pin = pin.add_file(CreateAttachment::bytes(
+                attach.download().await?,
+                &attach.filename,
+            ));
+        }
     }
     pin = pin.add_embed(
         create_embed_from_message(&ctx, &guild, &message)
@@ -242,7 +258,8 @@ pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> 
         pin = pin.add_embed(embed.clone().into());
     }
 
-    board_channel.send_files(&ctx, attachments, pin).await?;
+    log::trace!("Sending starboard");
+    board_channel.send_message(&ctx, pin).await?;
 
     collection
         .insert_one(StarredMessage {
@@ -267,7 +284,12 @@ async fn create_embed_from_message(
         .timestamp(msg.timestamp);
     if msg.attachments.len() == 1
         && let Some(attach) = msg.attachments.first()
-        && attach.height.is_some()
+        && attach.content_type.as_ref().is_some_and(|typ| {
+            matches!(
+                typ.as_str(),
+                "image/png" | "image/gif" | "image/jpg" | "image/jpeg" | "image/webp"
+            )
+        })
     {
         embed = embed.attachment(&attach.filename);
     }
