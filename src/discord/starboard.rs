@@ -6,12 +6,15 @@ use log::warn;
 use rand::{Rng, SeedableRng, distr::Uniform};
 use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
-use serenity::all::{
-    Color, Context, CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateEmbedAuthor,
-    CreateMessage, Guild, Message, MessageBuilder, PermissionOverwriteType, Permissions, Reaction,
-    ReactionType, Role, RoleId,
+use serenity::{
+    all::{
+        Color, Context, CreateAllowedMentions, CreateAttachment, CreateEmbed, CreateEmbedAuthor,
+        CreateMessage, Guild, Message, MessageBuilder, PermissionOverwriteType, Permissions,
+        Reaction, ReactionType, Role, RoleId,
+    },
+    prelude::TypeMapKey,
 };
-use tokio::sync::Semaphore;
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
 use crate::{
     config::Config,
@@ -20,7 +23,41 @@ use crate::{
 
 const COLLECTION_NAME: &str = "starboard";
 const MAX_ATTACH_SIZE: u32 = 10 * 1000 * 1000; // 10 MiB
-static SEMAPHORE: Semaphore = Semaphore::const_new(1);
+
+pub type Sender = UnboundedSender<(Context, Reaction)>;
+
+#[derive(Debug)]
+pub struct StarboardKey;
+
+impl TypeMapKey for StarboardKey {
+    type Value = Sender;
+}
+
+pub fn spawn() -> Sender {
+    let (sender, mut receiver) = unbounded_channel();
+    tokio::spawn(async move {
+        while let Some((ctx, reaction)) = receiver.recv().await {
+            if let Err(err) = on_reaction_change(ctx, reaction).await {
+                log::error!("Error in starboard reaction handler: {err:?}");
+            }
+        }
+    });
+    sender
+}
+
+pub async fn enqueue(ctx: Context, reaction: Reaction) -> Result<()> {
+    let mut data = ctx.data.write().await;
+    if data
+        .get::<StarboardKey>()
+        .is_none_or(|sender| sender.send((ctx.clone(), reaction.clone())).is_err())
+    {
+        log::warn!("Respawning starboard task");
+        let sender = spawn();
+        sender.send((ctx.clone(), reaction))?;
+        data.insert::<StarboardKey>(sender);
+    }
+    Ok(())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StarredMessage {
@@ -44,8 +81,7 @@ fn is_star_emoji(config: &Config, emoji: &ReactionType) -> bool {
 }
 
 #[allow(clippy::too_many_lines)]
-pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> {
-    let _permit = SEMAPHORE.acquire().await?;
+async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> {
     // log::trace!("{reaction:?}");
 
     let guild_id = reaction.guild_id.ok_or_eyre("no guild id")?;
@@ -70,7 +106,7 @@ pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> 
         .await?
         .is_some()
     {
-        log::trace!("already on board");
+        log::trace!("{} already on board", reaction.message_id);
         return Ok(());
     }
 
@@ -144,11 +180,11 @@ pub async fn on_reaction_change(ctx: Context, reaction: Reaction) -> Result<()> 
         return Ok(());
     };
     if message_reaction.count < threshold {
-        log::trace!(
-            "total {} {} < {threshold}",
-            message_reaction.count,
-            message_reaction.reaction_type
-        );
+        // log::trace!(
+        //     "total {} {} < {threshold}",
+        //     message_reaction.count,
+        //     message_reaction.reaction_type
+        // );
         return Ok(());
     }
 

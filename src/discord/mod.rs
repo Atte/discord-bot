@@ -8,9 +8,6 @@ use serenity::{
     prelude::TypeMapKey,
 };
 
-#[cfg(feature = "openai")]
-use crate::openai::{OpenAi, OpenAiKey};
-
 pub mod automod;
 pub mod commands;
 mod event_handler;
@@ -79,7 +76,7 @@ impl Discord {
     pub async fn try_new(
         config: Config,
         db: mongodb::Database,
-        #[cfg(feature = "openai")] openai: OpenAi,
+        #[cfg(feature = "openai")] openai: crate::openai::OpenAi,
     ) -> Result<Self> {
         let setup_config = config.clone();
         let framework = Framework::<PoiseData, crate::Error>::builder()
@@ -141,7 +138,11 @@ impl Discord {
             .type_map_insert::<DbKey>(db);
 
         #[cfg(feature = "openai")]
-        let builder = builder.type_map_insert::<OpenAiKey>(std::sync::Arc::new(openai));
+        let builder =
+            builder.type_map_insert::<crate::openai::OpenAiKey>(std::sync::Arc::new(openai));
+
+        #[cfg(feature = "starboard")]
+        let builder = builder.type_map_insert::<starboard::StarboardKey>(starboard::spawn());
 
         Ok(Self {
             client: builder.await?,

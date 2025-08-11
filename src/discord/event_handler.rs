@@ -166,21 +166,21 @@ impl EventHandler for Handler {
 
     #[cfg(feature = "starboard")]
     async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
-        if let Err(err) = tokio::spawn(super::starboard::on_reaction_change(ctx, reaction)).await {
+        if let Err(err) = super::starboard::enqueue(ctx, reaction).await {
             error!("Error in starboard reaction_add: {err:?}");
         }
     }
 
     #[cfg(feature = "starboard")]
     async fn reaction_remove(&self, ctx: Context, reaction: Reaction) {
-        if let Err(err) = tokio::spawn(super::starboard::on_reaction_change(ctx, reaction)).await {
+        if let Err(err) = super::starboard::enqueue(ctx, reaction).await {
             error!("Error in starboard reaction_remove: {err:?}");
         }
     }
 
     #[cfg(feature = "starboard")]
     async fn reaction_remove_emoji(&self, ctx: Context, reaction: Reaction) {
-        if let Err(err) = tokio::spawn(super::starboard::on_reaction_change(ctx, reaction)).await {
+        if let Err(err) = super::starboard::enqueue(ctx, reaction).await {
             error!("Error in starboard reaction_remove_emoji: {err:?}");
         }
     }
