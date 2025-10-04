@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use color_eyre::eyre::eyre;
 use futures::StreamExt;
 use itertools::Itertools;
-use mongodb::bson::{Document, doc, to_bson};
+use mongodb::bson::{Document, doc, serialize_to_bson};
 use poise::{CreateReply, command};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
@@ -110,7 +110,7 @@ pub async fn derpibooru_search(ctx: &Context<'_>, query: &str) -> Result<Option<
         collection
             .update_one(
                 doc! { "image.id": image.id },
-                doc! { "$set": { "image": to_bson(&image)?, "time": Utc::now() } },
+                doc! { "$set": { "image": serialize_to_bson(&image)?, "time": Utc::now() } },
             )
             .upsert(true)
             .await?;
