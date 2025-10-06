@@ -101,18 +101,21 @@ pub async fn mongo(db: &Database) -> Result<()> {
         vec![(doc! { "type": 1, "id": 1, "guild_id": 1 }, true)],
     )
     .await?;
+
     mongo_ensure_indexes(
         db,
         "sticky-roles",
         vec![(doc! { "guild_id": 1, "user_id": 1 }, true)],
     )
     .await?;
+
     mongo_ensure_indexes(
         db,
         "gib-seen",
         vec![(doc! { "image.id": 1 }, true), (doc! { "time": 1 }, false)],
     )
     .await?;
+
     mongo_ensure_indexes(
         db,
         "openai-user-log",
@@ -130,6 +133,8 @@ pub async fn mongo(db: &Database) -> Result<()> {
         ],
     )
     .await?;
+    mongo_ensure_indexes(db, "openai-thinkers", vec![(doc! { "user.id": 1 }, false)]).await?;
+
     mongo_ensure_indexes(
         db,
         "volatiles",
@@ -140,6 +145,7 @@ pub async fn mongo(db: &Database) -> Result<()> {
         ],
     )
     .await?;
+
     mongo_ensure_indexes(db, "starboard", vec![(doc! { "message_id": 1 }, true)]).await?;
 
     Ok(())

@@ -1,6 +1,10 @@
-use std::{ops::Deref, sync::Arc};
+use std::{borrow::Cow, ops::Deref, sync::Arc};
 
-use crate::{Result, config::OpenAiConfig};
+use crate::{
+    Result,
+    config::OpenAiConfig,
+    discord::{DbKey, get_data},
+};
 use async_openai::{
     Client,
     config::OpenAIConfig,
@@ -14,6 +18,7 @@ use async_openai::{
         ResponseFormat,
     },
 };
+use bson::{Document, doc};
 use chrono::{Datelike, Utc, Weekday};
 use color_eyre::eyre::eyre;
 use lazy_regex::regex_replace;
@@ -61,10 +66,24 @@ impl OpenAi {
         response: &ChatCompletionResponseMessage,
     ) -> Result<Message> {
         if let Some(ref content) = response.content {
-            for chunk in WordChunks::from_str(
-                &regex_replace!(r"^.*</think>\s*"s, content, ""),
-                MESSAGE_CODE_LIMIT,
-            ) {
+            let collection = get_data::<DbKey>(ctx)
+                .await?
+                .collection::<Document>("openai-thinkers");
+            let is_thinker = collection
+                .find_one(doc! {
+                    "user.id": reply_to.author.id.to_string(),
+                    "think": true
+                })
+                .await?
+                .is_some();
+
+            let content = if is_thinker {
+                Cow::Borrowed(content.as_str())
+            } else {
+                regex_replace!(r"^.*</think>\s*"s, content, "")
+            };
+
+            for chunk in WordChunks::from_str(&content, MESSAGE_CODE_LIMIT) {
                 reply_to = reply_to
                     .channel_id
                     .send_message(
