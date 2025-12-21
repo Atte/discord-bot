@@ -60,7 +60,6 @@ location = "https://berrytube.tv/"
 api_url = "https://api.scaleway.ai/v1"
 api_key = "$SCALEWAY_API_KEY"
 model = "gpt-oss-120b"
-tools = false
 
 temperature = 0.8
 top_p = 1.0

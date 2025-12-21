@@ -18,6 +18,7 @@ impl<'a> WordChunks<'a> {
 impl<'a> Iterator for WordChunks<'a> {
     type Item = &'a str;
 
+    // TODO: handle code blocks that cross chunk boundaries
     fn next(&mut self) -> Option<Self::Item> {
         if self.content.is_empty() {
             return None;

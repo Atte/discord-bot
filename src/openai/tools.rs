@@ -33,6 +33,7 @@ pub async fn run(call: &ChatCompletionMessageToolCall) -> String {
 
     for tool in get_tools() {
         if tool.get_name() == call.function.name {
+            log::info!("calling tool: {}", call.function.name);
             return tool.run(args).await.unwrap_or_else(|err| err.to_string());
         }
     }
