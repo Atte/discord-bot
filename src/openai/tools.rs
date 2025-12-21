@@ -42,8 +42,8 @@ pub async fn run(call: &ChatCompletionMessageToolCall) -> String {
 }
 
 #[inline]
-fn get_tools() -> [Box<dyn Tool + Send>; 1] {
-    [Box::new(GetDayOfWeek)]
+fn get_tools() -> Box<[Box<dyn Tool + Send>]> {
+    Box::new([Box::new(GetDayOfWeek), Box::new(GetYear), Box::new(GetDate)])
 }
 
 #[async_trait]
@@ -86,5 +86,41 @@ impl Tool for GetDayOfWeek {
             Weekday::Sun => "Sunday",
         }
         .to_owned())
+    }
+}
+
+#[derive(Debug)]
+struct GetYear;
+
+#[async_trait]
+impl Tool for GetYear {
+    fn get_name(&self) -> &'static str {
+        "GetYear"
+    }
+
+    fn get_description(&self) -> &'static str {
+        "Get the current year"
+    }
+
+    async fn run(&self, _args: Value) -> Result<String> {
+        Ok(Utc::now().year().to_string())
+    }
+}
+
+#[derive(Debug)]
+struct GetDate;
+
+#[async_trait]
+impl Tool for GetDate {
+    fn get_name(&self) -> &'static str {
+        "GetDate"
+    }
+
+    fn get_description(&self) -> &'static str {
+        "Get the current full date"
+    }
+
+    async fn run(&self, _args: Value) -> Result<String> {
+        Ok(Utc::now().date_naive().to_string())
     }
 }

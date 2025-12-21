@@ -4,8 +4,10 @@ use super::{
 };
 use crate::util::ellipsis_string;
 use log::error;
+#[cfg(feature = "starboard")]
+use serenity::all::Reaction;
 use serenity::{
-    all::{ActivityData, GuildMemberUpdateEvent, Reaction},
+    all::{ActivityData, GuildMemberUpdateEvent},
     async_trait,
     client::{Context, EventHandler},
     model::{
