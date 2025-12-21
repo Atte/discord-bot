@@ -57,12 +57,9 @@ oneoff_subcalendars = [3929522]
 location = "https://berrytube.tv/"
 
 [openai]
-# api_key = "$OPENAI_API_KEY"
-# model = "gpt-4o"
-
 api_url = "https://api.scaleway.ai/v1"
 api_key = "$SCALEWAY_API_KEY"
-model = "deepseek-r1-distill-llama-70b"
+model = "gpt-oss-120b"
 tools = false
 
 temperature = 0.8

@@ -26,7 +26,7 @@ async fn get_rules(ctx: &Context, guild: GuildId) -> Result<Vec<Rule>, String> {
 fn wildcards_to_regex(s: impl AsRef<str>) -> String {
     let s = s.as_ref();
     match (s.starts_with('*'), s.ends_with('*')) {
-        (true, true) => regex::escape(s).to_string(),
+        (true, true) => regex::escape(s),
         (true, false) => format!("{}\\b", regex::escape(s)),
         (false, true) => format!("\\b{}", regex::escape(s)),
         (false, false) => format!("\\b{}\\b", regex::escape(s)),
