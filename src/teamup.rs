@@ -4,6 +4,7 @@ use color_eyre::{
     Section, SectionExt,
     eyre::{Result, eyre},
 };
+use itertools::Itertools;
 use log::info;
 use reqwest::{Method, header::HeaderValue};
 use serde::{Deserialize, Serialize};
@@ -85,16 +86,25 @@ pub struct Teamup {
     cache: Arc<Cache>,
     http: Arc<Http>,
     client: reqwest::Client,
+    #[cfg(feature = "openai")]
+    calendar: Arc<std::sync::Mutex<Vec<TeamupEvent>>>,
 }
 
 impl Teamup {
     #[inline]
-    pub fn new(config: TeamupConfig, cache: Arc<Cache>, http: Arc<Http>) -> Self {
+    pub fn new(
+        config: TeamupConfig,
+        cache: Arc<Cache>,
+        http: Arc<Http>,
+        calendar: Arc<std::sync::Mutex<Vec<TeamupEvent>>>,
+    ) -> Self {
         Self {
             config,
             cache,
             http,
             client: reqwest::Client::new(),
+            #[cfg(feature = "openai")]
+            calendar,
         }
     }
 
@@ -223,7 +233,11 @@ impl Teamup {
             .map(|event| (event.id.clone(), event))
             .collect();
 
-        for calendar_event in recurring_calendar_events.chain(oneoff_calendar_events) {
+        let all_events = recurring_calendar_events
+            .chain(oneoff_calendar_events)
+            .collect_vec();
+
+        for calendar_event in &all_events {
             if let Some(existing_event) = discord_events
                 .values()
                 .find(|event| {
@@ -246,11 +260,11 @@ impl Teamup {
                             .as_ref()
                             .map(SubstitutingString::to_string),
                     }),
-                    name: calendar_event.title,
+                    name: calendar_event.title.clone(),
                     privacy_level: Some(DiscordEventPrivacyLevel::GuildOnly),
                     scheduled_start_time: calendar_event.start_dt,
                     scheduled_end_time: Some(calendar_event.end_dt),
-                    description: calendar_event.notes,
+                    description: calendar_event.notes.clone(),
                     entity_type: Some(DiscordEventEntityType::External),
                 })
                 .await?;
@@ -261,6 +275,12 @@ impl Teamup {
             sleep(RATE_LIMIT).await;
             info!("Deleting event: {}", discord_event.name);
             self.delete_discord_event(&discord_event.id).await?;
+        }
+
+        #[cfg(feature = "openai")]
+        {
+            let mut calendar = self.calendar.lock().unwrap();
+            *calendar = all_events;
         }
 
         Ok(())

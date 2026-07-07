@@ -47,7 +47,15 @@ async fn main() -> Result<()> {
     migrations::mongo(&db).await?;
 
     #[cfg(feature = "openai")]
-    let openai = openai::OpenAi::new(config.openai.clone());
+    #[cfg(feature = "teamup")]
+    let calendar = std::sync::Arc::new(std::sync::Mutex::new(Vec::<teamup::TeamupEvent>::new()));
+
+    #[cfg(feature = "openai")]
+    let openai = openai::OpenAi::new(
+        config.openai.clone(),
+        #[cfg(feature = "teamup")]
+        Arc::clone(&calendar),
+    );
 
     info!("Spawning Discord...");
     let mut discord = discord::Discord::try_new(
@@ -102,6 +110,8 @@ async fn main() -> Result<()> {
                 config,
                 Arc::clone(&discord.client.cache),
                 Arc::clone(&discord.client.http),
+                #[cfg(feature = "openai")]
+                Arc::clone(&calendar),
             );
             tokio::spawn(async move {
                 sleep(Duration::from_secs(5)).await;
