@@ -116,6 +116,8 @@ pub struct OpenAiConfig {
     pub temperature: f32,
     #[serde_inline_default(1.0)]
     pub top_p: f32,
+    #[serde_inline_default(1000)]
+    pub max_tokens: u32,
     pub model: SubstitutingString,
     pub prompt: SubstitutingString,
 }

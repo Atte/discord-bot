@@ -21,6 +21,7 @@ use chrono::{Datelike, Utc, Weekday};
 use color_eyre::eyre::eyre;
 use lazy_regex::regex_replace;
 use maplit::hashmap;
+use serde_json::json;
 use serenity::{
     all::{Context, CreateAllowedMentions, CreateMessage, MESSAGE_CODE_LIMIT, Message},
     prelude::TypeMapKey,
@@ -201,11 +202,13 @@ impl OpenAi {
 
         let mut args = CreateChatCompletionRequestArgs::default();
         args.model(self.config.model.to_string())
-            // .metadata(json!(metadata))
-            // .store(true)
+            .metadata(json!(metadata))
+            .safety_identifier(msg.author.id.to_string())
             .response_format(ResponseFormat::Text)
             .temperature(self.config.temperature)
             .top_p(self.config.top_p)
+            .max_tokens(self.config.max_tokens)
+            .max_completion_tokens(self.config.max_tokens)
             .messages(messages.clone());
 
         let args = args.build()?;
