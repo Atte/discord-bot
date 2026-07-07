@@ -1,24 +1,19 @@
-#[cfg(feature = "teamup")]
-use std::sync::Mutex;
 use std::{borrow::Cow, ops::Deref, sync::Arc};
 
 use crate::{
     Result,
     config::OpenAiConfig,
     discord::{DbKey, get_data},
-    openai::tools::ToolContext,
 };
 use async_openai::{
     Client,
     config::OpenAIConfig,
-    types::{
+    types::chat::{
         ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
         ChatCompletionRequestMessageContentPartImageArgs,
         ChatCompletionRequestMessageContentPartTextArgs, ChatCompletionRequestSystemMessageArgs,
-        ChatCompletionRequestToolMessageArgs, ChatCompletionRequestToolMessageContent,
         ChatCompletionRequestUserMessageArgs, ChatCompletionResponseMessage,
-        ChatCompletionToolChoiceOption, CreateChatCompletionRequestArgs, ImageDetail, ImageUrlArgs,
-        ResponseFormat,
+        CreateChatCompletionRequestArgs, ImageDetail, ImageUrlArgs, ResponseFormat,
     },
 };
 use bson::{Document, doc};
@@ -30,16 +25,9 @@ use serenity::{
     all::{Context, CreateAllowedMentions, CreateMessage, MESSAGE_CODE_LIMIT, Message},
     prelude::TypeMapKey,
 };
-use tokio::task::JoinSet;
 use word_chunks::WordChunks;
 
-#[cfg(feature = "teamup")]
-use crate::teamup::TeamupEvent;
-
-mod tools;
 mod word_chunks;
-
-const MAX_TRIES: usize = 3;
 
 #[derive(Debug)]
 pub struct OpenAiKey;
@@ -51,15 +39,10 @@ impl TypeMapKey for OpenAiKey {
 pub struct OpenAi {
     client: Client<OpenAIConfig>,
     config: OpenAiConfig,
-    #[cfg(feature = "teamup")]
-    calendar: Arc<Mutex<Vec<TeamupEvent>>>,
 }
 
 impl OpenAi {
-    pub fn new(
-        config: OpenAiConfig,
-        #[cfg(feature = "teamup")] calendar: Arc<Mutex<Vec<TeamupEvent>>>,
-    ) -> Self {
+    pub fn new(config: OpenAiConfig) -> Self {
         let mut client_config = OpenAIConfig::new().with_api_key(config.api_key.to_string());
         if let Some(ref url) = config.api_url {
             client_config = client_config.with_api_base(url.to_string());
@@ -67,8 +50,6 @@ impl OpenAi {
         Self {
             client: Client::with_config(client_config),
             config,
-            #[cfg(feature = "teamup")]
-            calendar,
         }
     }
 
@@ -218,71 +199,35 @@ impl OpenAi {
             metadata.insert("guild_id", guild_id.to_string());
         }
 
-        for i in 1..=MAX_TRIES {
-            metadata.insert("try", i.to_string());
-            let mut args = CreateChatCompletionRequestArgs::default();
-            args.model(self.config.model.to_string())
-                // .metadata(json!(metadata))
-                // .store(true)
-                .parallel_tool_calls(true)
-                .response_format(ResponseFormat::Text)
-                .temperature(self.config.temperature)
-                .top_p(self.config.top_p)
-                .messages(messages.clone());
-            if self.config.tools {
-                args.tools(tools::get_specs()?)
-                    .tool_choice(if i == MAX_TRIES {
-                        ChatCompletionToolChoiceOption::None
-                    } else {
-                        ChatCompletionToolChoiceOption::Auto
-                    });
-            }
-            let args = args.build()?;
-            // println!("{args:?}");
-            let result = self.client.chat().create(args).await?;
-            // println!("{result:?}");
+        let mut args = CreateChatCompletionRequestArgs::default();
+        args.model(self.config.model.to_string())
+            // .metadata(json!(metadata))
+            // .store(true)
+            .response_format(ResponseFormat::Text)
+            .temperature(self.config.temperature)
+            .top_p(self.config.top_p)
+            .messages(messages.clone());
 
-            let response = result
-                .choices
-                .first()
-                .ok_or_else(|| eyre!("No choices in API response"))?;
+        let args = args.build()?;
+        // println!("{args:?}");
+        let result = self.client.chat().create(args).await?;
+        // println!("{result:?}");
 
-            if let Some(content) = response.message.content.clone() {
-                messages.push(
-                    ChatCompletionRequestAssistantMessageArgs::default()
-                        .content(content)
-                        .build()?
-                        .into(),
-                );
-            }
+        let response = result
+            .choices
+            .first()
+            .ok_or_else(|| eyre!("No choices in API response"))?;
 
-            if let Some(calls) = response.message.tool_calls.clone() {
-                if !calls.is_empty() {
-                    let context = ToolContext {
-                        #[cfg(feature = "teamup")]
-                        calendar: self.calendar.lock().unwrap().clone(),
-                    };
-                    let mut joinset = JoinSet::new();
-                    for call in calls {
-                        let context = context.clone();
-                        joinset.spawn(async move {
-                            let text = tools::run(&call, context.clone()).await;
-                            ChatCompletionRequestToolMessageArgs::default()
-                                .tool_call_id(call.id)
-                                .content(ChatCompletionRequestToolMessageContent::Text(text))
-                                .build()
-                        });
-                    }
-                    while let Some(response) = joinset.join_next().await {
-                        messages.push(response??.into());
-                    }
-                    continue;
-                }
-            }
-
-            self.reply(ctx, msg, &response.message).await?;
-            break;
+        if let Some(content) = response.message.content.clone() {
+            messages.push(
+                ChatCompletionRequestAssistantMessageArgs::default()
+                    .content(content)
+                    .build()?
+                    .into(),
+            );
         }
+
+        self.reply(ctx, msg, &response.message).await?;
 
         Ok(())
     }

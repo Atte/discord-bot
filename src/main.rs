@@ -51,11 +51,7 @@ async fn main() -> Result<()> {
     let calendar = std::sync::Arc::new(std::sync::Mutex::new(Vec::<teamup::TeamupEvent>::new()));
 
     #[cfg(feature = "openai")]
-    let openai = openai::OpenAi::new(
-        config.openai.clone(),
-        #[cfg(feature = "teamup")]
-        Arc::clone(&calendar),
-    );
+    let openai = openai::OpenAi::new(config.openai.clone());
 
     info!("Spawning Discord...");
     let mut discord = discord::Discord::try_new(

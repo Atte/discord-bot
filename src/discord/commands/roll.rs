@@ -3,7 +3,7 @@ use crate::{Result, discord::Context, util::separate_thousands_floating};
 use itertools::Itertools;
 use lazy_regex::{regex_is_match, regex_replace_all};
 use poise::command;
-use rand::{Rng, distr::Uniform, rng};
+use rand::{RngExt, distr::Uniform, rng};
 use serenity::utils::MessageBuilder;
 
 /// Cast die and/or do math

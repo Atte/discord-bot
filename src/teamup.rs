@@ -6,7 +6,7 @@ use color_eyre::{
 };
 use itertools::Itertools;
 use log::info;
-use reqwest::{Method, header::HeaderValue};
+use reqwest::{Method, Url, header::HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::{DefaultOnError, NoneAsEmptyString, serde_as};
@@ -114,22 +114,26 @@ impl Teamup {
         subcalendars: T,
     ) -> Result<impl Iterator<Item = TeamupEvent> + use<T>> {
         let now = Utc::now();
+        let mut url = Url::parse("https://api.teamup.com")?;
+        url.path_segments_mut()
+            .map_err(|()| eyre!("cannot be a base"))?
+            .push(&self.config.calendar_key)
+            .push("events");
+        url.query_pairs_mut()
+            .append_pair("startDate", now.format("%Y-%m-%d").to_string().as_str())
+            .append_pair(
+                "endDate",
+                (now + range).format("%Y-%m-%d").to_string().as_str(),
+            )
+            .extend_pairs(
+                subcalendars
+                    .into_iter()
+                    .map(|sub| ("subcalendarId[]", sub.to_string())),
+            );
+
         let response = self
             .client
-            .get(format!(
-                "https://api.teamup.com/{}/events",
-                self.config.calendar_key
-            ))
-            .query(&[
-                ("startDate", now.format("%Y-%m-%d").to_string()),
-                ("endDate", (now + range).format("%Y-%m-%d").to_string()),
-            ])
-            .query(
-                &subcalendars
-                    .into_iter()
-                    .map(|sub| ("subcalendarId[]", sub.to_string()))
-                    .collect::<Vec<_>>(),
-            )
+            .get(url)
             .header(
                 "Teamup-Token",
                 HeaderValue::from_str(self.config.api_key.as_ref())?,

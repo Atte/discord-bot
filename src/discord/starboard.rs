@@ -3,7 +3,7 @@ use std::time::Duration;
 use bson::doc;
 use color_eyre::eyre::{OptionExt, Result};
 use log::warn;
-use rand::{Rng, SeedableRng, distr::Uniform};
+use rand::{RngExt, SeedableRng, distr::Uniform};
 use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
 use serenity::{

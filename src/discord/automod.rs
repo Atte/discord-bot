@@ -1,4 +1,4 @@
-use cached::proc_macro::cached;
+use cached::cached;
 use color_eyre::eyre::{Result, eyre};
 use itertools::Itertools;
 use lazy_regex::regex::{self, Regex};
@@ -6,12 +6,11 @@ use serenity::all::{
     AutomodEventType, CacheHttp, Context, GuildId, Message, MessageBuilder, Rule, Trigger,
     automod::Action,
 };
-use std::time::Duration;
 
 use super::{ConfigKey, get_data, log_channel};
 
 #[cached(
-    time = 60,
+    ttl = 60,
     sync_writes = "default",
     key = "GuildId",
     convert = "{guild}"
@@ -78,7 +77,7 @@ pub async fn enforce(ctx: &Context, message: &Message) -> Result<()> {
         let mut block_regexes = strings
             .into_iter()
             .map(wildcards_to_regex)
-            .chain(regex_patterns.into_iter())
+            .chain(regex_patterns)
             .filter_map(parse_regex);
         let allow_regexes = allow_list
             .into_iter()
@@ -116,13 +115,11 @@ pub async fn enforce(ctx: &Context, message: &Message) -> Result<()> {
                         log::error!("Failed to delete automod matched message: {err:?}");
                     }
                 }
-                Action::Alert(channel_id) => {
-                    if config.discord.log_channels.contains(&channel_id) {
-                        if let Err(err) =
-                            log_channel::automod_enforced(ctx, guild_id, message, &title).await
-                        {
-                            log::error!("Failed to log automod enforcement: {err:?}");
-                        }
+                Action::Alert(channel_id) if config.discord.log_channels.contains(&channel_id) => {
+                    if let Err(err) =
+                        log_channel::automod_enforced(ctx, guild_id, message, &title).await
+                    {
+                        log::error!("Failed to log automod enforcement: {err:?}");
                     }
                 }
                 _ => {}

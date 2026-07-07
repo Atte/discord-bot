@@ -118,8 +118,6 @@ pub struct OpenAiConfig {
     pub top_p: f32,
     pub model: SubstitutingString,
     pub prompt: SubstitutingString,
-    #[serde_inline_default(true)]
-    pub tools: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
